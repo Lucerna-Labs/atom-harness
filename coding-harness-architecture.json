@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "runtime": "atom-causal-coding-experiment-v1",
+  "goal": "learn executable platform construction from mathematical primitives through isolated causal interventions",
+  "architecture": [
+    {
+      "component": "CausalGraph",
+      "runtime_marker": "CODE_CAUSAL_MEMORY_RUNTIME",
+      "responsibility": "learn persistent requirement-to-primitive causes"
+    },
+    {
+      "component": "PhaseLockedLoop",
+      "runtime_marker": "CODE_PHASE_LOCKED_LOOP_RUNTIME",
+      "responsibility": "align repeated intervention evidence"
+    },
+    {
+      "component": "PhaseMixer",
+      "runtime_marker": "CODE_PHASE_MIXER_RUNTIME",
+      "responsibility": "compose conjunctive primitive causes"
+    },
+    {
+      "component": "MolecularRecognition",
+      "runtime_marker": "CODE_MOLECULAR_RECOGNITION_RUNTIME",
+      "responsibility": "retrieve crystallized laws that fit requested behavior"
+    },
+    {
+      "component": "TopologicalPersistence",
+      "runtime_marker": "CODE_TOPOLOGICAL_PERSISTENCE_RUNTIME",
+      "responsibility": "retain supported causal laws and reject unstable ones"
+    },
+    {
+      "component": "ThermalAnnealing",
+      "runtime_marker": "CODE_THERMAL_ANNEALING_RUNTIME",
+      "responsibility": "settle competing primitive hypotheses"
+    },
+    {
+      "component": "ProjectiveMeasurement",
+      "runtime_marker": "CODE_PROJECTIVE_MEASUREMENT_RUNTIME",
+      "responsibility": "measure generated code through sealed executable behavior"
+    }
+  ],
+  "mathematical_platform_primitives": [
+    "identity",
+    "directed_relation",
+    "composition",
+    "conservation",
+    "ordering",
+    "feedback",
+    "fixed_point",
+    "topology",
+    "projection"
+  ],
+  "spiderweb_layers": [
+    "layer_0_transport",
+    "layer_1_message",
+    "layer_2_flow",
+    "layer_3_orchestration"
+  ],
+  "learning_boundary": {
+    "training": "isolated primitive-removal interventions",
+    "validation": "unseen capability compositions",
+    "heldout": "unseen platform compositions",
+    "truth_visibility": "sealed behavioral evaluator is not embedded in generated source"
+  },
+  "abstention": "requests without a crystallized causal path return unknown"
+}

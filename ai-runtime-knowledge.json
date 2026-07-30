@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "project_kind": "ai-harness",
+  "runtime_entrypoint": "atom_harness_experiment.py",
+  "wiki_graph": {
+    "enabled": true,
+    "module_path": "atom_harness_knowledge.py",
+    "runtime_marker": "ATOM_HARNESS_WIKI_RUNTIME"
+  },
+  "rag": {
+    "enabled": true,
+    "module_path": "atom_harness_knowledge.py",
+    "runtime_marker": "ATOM_HARNESS_RAG_RUNTIME"
+  },
+  "integration_test": "tests/test_atom_language_harness_integration.py"
+}

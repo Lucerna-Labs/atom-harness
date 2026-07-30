@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "verified_at": "2026-07-25T09:13:33-04:00",
+  "source_checkpoint": {
+    "manifest_sha256": "ff7b8de322ca9574c149f91b72e4f4d95799e18272aab027aa5bbf31b4011cf2",
+    "optimizer_step": 2468,
+    "consumed_tokens": 20220928,
+    "context_tokens": 2048
+  },
+  "failed_version_2": {
+    "status": "KernelWorkerStatus.ERROR",
+    "log_sha256": "d0e7115c2a991a8da664e5fd3fa4d3bf3d19ac5d836443f24779e9b43f939e3d",
+    "device": "Tesla P100-PCIE-16GB",
+    "failure": "torch.OutOfMemoryError",
+    "failure_time_seconds": 318.362437284,
+    "gpu_capacity_gib": 15.89,
+    "gpu_free_mib": 143.12,
+    "gpu_process_memory_gib": 15.75,
+    "failed_allocation_mib": 120.0
+  },
+  "repair": {
+    "same_stage_checkpoint_configuration_preserved": true,
+    "optimizer_state_preserved": true,
+    "context_expansion_deferred_until_stage": "context",
+    "sequence_tokens": 512,
+    "gradient_accumulation": 32,
+    "raw_tokens_per_optimizer_update": 16384,
+    "bundle_sha256": "3752148e0e40641be02c253235c297134c77f98daeda87574620c28206efd1ac",
+    "bundle_manifest_sha256": "41d3c9fab55b2ed3146c63eaa145df9adda68a95d966ba1f321836e1ef3c4f69"
+  },
+  "validation": {
+    "ruff_passed": true,
+    "python_integration_tests_passed": 31,
+    "generated_runner_self_test_passed": true,
+    "bundle_hash_matches_manifest": true
+  },
+  "submitted_version_3": {
+    "status": "KernelWorkerStatus.RUNNING",
+    "status_verified_at": "2026-07-25T09:13:33-04:00",
+    "survived_previous_oom_process_time_seconds": true
+  },
+  "readiness": {
+    "hash_bound_external_language_admission_passed": false,
+    "real_multi_turn_free_form_conversation_completed": false,
+    "same_runtime_conversation_to_compiled_tested_side_view_application_proved": false
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "architecture": "atom-causal-memory-v1",
+  "purpose": "persistent structural memory for the Atom causal architecture",
+  "upstream": {
+    "repository": "https://github.com/Lucerna-Labs/atom-db",
+    "source_commit": "b9a199bf994ffaa6811c59b7fa0f27dab41c7949",
+    "policy": "fetch-only reference with disabled push URL",
+    "original_role": "lexical evidence retrieval and RAG"
+  },
+  "fork": {
+    "workspace": "atom_causal_memory_rust",
+    "crate": "crates/atom-causal-memory",
+    "core_reused": [
+      "content-addressed immutable atoms",
+      "ternary bonds",
+      "atomic cells",
+      "causal append order",
+      "named roots and reconstructible snapshots",
+      "single-writer and read-only observer boundary"
+    ],
+    "new_role": "typed causal glyph persistence, structural resonance, and prediction-driven motif conductance"
+  },
+  "causal_glyph": {
+    "identity": "Primitive Forge canonical primitive identity",
+    "structure": [
+      "typed input and output ports",
+      "dimensional signatures",
+      "ordered direct components",
+      "complete seven-root expansion",
+      "invariants",
+      "symmetries",
+      "boundaries",
+      "scales",
+      "lifecycle state",
+      "evidence and counterexamples",
+      "provenance"
+    ],
+    "motif_identity": "content address of glyph identity, structural role, and value",
+    "catalog": "hash-bound Primitive Forge graph selected through a causal Atom DB root"
+  },
+  "retrieval": {
+    "runtime": "atom-causal-memory-v1",
+    "method": "exact graph-motif resonance with role-specific activation and durable conductance",
+    "forbidden_inputs": [
+      "aliases",
+      "passage text",
+      "provenance prose",
+      "evidence prose",
+      "embedding vectors",
+      "cosine similarity"
+    ],
+    "output": [
+      "ranked glyph identities",
+      "coverage",
+      "activation",
+      "exact matched motif identities",
+      "conductance",
+      "strengthen and weaken counts",
+      "insufficient-evidence state"
+    ]
+  },
+  "learning": {
+    "input": "expected versus selected glyph from an observed prediction",
+    "correct_prediction": "strengthen every matched motif on the selected expected glyph",
+    "wrong_prediction": "weaken matched motifs on the selected glyph and strengthen matched motifs on the expected glyph",
+    "persistence": "one atomic feedback cell with exact event and motif provenance",
+    "query_policy": "queries open the store read-only and never change durable state"
+  },
+  "runtime_entrypoint": "atom_causal_memory_experiment.py",
+  "integration_test": "tests/test_atom_causal_memory_integration.py",
+  "wiki_graph": "atom_causal_memory_knowledge.py",
+  "side_view": "atom_causal_memory_side_view.py"
+}

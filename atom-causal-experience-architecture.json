@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "architecture": "atom-causal-experience-v1",
+  "purpose": "append-only causal-world experience memory with structural recall and outcome-driven adaptation",
+  "substrate": {
+    "workspace": "atom_causal_memory_rust",
+    "crate": "crates/atom-causal-memory",
+    "coexists_with": "the Primitive Forge causal-glyph catalog in the same Atom DB store",
+    "durability": [
+      "content-addressed immutable atoms",
+      "ternary bonds",
+      "atomic append cells",
+      "causal ordering",
+      "named roots",
+      "reconstructible snapshots",
+      "single-writer and read-only observer separation"
+    ]
+  },
+  "root_substrate": [
+    "attraction_repulsion",
+    "conservation",
+    "decay",
+    "dissipation",
+    "gravitation",
+    "nucleation",
+    "radiation"
+  ],
+  "source_artifacts": {
+    "observations": "causal_world_outputs/atom_causal_world_evidence.jsonl",
+    "consolidated_laws": "causal_world_outputs/atom_causal_world_model.json",
+    "primitive_forge": "primitive_forge_outputs/atom_primitive_graph.json",
+    "binding": "every imported batch carries the SHA-256 identity of its exact source artifact"
+  },
+  "records": {
+    "observation_revision": "one immutable identity per complete observation payload, including repeated source labels",
+    "causal_law": "one consolidated relationship with graph-native links to every supporting observation revision",
+    "motif": "content identity of experience, structural role, and value",
+    "audit_boundary": "source hashes, provenance, and evidence metadata are durable but cannot participate in recall"
+  },
+  "append_protocol": {
+    "observations_batch": "causal-world-observation-revisions",
+    "laws_batch": "causal-world-consolidated-laws",
+    "idempotency": "an already committed content-identical batch returns committed=false without changing the snapshot",
+    "versioning": "changed source content receives a new batch identity and causal append position"
+  },
+  "retrieval": {
+    "runtime": "atom-causal-experience-v1",
+    "method": "exact role-value motif resonance over cause, effect, context, domain, direction, kind, state, metrics, and ordered root composition",
+    "required_constraints": "every required structural feature must match before a record is answerable",
+    "unknown_policy": "return answerable=false, insufficient_evidence=true, and no hits",
+    "output": [
+      "ranked experience identities",
+      "matched support",
+      "coverage",
+      "score",
+      "exact supporting motifs",
+      "durable conductance and feedback counts"
+    ],
+    "forbidden_inputs": [
+      "provenance hashes",
+      "evidence prose",
+      "audit-only source fields",
+      "embedding vectors",
+      "cosine similarity"
+    ]
+  },
+  "adaptation": {
+    "input": "an observed expected experience and the experience selected by the causal field",
+    "correct_outcome": "strengthen the matched structural motifs on the expected selection",
+    "wrong_outcome": "weaken the misleading selected motifs and strengthen the matching expected motifs",
+    "persistence": "commit the feedback event and exact motif adjustments in an atomic cell",
+    "recall_policy": "recall is read-only and adaptation occurs only through an explicit observation command"
+  },
+  "runtime_knowledge": {
+    "module": "atom_causal_experience_knowledge.py",
+    "wiki_marker": "CAUSAL_EXPERIENCE_WIKI_RUNTIME",
+    "rag_marker": "CAUSAL_EXPERIENCE_RAG_RUNTIME",
+    "binding": "wiki nodes, evidence edges, and RAG results are rebuilt from the exact durable catalog"
+  },
+  "artifact_side_view": {
+    "module": "atom_causal_experience_side_view.py",
+    "runtime_marker": "CAUSAL_EXPERIENCE_SIDE_VIEW_RUNTIME",
+    "artifact_binding_marker": "render_causal_experience_artifact",
+    "placement": "side",
+    "binding": "the visible view validates the report, inventory, workflow, knowledge, and store hashes before rendering"
+  },
+  "runtime_entrypoint": "atom_causal_experience_experiment.py",
+  "integration_test": "tests/test_atom_causal_experience_integration.py",
+  "measurement_boundary": "the current runtime demonstrates durable structural memory and feedback over the saved causal-world corpus; it does not by itself establish open-domain language intelligence or autonomous truth acquisition"
+}

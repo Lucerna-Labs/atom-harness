@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "architecture": "atom-open-primitive-forge-v1",
+  "semantic_authority": "mathematical-and-physical-composition",
+  "root_substrate": [
+    "radiation",
+    "dissipation",
+    "gravitation",
+    "attraction_repulsion",
+    "nucleation",
+    "conservation",
+    "decay"
+  ],
+  "root_policy": {
+    "immutable": true,
+    "role": "generative substrate",
+    "not_the_complete_vocabulary": true
+  },
+  "hierarchy": [
+    "seven immutable roots",
+    "unbounded recursively discovered primitives",
+    "structures, laws, and systems",
+    "later optional projections"
+  ],
+  "primitive_inventory": {
+    "fixed_enum": false,
+    "growth": "open-ended and resource-bounded only by the executing runtime",
+    "closure": "discovered primitives can immediately compose into deeper primitives",
+    "identity": "deterministic canonical hash of normalized mathematical composition and typed signature",
+    "reducibility": "every discovered primitive retains a complete expansion to the seven roots"
+  },
+  "primitive_record_contract": [
+    "typed domain signature",
+    "composition recipe",
+    "complete seven-root expansion",
+    "invariants",
+    "symmetries",
+    "boundary metadata",
+    "scale metadata",
+    "supporting evidence",
+    "counterexamples",
+    "confidence",
+    "persistence",
+    "status",
+    "provenance",
+    "equivalent derivations"
+  ],
+  "continual_learning": {
+    "entry_state": "quarantined",
+    "promotion": "repeated context-distinct predictive evidence",
+    "contradiction": "revises and weakens a crystallized structure",
+    "decay": "retires unsupported derived structures",
+    "root_exception": "roots cannot be observed into, revised, decayed, retired, or replaced"
+  },
+  "discovery_experiment": {
+    "world": "bounded mathematical scalar-field simulation",
+    "generation": "algorithmic breadth and recursive depth search",
+    "evaluation": [
+      "unseen calibration-family controls",
+      "held-out counterfactual controls",
+      "independent flat root-expansion oracle"
+    ],
+    "claim_boundary": "simulation evidence only; not proof of complete physics, quantum mechanics, or universal mathematics"
+  },
+  "runtime_knowledge": {
+    "wiki": "dynamic graph generated from the serialized primitive artifact",
+    "rag": "node-first retrieval followed by composition-edge propagation"
+  },
+  "side_view": {
+    "placement": "side",
+    "binding": "exact model artifact hash, graph hash, report hash, workflow hash, and knowledge hash"
+  },
+  "later_projections": [
+    "coding",
+    "Rust",
+    "frontend"
+  ],
+  "runtime_entrypoint": "atom_primitive_experiment.py",
+  "integration_test": "tests/test_atom_primitive_forge_integration.py"
+}

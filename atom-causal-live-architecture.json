@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "architecture": "atom-causal-live-v1",
+  "purpose": "trusted interaction outcomes become durable causal experience and alter later structural prediction",
+  "substrate": {
+    "workspace": "atom_causal_memory_rust",
+    "crate": "crates/atom-causal-memory",
+    "store": "one Atom DB containing the Primitive Forge catalog, saved causal world, live observations, and outcome feedback",
+    "append_law": "facts enter through atomic cells and earlier experience identities are never overwritten"
+  },
+  "live_event": {
+    "identity": "canonical SHA-256 of the complete validated event manifest",
+    "situation": [
+      "world domain",
+      "cause",
+      "context signature",
+      "causal direction",
+      "ordered seven-root atom program"
+    ],
+    "trusted_outcome": [
+      "observed effect",
+      "delay",
+      "magnitude",
+      "invariant error",
+      "authority kind and identity",
+      "source evidence SHA-256"
+    ],
+    "evidence_receipt": "a separate canonical receipt must match the event fields and the declared evidence SHA-256",
+    "accepted_authorities": [
+      "instrument",
+      "operator",
+      "simulator",
+      "verified_test"
+    ],
+    "authority_policy": "the runtime accepts only authority identities explicitly mapped to their authority class",
+    "rejected_evidence": "retrieval output, an unconfigured authority, a mismatched receipt, or a self-declared hash without the receipt cannot enter memory"
+  },
+  "cycle": [
+    "recall prior structural experience from situation features without seeing the outcome",
+    "select the highest supported non-retired experience or explicitly abstain",
+    "receive an independently certified outcome",
+    "append one immutable observation carrying situation, outcome, prediction, session, and authority provenance",
+    "strengthen a correct selected path or weaken it while strengthening the new observed path",
+    "reopen the store and use the changed conductance during the next interaction"
+  ],
+  "idempotency": {
+    "command": "observe-experience-once",
+    "key": "the live event SHA-256",
+    "storage": "the outcome key, event, expected path, selected path, and every motif adjustment commit in one Rust atomic cell",
+    "exact_replay": "returns committed=false with no adjustments and no store mutation",
+    "conflict": "reusing a key with a different query, expected experience, or selected experience fails closed"
+  },
+  "inventory": {
+    "surface": "every durable experience exposes its exact role-value features plus aggregate feedback counts",
+    "purpose": "runtime inspection, graph construction, process recovery, and prediction provenance",
+    "retrieval_boundary": "audit features remain visible for inspection but the Rust recall membrane rejects them as query inputs"
+  },
+  "knowledge": {
+    "module": "atom_causal_experience_knowledge.py",
+    "wiki_marker": "CAUSAL_EXPERIENCE_WIKI_RUNTIME",
+    "rag_marker": "CAUSAL_EXPERIENCE_RAG_RUNTIME",
+    "live_edges": [
+      "experience observed_in live session",
+      "experience certified_by outcome authority"
+    ],
+    "binding": "the graph is reconstructed from the exact post-interaction Atom DB inventory and RAG calls the real Rust recall path"
+  },
+  "side_view": {
+    "module": "atom_causal_live_side_view.py",
+    "runtime_marker": "CAUSAL_LIVE_SIDE_VIEW_RUNTIME",
+    "artifact_binding_marker": "render_causal_live_artifact",
+    "placement": "side",
+    "binding": "report, inventory, workflow, knowledge, store, and runtime hashes are validated before rendering"
+  },
+  "runtime_entrypoint": "atom_causal_live_experiment.py",
+  "integration_test": "tests/test_atom_causal_live_integration.py",
+  "measurement_boundary": "the current runtime demonstrates two-session causal adaptation from a trusted novel outcome and mutation-free exact replay; it does not accept unverified model output as truth or autonomously discover external facts"
+}

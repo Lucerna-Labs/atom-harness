@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "architecture": "atom-native-causal-language-v1",
+  "language_priority": [
+    {
+      "language": "Atom",
+      "role": "primary construction, reasoning, learning, and composition language",
+      "authority": "semantic-source"
+    },
+    {
+      "language": "Rust",
+      "role": "safe native execution target generated from typed Atom IR",
+      "authority": "replaceable-projection"
+    },
+    {
+      "language": "Svelte-TypeScript",
+      "role": "thin user-facing projection over the Atom-to-Rust runtime bridge",
+      "authority": "replaceable-projection"
+    }
+  ],
+  "root_substrate": [
+    "radiation",
+    "dissipation",
+    "gravitation",
+    "attraction_repulsion",
+    "nucleation",
+    "conservation",
+    "decay"
+  ],
+  "composition_layers": [
+    "mathematical roots",
+    "mathematical primitives",
+    "capability bindings",
+    "Spiderweb bus layers",
+    "typed Atom program",
+    "Rust execution projection",
+    "thin Svelte-TypeScript projection"
+  ],
+  "learning": {
+    "method": "treated-control causal interventions expressed through Atom",
+    "persistent_memory": "crystallized requirement-to-primitive laws",
+    "unknown_policy": "abstain when no experienced causal binding exists"
+  },
+  "replacement_direction": {
+    "goal": "grow Atom until Rust and the frontend language are unnecessary",
+    "constraint": "today Rust and Svelte-TypeScript remain tested projections, not semantic authorities"
+  },
+  "runtime_entrypoint": "atom_native_experiment.py",
+  "integration_test": "tests/test_atom_native_language_integration.py"
+}

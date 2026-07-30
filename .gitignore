@@ -1,0 +1,54 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.DS_Store
+.git-safekeeping/
+
+# Secrets and machine-local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+kaggle.json
+
+# Model weights, optimizer state, databases, and large runtime artifacts
+*.safetensors
+*.pt
+*.pth
+*.ckpt
+*.gguf
+*.atomdb
+*.sqlite
+*.sqlite3
+*.log
+
+# Generated build trees and dependency caches
+**/target/
+**/node_modules/
+**/dist/
+**/build/
+
+# Runtime outputs and downloaded notebook artifacts
+outputs/
+cognitive_outputs/
+universe_core_outputs/
+**/*_outputs/
+backups/
+tmp/
+local-results/
+kaggle-results/
+kaggle/runs/
+kaggle_notebook_backups/
+
+# Compact source artifacts required to bootstrap the active harness.
+!causal_world_outputs/
+causal_world_outputs/*
+!causal_world_outputs/atom_causal_world_evidence.jsonl
+!causal_world_outputs/atom_causal_world_model.json
+!primitive_forge_outputs/
+primitive_forge_outputs/*
+!primitive_forge_outputs/atom_primitive_graph.json

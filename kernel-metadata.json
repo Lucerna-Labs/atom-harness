@@ -1,0 +1,15 @@
+{
+  "id": "jessealicea/atom-universe-core-composition-v2",
+  "title": "Atom Universe Core Composition v2",
+  "code_file": "atom_universe_composition.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": "true",
+  "enable_gpu": "false",
+  "enable_tpu": "false",
+  "enable_internet": "false",
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}

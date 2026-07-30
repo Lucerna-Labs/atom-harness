@@ -1,0 +1,17 @@
+[package]
+name = "atom-causal-memory"
+version = "0.1.0"
+edition = "2024"
+description = "Structural causal-glyph memory built on the Atom DB fact substrate"
+license = "MIT"
+
+[dependencies]
+atom-db = { path = "../.." }
+
+[lib]
+name = "atom_causal_memory"
+path = "src/lib.rs"
+
+[[bin]]
+name = "atom-causal-memory"
+path = "src/main.rs"

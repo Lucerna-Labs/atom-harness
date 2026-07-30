@@ -1,0 +1,27 @@
+[package]
+name = "atom-db"
+version = "0.1.0"
+edition = "2024"
+description = "A dependency-free, content-addressed database derived from first principles"
+license = "MIT"
+autobins = false
+autotests = false
+
+[workspace]
+members = [
+    "crates/atom-db-cli",
+    "crates/atom-causal-memory",
+    "crates/atom-retrieval-field",
+]
+
+[dependencies]
+atom-retrieval-field = { path = "crates/atom-retrieval-field" }
+
+[lib]
+name = "atom_db"
+path = "src/lib.rs"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

@@ -1,0 +1,18 @@
+[package]
+name = "atom-db-cli"
+version = "0.1.0"
+edition = "2024"
+description = "Command-line interface for the Atom DB fact substrate"
+license = "MIT"
+default-run = "atom-db"
+
+[dependencies]
+atom-db = { path = "../.." }
+
+[[bin]]
+name = "atom-db"
+path = "../../src/main.rs"
+
+[[test]]
+name = "observer_leases"
+path = "../../tests/observer_leases.rs"

@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "verified_at": "2026-07-25T04:35:52-04:00",
+  "source_kernel": "jessealicea/atom-generative-english-v1",
+  "source_kernel_status": "KernelWorkerStatus.COMPLETE",
+  "source_output": "atom-english/latest",
+  "validation": {
+    "method": "atom_english_training._verified_checkpoint_manifest",
+    "all_declared_file_hashes_match": true,
+    "manifest_hash_matches": true,
+    "training_report_manifest_binding_matches": true,
+    "run_summary_manifest_binding_matches": true
+  },
+  "checkpoint": {
+    "manifest_sha256": "ff7b8de322ca9574c149f91b72e4f4d95799e18272aab027aa5bbf31b4011cf2",
+    "model_sha256": "5b2bacf7780d64ec98e8df7b5b7534cb73d94c223c6e854a0aa8e641e01832df",
+    "optimizer_sha256": "ffc7c9a7d7d1ea7405cef3c774ec4669f4aff3b45563d430e4ba0372ebd89814",
+    "training_state_sha256": "cec5421142af40e377c130e07cc545901bd6c2a0666b8dda9d13b361d9532dbf",
+    "stage": "foundation",
+    "optimizer_step": 2468,
+    "consumed_tokens": 20220928,
+    "stop_reason": "wall_time_limit",
+    "tokens_per_second": 532.0145036097056
+  },
+  "admission": {
+    "foundation_target_tokens": 4915200000,
+    "remaining_tokens": 4894979072,
+    "foundation_continuation_allowed": true,
+    "dialogue_allowed": false
+  },
+  "advanced_stage": {
+    "kernel": "jessealicea/atom-generative-english-foundation-continue-v1",
+    "kernel_version": 1,
+    "status_after_push": "KernelWorkerStatus.RUNNING"
+  },
+  "readiness": {
+    "hash_bound_external_language_admission_passed": false,
+    "real_multi_turn_free_form_conversation_completed": false,
+    "same_runtime_conversation_to_compiled_tested_side_view_application_proved": false
+  }
+}

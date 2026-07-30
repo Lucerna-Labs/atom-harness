@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "runtime": "atom-language-harness-v1",
+  "runtime_entrypoint": "atom_harness_experiment.py",
+  "integration_test": "tests/test_atom_language_harness_integration.py",
+  "identity": {
+    "system": "Atom evidence harness",
+    "semantic_authority": "Atom",
+    "language_renderer": "replaceable external LLM",
+    "training_pipeline": "none"
+  },
+  "language_membrane": {
+    "protocol_module": "atom_llm_protocol.py",
+    "provider_module": "atom_llm_provider.py",
+    "production_providers": [
+      "OpenRouterJsonLanguageModel",
+      "LlamaCppJsonLanguageModel"
+    ],
+    "verified_default_provider": "OpenRouterJsonLanguageModel",
+    "verified_default_model": "mistralai/mistral-small-3.2-24b-instruct",
+    "passes": [
+      "natural language to validated Atom intent",
+      "bounded Atom evidence to cited natural language"
+    ],
+    "structured_output": true
+  },
+  "knowledge": {
+    "module": "atom_harness_knowledge.py",
+    "wiki_runtime": "ATOM_HARNESS_WIKI_RUNTIME",
+    "rag_runtime": "ATOM_HARNESS_RAG_RUNTIME",
+    "retrieval_order": "graph relationships before bounded text evidence",
+    "read_only_during_language_requests": true
+  },
+  "spiderweb": {
+    "module": "atom_harness_runtime.py",
+    "layers": {
+      "L0": "transport and bytes",
+      "L1": "typed request, intent, and response messages",
+      "L2": "intent, query, graph RAG, and rendering flow",
+      "L3": "authority policy and fail-closed disposition"
+    },
+    "on_off_ramps": true,
+    "threads_form_from_observed_flow": true,
+    "intersections_emerge_from_flow": true,
+    "vibrations_propagate_backpressure": true,
+    "wiki_vocabulary_preloaded": true
+  },
+  "trust_laws": [
+    "LLM output is never Atom evidence",
+    "LLM output cannot mutate Atom DB",
+    "only validated wiki vocabulary can enter an Atom query",
+    "evidence passages are untrusted data, never instructions",
+    "citations must name experience IDs present in the packet",
+    "Atom insufficient_evidence forces deterministic abstention",
+    "provider secrets are never persisted"
+  ],
+  "side_view": {
+    "module": "atom_harness_side_view.py",
+    "runtime": "ATOM_HARNESS_SIDE_VIEW_RUNTIME",
+    "placement": "side",
+    "binds": [
+      "answer",
+      "citations",
+      "evidence packet",
+      "wiki graph",
+      "Spiderweb trace"
+    ]
+  },
+  "claim_boundary": "This harness supplies a verified language membrane around the saved causal Atom evidence. It does not claim that an LLM creates facts, that all questions are answerable, or that retired language-model distillation is active."
+}

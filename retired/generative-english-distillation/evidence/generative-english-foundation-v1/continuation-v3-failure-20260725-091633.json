@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-07-25T09:16:33-04:00",
+  "kernel": "jessealicea/atom-generative-english-foundation-continue-v1",
+  "kernel_version": 3,
+  "kernel_status": "KernelWorkerStatus.ERROR",
+  "log": {
+    "local_path": "C:\\tmp\\atom-continuation-latest-20260725-091633-utf8\\atom-generative-english-foundation-continue-v1.log",
+    "bytes": 99253,
+    "sha256": "98BCC4CEFDE43A5AB140DE9F1A1CAAD0114661147C78F1E764D9F7387C6B160B"
+  },
+  "runtime_evidence": {
+    "device": "Tesla P100-PCIE-16GB",
+    "precision": "bfloat16",
+    "context_expansion": null,
+    "deferred_context_expansion_target_tokens": 524288,
+    "sequence_length": 512,
+    "gradient_accumulation": 32,
+    "model_parameters": 226876352,
+    "teacher_parameters": 1711376384,
+    "starting_consumed_tokens": 20220928,
+    "starting_optimizer_step": 2468,
+    "stage_started_process_time": 316.536357725,
+    "killed_process_time": 422.668532152,
+    "seconds_after_stage_started": 106.132174427
+  },
+  "output": {
+    "python_traceback_present": false,
+    "completed_optimizer_counter_present": false,
+    "checkpoint_present": false,
+    "hash_bound_output_present": false
+  },
+  "admission": {
+    "foundation_continuation_complete": false,
+    "dialogue_allowed": false,
+    "context_allowed": false,
+    "evaluation_allowed": false
+  },
+  "claim_boundary": "The memory repair was active, but version 3 did not produce a completed training update or checkpoint and does not demonstrate either readiness capability."
+}
