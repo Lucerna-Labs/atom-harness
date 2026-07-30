@@ -1,7 +1,21 @@
 {
   "schema_version": 1,
-  "active_runtime": "language-harness-v2",
+  "active_runtime": "language-harness-v3",
   "runtimes": {
+    "language-harness-v3": {
+      "runtime_entrypoint": "atom_harness_experiment.py",
+      "session_entrypoint": "atom_harness_session_cli.py",
+      "wiki_runtime": "ATOM_HARNESS_WIKI_RUNTIME",
+      "rag_runtime": "ATOM_HARNESS_RAG_RUNTIME",
+      "side_view_runtime": "ATOM_HARNESS_SIDE_VIEW_RUNTIME",
+      "artifact_binding_marker": "render_atom_harness_artifact",
+      "provider_fabric_runtime": "ATOM_PROVIDER_FABRIC_RUNTIME",
+      "resident_lane_runtime": "ATOM_RESIDENT_LANGUAGE_LANE_RUNTIME",
+      "transaction_runtime": "ATOM_RUN_TRANSACTION_RUNTIME",
+      "language_model_contract": "atom-language-model.json",
+      "language_model_certification": "scripts/certify_resident_language_lane.py",
+      "integration_test": "tests/test_atom_language_harness_v3_integration.py"
+    },
     "language-harness-v2": {
       "runtime_entrypoint": "atom_harness_experiment.py",
       "wiki_runtime": "ATOM_HARNESS_WIKI_RUNTIME",

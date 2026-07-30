@@ -130,7 +130,10 @@ class AtomProviderProtocolV2Tests(unittest.TestCase):
         )
         self.assertEqual(contract["role"], "language-only-membrane")
         self.assertEqual(contract["default_provider"], "llama-cpp")
-        self.assertEqual(contract["adoption_status"], "certified-local-default")
+        self.assertEqual(
+            contract["adoption_status"],
+            "certified-resident-local-default",
+        )
         self.assertEqual(
             contract["base_model"]["model_id"],
             "Qwen/Qwen3-4B-Instruct-2507",
@@ -151,6 +154,19 @@ class AtomProviderProtocolV2Tests(unittest.TestCase):
         )
         self.assertTrue(
             contract["certification"]["latest_evidence"]["machine_grounding_passed"]
+        )
+        self.assertEqual(
+            contract["runtime_policy"]["executable"],
+            "llama-server",
+        )
+        self.assertEqual(
+            contract["runtime_policy"]["resident_lane"]["runtime"],
+            "atom-resident-language-lane-v1",
+        )
+        self.assertTrue(
+            contract["certification"]["latest_evidence"][
+                "single_model_load_before_fault_passed"
+            ]
         )
         self.assertEqual(
             default_official_model_path().name,

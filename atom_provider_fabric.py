@@ -24,10 +24,11 @@ from atom_llm_protocol import (
     ProviderInternalError,
     ProviderLocation,
 )
+from atom_resident_language_lane import ATOM_RESIDENT_LANGUAGE_LANE_RUNTIME
 
 
-ATOM_PROVIDER_FABRIC_RUNTIME = "atom-resilient-provider-fabric-v2"
-ATOM_PROVIDER_ROUTE_RUNTIME = "atom-provider-route-v2"
+ATOM_PROVIDER_FABRIC_RUNTIME = "atom-resilient-provider-fabric-v3"
+ATOM_PROVIDER_ROUTE_RUNTIME = "atom-provider-route-v3"
 
 _PROVIDER_MANIFEST_FIELDS = frozenset(
     {
@@ -47,6 +48,7 @@ _PROVIDER_MANIFEST_FIELDS = frozenset(
         "provider_runtime",
         "reason_code",
         "reason_sha256",
+        "resident_lane",
         "require_parameters",
         "schema",
         "secrets_persisted",
@@ -179,6 +181,117 @@ def _validated_provider_manifest(
     return manifest
 
 
+def _validated_lane_evidence(payload: Mapping[str, Any]) -> dict[str, Any]:
+    lane = dict(payload)
+    if not lane:
+        return {}
+    if type(lane.get("schema")) is not int or lane["schema"] != 1:
+        raise LanguageBoundaryError("provider lane evidence schema is invalid")
+    if (
+        not isinstance(lane.get("runtime"), str)
+        or not lane["runtime"].strip()
+        or len(lane["runtime"]) > 256
+    ):
+        raise LanguageBoundaryError("provider lane evidence runtime is invalid")
+    if lane["runtime"] != ATOM_RESIDENT_LANGUAGE_LANE_RUNTIME:
+        raise LanguageBoundaryError("provider lane evidence runtime is unsupported")
+    for field in ("stage",):
+        value = lane.get(field)
+        if (
+            not isinstance(value, str)
+            or not value.strip()
+            or "\x00" in value
+            or len(value) > 128
+        ):
+            raise LanguageBoundaryError(f"provider lane {field} is invalid")
+    for field, minimum in (
+        ("process_generation", 1),
+        ("model_load_count", 1),
+        ("restart_count", 0),
+        ("request_ordinal", 1),
+        ("queue_wait_ms", 0),
+    ):
+        value = lane.get(field)
+        if type(value) is not int or value < minimum:
+            raise LanguageBoundaryError(f"provider lane {field} is invalid")
+    if lane["model_load_count"] > lane["process_generation"]:
+        raise LanguageBoundaryError("provider lane model-load count is impossible")
+    if lane["restart_count"] >= lane["model_load_count"]:
+        raise LanguageBoundaryError("provider lane restart count is impossible")
+    if type(lane.get("resident_reused")) is not bool:
+        raise LanguageBoundaryError("provider lane reuse flag is invalid")
+    if lane["resident_reused"] and lane["request_ordinal"] <= 1:
+        raise LanguageBoundaryError("provider lane reuse evidence is impossible")
+    expected_ramps = {
+        "on_ramp": {
+            "from": "L1:typed-language-message",
+            "to": "resident-language-highway",
+            "message": "JsonGenerationRequest",
+        },
+        "off_ramp": {
+            "from": "resident-language-highway",
+            "to": "L1:typed-language-result",
+            "message": "JsonGenerationResult",
+        },
+    }
+    for field, expected in expected_ramps.items():
+        if lane.get(field) != expected:
+            raise LanguageBoundaryError(f"provider lane {field} is invalid")
+    envelope_sha256 = lane.get("transport_envelope_sha256")
+    if envelope_sha256 is not None and (
+        not isinstance(envelope_sha256, str)
+        or len(envelope_sha256) != 64
+        or any(character not in "0123456789abcdef" for character in envelope_sha256)
+    ):
+        raise LanguageBoundaryError("provider lane transport hash is invalid")
+    vibrations = lane.get("vibrations")
+    if (
+        not isinstance(vibrations, list)
+        or len(vibrations) > 64
+        or any(not isinstance(item, Mapping) for item in vibrations)
+    ):
+        raise LanguageBoundaryError("provider lane vibrations are invalid")
+    for vibration in vibrations:
+        if vibration.get("kind") not in {"horizontal", "vertical"}:
+            raise LanguageBoundaryError("provider lane vibration kind is invalid")
+        for field in ("signal", "origin"):
+            value = vibration.get(field)
+            if (
+                not isinstance(value, str)
+                or not value.strip()
+                or "\x00" in value
+                or len(value) > 256
+            ):
+                raise LanguageBoundaryError(
+                    f"provider lane vibration {field} is invalid"
+                )
+        propagates_to = vibration.get("propagates_to")
+        if (
+            not isinstance(propagates_to, list)
+            or len(propagates_to) > 16
+            or any(
+                not isinstance(item, str)
+                or not item.strip()
+                or "\x00" in item
+                or len(item) > 256
+                for item in propagates_to
+            )
+        ):
+            raise LanguageBoundaryError(
+                "provider lane vibration propagation is invalid"
+            )
+    encoded = json.dumps(
+        lane,
+        ensure_ascii=False,
+        allow_nan=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    if len(encoded) > 64 * 1024:
+        raise LanguageBoundaryError("provider lane evidence exceeds the safe limit")
+    canonical_hash(lane)
+    return lane
+
+
 class ProviderFabric:
     """Route strict JSON requests through an ordered, policy-bound fabric."""
 
@@ -194,6 +307,7 @@ class ProviderFabric:
         self.policy = policy or ProviderFabricPolicy()
         self._semaphore = threading.BoundedSemaphore(self.policy.max_concurrency)
         self._lock = threading.RLock()
+        self._closed = False
         self._circuits: dict[str, _Circuit] = {}
         self._provider_keys: list[str] = []
         capabilities_rows: list[ProviderCapabilities] = []
@@ -295,6 +409,25 @@ class ProviderFabric:
             "state_hash": preload["state_hash"],
             "secrets_persisted": False,
         }
+
+    def close(self) -> None:
+        """Release resources owned by all providers in reverse route order."""
+
+        with self._lock:
+            if self._closed:
+                return
+            self._closed = True
+        for provider in reversed(self.providers):
+            close = getattr(provider, "close", None)
+            if callable(close):
+                close()
+
+    def __enter__(self) -> ProviderFabric:
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        del exc_type, exc_value, traceback
+        self.close()
 
     def _circuit_allows(self, key: str) -> tuple[bool, str]:
         with self._lock:
@@ -437,6 +570,9 @@ class ProviderFabric:
     ) -> JsonGenerationResult:
         token = cancellation or CancellationToken()
         token.raise_if_cancelled()
+        with self._lock:
+            if self._closed:
+                raise ProviderExhaustedError("provider fabric is closed")
         started = time.perf_counter()
         attempts: list[dict[str, Any]] = []
         vibrations: list[dict[str, Any]] = []
@@ -598,6 +734,14 @@ class ProviderFabric:
                             if request.validator is not None
                             else result.payload
                         )
+                        lane_evidence = _validated_lane_evidence(result.lane)
+                        for vibration in lane_evidence.get("vibrations", []):
+                            vibrations.append(
+                                {
+                                    **dict(vibration),
+                                    "provider_key": key,
+                                }
+                            )
                     except ProviderCancelledError as error:
                         circuit = self._record_cancelled(key)
                         attempts.append(
@@ -734,6 +878,7 @@ class ProviderFabric:
                                     "provider_key": key,
                                     **capabilities.manifest(),
                                 },
+                                "language_lane": lane_evidence or None,
                                 "attempts": attempts,
                                 "vibrations": vibrations,
                                 "elapsed_ms": round(

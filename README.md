@@ -2,32 +2,43 @@
 
 ## Active direction
 
-The active product is Atom Language Harness V2 around the causal Atom runtime.
+The active product is Atom Language Harness V3 around the causal Atom runtime.
 Atom owns facts, causal memory, the runtime wiki graph, graph RAG, tool-routing
 policy, and abstention. A replaceable LLM supplies natural-language intent
 parsing and evidence-grounded answer rendering only.
 
-V2 admits local, private, and explicitly consented cloud providers through an
-ordered Spiderweb provider fabric. It adds typed retry and fallback, circuits,
-bounded concurrency, cancellation, privacy-block and backpressure vibrations,
-and atomic crash-recoverable run publication. Cloud evidence egress is blocked
-unless the operator opts in for the current process. The side view binds the
-real answer to evidence, provider routes, timings, privacy state, and the run
-transaction.
+V3 keeps the V2 provider and transaction protections and adds a supervised
+resident language lane. One authenticated loopback `llama-server` process
+loads the local model once, warms the schema path before user traffic, and
+serves intent and grounded-response requests across a multi-question session.
+Admission has a bounded queue. Queue pressure, cold start, warm reuse, process
+generation, and supervised restart are typed Spiderweb evidence. Cloud
+evidence egress remains blocked unless the operator opts in for the current
+process. The side view binds the real answer to evidence, provider routes,
+resident-lane state, timings, privacy state, and the run transaction.
 
 The selected local language membrane is the official
 `Qwen/Qwen3-4B-Instruct-2507` model in the ggml-org Q8_0 GGUF conversion.
 The exact 4,280,403,520-byte artifact is admitted only when its SHA-256 matches
 `ae916ede1c010a26955ee8ae2e908bf8815a3f135ec860439ab924701c69d5f1`.
-The certified local transport is the non-interactive `llama-completion`
-executable with a file-backed `qwen-chatml-manual-v1` prompt, a 32,768-token
-admission window, reasoning off, temperature zero, and seed one.
+The certified local transport is `llama-server` bound to `127.0.0.1` with an
+ephemeral in-memory API key, no web UI, `qwen-chatml-manual-v1`, a
+32,768-token admission window, reasoning off, temperature zero, and seed one.
 This 4B dense model is intentionally smaller than an agentic general-purpose
 model because Atom retains evidence, memory, graph RAG, authority, and
 abstention. The model supplies language only. See `atom-language-model.json`
 for the machine-readable contract and certified evidence. Rerun the live
 certification before promoting any new model, backend, prompt transport, or
 authority-boundary revision.
+
+Use `run-atom-harness-session.ps1` when asking multiple questions. It keeps
+one resident process alive for the full session and writes a hash-bound
+session report. The V3 certification runs 20 end-to-end cases across all eight
+saved Atom domains, a concurrent backpressure probe, an injected process
+failure, and a full post-restart harness request.
+The adoption baseline passed all 20 cases and 36 pre-fault language
+completions with one model load, then passed the injected-failure recovery on
+the second process generation.
 
 The causal-live runtime remains the evidence and learning kernel. The language
 model has no Atom DB write path, cannot promote its own output into evidence,

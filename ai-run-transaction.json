@@ -13,5 +13,5 @@
     "committed_file_manifest": true,
     "overwrite_allowed": false
   },
-  "integration_test": "tests/test_atom_language_harness_v2_integration.py"
+  "integration_test": "tests/test_atom_language_harness_v3_integration.py"
 }

@@ -12,5 +12,5 @@
     "module_path": "atom_harness_knowledge.py",
     "runtime_marker": "ATOM_HARNESS_RAG_RUNTIME"
   },
-  "integration_test": "tests/test_atom_language_harness_v2_integration.py"
+  "integration_test": "tests/test_atom_language_harness_v3_integration.py"
 }

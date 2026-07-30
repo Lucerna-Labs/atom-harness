@@ -1,4 +1,4 @@
-name: Atom Harness V2 CI
+name: Atom Harness V3 CI
 
 on:
   push:
@@ -8,12 +8,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: atom-harness-v2-${{ github.workflow }}-${{ github.ref }}
+  group: atom-harness-v3-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   verify:
-    name: Verify V2 on Windows
+    name: Verify V3 on Windows
     runs-on: windows-latest
     timeout-minutes: 30
     env:
@@ -51,17 +51,18 @@ jobs:
 
       - name: Check Python format and lint
         run: |
-          python -m ruff format --check atom_language_model_contract.py atom_llm_protocol.py atom_llm_provider.py atom_provider_fabric.py atom_run_transaction.py atom_harness_knowledge.py atom_harness_runtime.py atom_harness_experiment.py atom_harness_side_view.py tests/test_atom_language_harness_integration.py tests/test_atom_language_harness_v2_integration.py tests/test_atom_provider_protocol_v2.py tests/test_atom_causal_live_integration.py scripts/certify_atom_language_model.py scripts/verify_atom_harness_v2.py
-          python -m ruff check atom_language_model_contract.py atom_llm_protocol.py atom_llm_provider.py atom_provider_fabric.py atom_run_transaction.py atom_harness_knowledge.py atom_harness_runtime.py atom_harness_experiment.py atom_harness_side_view.py tests/test_atom_language_harness_integration.py tests/test_atom_language_harness_v2_integration.py tests/test_atom_provider_protocol_v2.py tests/test_atom_causal_live_integration.py scripts/certify_atom_language_model.py scripts/verify_atom_harness_v2.py
+          python -m ruff format --check atom_language_model_contract.py atom_llm_protocol.py atom_llm_provider.py atom_provider_fabric.py atom_resident_language_lane.py atom_run_transaction.py atom_harness_knowledge.py atom_harness_runtime.py atom_harness_experiment.py atom_harness_session.py atom_harness_session_cli.py atom_harness_side_view.py tests/test_atom_language_harness_integration.py tests/test_atom_language_harness_v2_integration.py tests/test_atom_language_harness_v3_integration.py tests/test_atom_provider_protocol_v2.py tests/test_atom_resident_language_lane.py tests/test_atom_causal_live_integration.py scripts/certify_atom_language_model.py scripts/certify_resident_language_lane.py scripts/verify_atom_harness_v3.py
+          python -m ruff check atom_language_model_contract.py atom_llm_protocol.py atom_llm_provider.py atom_provider_fabric.py atom_resident_language_lane.py atom_run_transaction.py atom_harness_knowledge.py atom_harness_runtime.py atom_harness_experiment.py atom_harness_session.py atom_harness_session_cli.py atom_harness_side_view.py tests/test_atom_language_harness_integration.py tests/test_atom_language_harness_v2_integration.py tests/test_atom_language_harness_v3_integration.py tests/test_atom_provider_protocol_v2.py tests/test_atom_resident_language_lane.py tests/test_atom_causal_live_integration.py scripts/certify_atom_language_model.py scripts/certify_resident_language_lane.py scripts/verify_atom_harness_v3.py
 
       - name: Compile Python entrypoints
-        run: python -m py_compile atom_language_model_contract.py atom_llm_protocol.py atom_llm_provider.py atom_provider_fabric.py atom_run_transaction.py atom_harness_knowledge.py atom_harness_runtime.py atom_harness_experiment.py atom_harness_side_view.py scripts/certify_atom_language_model.py scripts/verify_atom_harness_v2.py
+        run: python -m py_compile atom_language_model_contract.py atom_llm_protocol.py atom_llm_provider.py atom_provider_fabric.py atom_resident_language_lane.py atom_run_transaction.py atom_harness_knowledge.py atom_harness_runtime.py atom_harness_experiment.py atom_harness_session.py atom_harness_session_cli.py atom_harness_side_view.py scripts/certify_atom_language_model.py scripts/certify_resident_language_lane.py scripts/verify_atom_harness_v3.py
 
       - name: Parse PowerShell entrypoints
         shell: pwsh
         run: |
           foreach ($entrypoint in @(
             './run-atom-harness.ps1',
+            './run-atom-harness-session.ps1',
             './install-atom-language-model.ps1'
           )) {
             $tokens = $null
@@ -78,12 +79,14 @@ jobs:
           }
 
       - name: Enforce repository policy
-        run: python scripts/verify_atom_harness_v2.py
+        run: python scripts/verify_atom_harness_v3.py
 
       - name: Run harness integration suites
         run: |
           python -m unittest discover -s tests -p "test_atom_language_harness_v2_integration.py" -v
+          python -m unittest discover -s tests -p "test_atom_language_harness_v3_integration.py" -v
           python -m unittest discover -s tests -p "test_atom_provider_protocol_v2.py" -v
+          python -m unittest discover -s tests -p "test_atom_resident_language_lane.py" -v
           python -m unittest discover -s tests -p "test_atom_language_harness_integration.py" -v
           python -m unittest discover -s tests -p "test_atom_causal_live_integration.py" -v
 
@@ -96,7 +99,7 @@ jobs:
       - name: Run privacy-blocked launcher end to end
         shell: pwsh
         run: |
-          $output = Join-Path $env:RUNNER_TEMP 'atom-harness-v2-privacy'
+          $output = Join-Path $env:RUNNER_TEMP 'atom-harness-v3-privacy'
           ./run-atom-harness.ps1 `
             -Provider openrouter `
             -Question 'Prove that cloud evidence remains blocked by default.' `

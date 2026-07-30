@@ -21,7 +21,15 @@
     "cancellation": true,
     "provider_cancellation_capability_exposed": true,
     "all_providers_must_be_preemptible": false,
-    "backpressure_vibrations": true
+    "backpressure_vibrations": true,
+    "resident_model_preload": true,
+    "authenticated_loopback_transport": true,
+    "external_proxy_disabled_for_loopback": true,
+    "in_memory_transport_secret": true,
+    "typed_resident_on_off_ramps": true,
+    "bounded_resident_queue": true,
+    "supervised_crash_recovery": true,
+    "one_model_load_per_process_generation": true
   },
-  "integration_test": "tests/test_atom_language_harness_v2_integration.py"
+  "integration_test": "tests/test_atom_language_harness_v3_integration.py"
 }

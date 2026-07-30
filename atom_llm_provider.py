@@ -35,10 +35,16 @@ from atom_llm_protocol import (
     ProviderTimeoutError,
     ProviderTransportError,
 )
+from atom_resident_language_lane import (
+    ATOM_RESIDENT_LANGUAGE_PERFORMANCE_RUNTIME,
+    ResidentLanguageLane,
+)
 
 
 LLAMA_CPP_PROVIDER_RUNTIME = "atom-llama-cpp-json-provider-v2"
 LLAMA_CPP_PERFORMANCE_RUNTIME = "atom-llama-cpp-performance-v1"
+LLAMA_CPP_RESIDENT_PROVIDER_RUNTIME = "atom-llama-cpp-resident-json-provider-v3"
+LLAMA_CPP_RESIDENT_PERFORMANCE_RUNTIME = ATOM_RESIDENT_LANGUAGE_PERFORMANCE_RUNTIME
 OPENROUTER_PROVIDER_RUNTIME = "atom-openrouter-json-provider-v2"
 SCRIPTED_PROVIDER_RUNTIME = "atom-scripted-json-provider-v2"
 UNAVAILABLE_PROVIDER_RUNTIME = "atom-unavailable-json-provider-v2"
@@ -439,6 +445,174 @@ class LlamaCppJsonLanguageModel:
             "secrets_persisted": False,
         }
 
+    def close(self) -> None:
+        """The one-shot backend owns no persistent child process."""
+
+
+class LlamaCppResidentJsonLanguageModel:
+    """Route strict JSON generation through one supervised warm llama-server."""
+
+    def __init__(
+        self,
+        model_path: Path,
+        *,
+        executable: str = "llama-server",
+        expected_model_sha256: str,
+        expected_model_bytes: int | None = None,
+        chat_template: str,
+        context_length: int = 32_768,
+        gpu_layers: str = "auto",
+        timeout_seconds: int = 240,
+        startup_timeout_seconds: int = 180,
+        lane_acquire_timeout_seconds: float = 30.0,
+        parallel_slots: int = 1,
+        max_queue_depth: int = 8,
+    ) -> None:
+        resolved_model = Path(model_path).expanduser().resolve()
+        if not resolved_model.is_file():
+            raise ValueError(f"GGUF language model is absent: {resolved_model}")
+        if resolved_model.suffix.lower() != ".gguf":
+            raise ValueError("llama.cpp language model must be a GGUF file")
+        normalized_sha256 = str(expected_model_sha256).strip().lower()
+        if len(normalized_sha256) != 64 or any(
+            character not in "0123456789abcdef" for character in normalized_sha256
+        ):
+            raise ValueError("GGUF expected SHA-256 is invalid")
+        if expected_model_bytes is not None and (
+            type(expected_model_bytes) is not int or expected_model_bytes <= 0
+        ):
+            raise ValueError("GGUF expected byte count is invalid")
+        actual_bytes = resolved_model.stat().st_size
+        if expected_model_bytes is not None and actual_bytes != expected_model_bytes:
+            raise ValueError("GGUF byte count does not match its admission contract")
+        actual_sha256 = _file_sha256(resolved_model)
+        if actual_sha256 != normalized_sha256:
+            raise ValueError("GGUF SHA-256 does not match its admission contract")
+        if not 1024 <= context_length <= 131_072:
+            raise ValueError("llama.cpp context length is invalid")
+        if timeout_seconds < 1:
+            raise ValueError("llama.cpp timeout must be positive")
+        if startup_timeout_seconds < 1:
+            raise ValueError("llama.cpp startup timeout must be positive")
+        if chat_template not in SUPPORTED_LLAMA_CPP_CHAT_TEMPLATES:
+            raise ValueError("llama.cpp chat template is unsupported")
+
+        self.model_path = resolved_model
+        self.chat_template = chat_template
+        self.context_length = context_length
+        self.gpu_layers = str(gpu_layers)
+        self.timeout_seconds = timeout_seconds
+        self._model_sha256 = actual_sha256
+        warmup_schema = {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["ready"],
+            "properties": {
+                "ready": {
+                    "type": "boolean",
+                    "enum": [True],
+                }
+            },
+        }
+        warmup_request = JsonGenerationRequest(
+            stage="atom_resident_lane_warmup",
+            system_prompt=(
+                "Warm the schema-constrained language path. Return the required "
+                "JSON object only. This is not an Atom evidence request."
+            ),
+            payload={
+                "schema": 1,
+                "operation": "resident-language-lane-warmup",
+                "expected": {"ready": True},
+            },
+            schema=warmup_schema,
+            max_tokens=32,
+        )
+        self._lane = ResidentLanguageLane(
+            resolved_model,
+            executable=executable,
+            context_length=context_length,
+            gpu_layers=self.gpu_layers,
+            startup_timeout_seconds=startup_timeout_seconds,
+            request_timeout_seconds=timeout_seconds,
+            acquire_timeout_seconds=lane_acquire_timeout_seconds,
+            parallel_slots=parallel_slots,
+            max_queue_depth=max_queue_depth,
+            warmup_prompt=_transport_prompt(warmup_request, chat_template),
+            warmup_schema=warmup_schema,
+        )
+        self.executable = self._lane.executable
+
+    def generate_json(
+        self,
+        request: JsonGenerationRequest,
+        *,
+        cancellation: CancellationToken | None = None,
+    ) -> JsonGenerationResult:
+        completion = self._lane.complete(
+            prompt=_transport_prompt(request, self.chat_template),
+            schema=request.schema,
+            max_tokens=request.max_tokens,
+            stage=request.stage,
+            cancellation=cancellation,
+        )
+        payload = _parse_json_object(completion.content)
+        lane = {
+            **dict(completion.lane),
+            "transport_envelope_sha256": completion.envelope_sha256,
+        }
+        return JsonGenerationResult(
+            payload=payload,
+            provider=LLAMA_CPP_RESIDENT_PROVIDER_RUNTIME,
+            model=self.model_path.name,
+            elapsed_ms=completion.elapsed_ms,
+            raw_sha256=hashlib.sha256(completion.content.encode("utf-8")).hexdigest(),
+            performance=dict(completion.performance),
+            lane=lane,
+        )
+
+    def capabilities(self) -> ProviderCapabilities:
+        return ProviderCapabilities(
+            provider_id=LLAMA_CPP_RESIDENT_PROVIDER_RUNTIME,
+            model=self.model_path.name,
+            location=ProviderLocation.LOCAL,
+            strict_json_schema=True,
+            max_context_tokens=self.context_length,
+            max_output_tokens=4096,
+            supports_cancellation=True,
+            cost_tier="resident-local-compute",
+        )
+
+    def manifest(self) -> Mapping[str, Any]:
+        return {
+            "schema": 1,
+            "protocol": ATOM_LANGUAGE_MODEL_PROTOCOL,
+            "provider_runtime": LLAMA_CPP_RESIDENT_PROVIDER_RUNTIME,
+            "model": self.model_path.name,
+            "model_sha256": self._model_sha256,
+            "model_bytes": self.model_path.stat().st_size,
+            "chat_template": self.chat_template,
+            "structured_output": "llama.cpp-resident-json-schema",
+            "context_length": self.context_length,
+            "gpu_layers": self.gpu_layers,
+            "resident_lane": self._lane.static_manifest(),
+            "capabilities": self.capabilities().manifest(),
+            "available": True,
+            "secrets_persisted": False,
+        }
+
+    def lane_snapshot(self) -> Mapping[str, Any]:
+        return self._lane.snapshot()
+
+    def terminate_lane_for_recovery(
+        self,
+        reason: str = "operator recovery probe",
+    ) -> None:
+        self._lane.terminate_for_recovery(reason)
+
+    def close(self) -> None:
+        self._lane.close()
+
 
 class OpenRouterJsonLanguageModel:
     """Use OpenRouter structured outputs without persisting its API key."""
@@ -603,6 +777,9 @@ class OpenRouterJsonLanguageModel:
             "secrets_persisted": False,
         }
 
+    def close(self) -> None:
+        """The remote adapter owns no persistent local child process."""
+
 
 class ScriptedJsonLanguageModel:
     """Deterministic test double; never selected by the production CLI."""
@@ -673,6 +850,9 @@ class ScriptedJsonLanguageModel:
             "secrets_persisted": False,
         }
 
+    def close(self) -> None:
+        """The deterministic test adapter owns no runtime resources."""
+
 
 class UnavailableJsonLanguageModel:
     """Admit a configured-but-unavailable provider as a typed failure."""
@@ -730,3 +910,6 @@ class UnavailableJsonLanguageModel:
             "available": False,
             "secrets_persisted": False,
         }
+
+    def close(self) -> None:
+        """The unavailable adapter owns no runtime resources."""

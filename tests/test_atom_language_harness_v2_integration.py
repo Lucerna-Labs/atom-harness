@@ -794,7 +794,7 @@ class AtomLanguageHarnessV2IntegrationTests(unittest.TestCase):
         with self.assertRaisesRegex(RunIntegrityError, "mismatch"):
             verify_committed_run(tampered)
 
-    def test_active_runtime_contracts_declare_all_v2_surfaces(self) -> None:
+    def test_active_runtime_contracts_declare_all_current_surfaces(self) -> None:
         registry = _read_json(PROJECT_ROOT / "ai-runtime-registry.json")
         knowledge = _read_json(PROJECT_ROOT / "ai-runtime-knowledge.json")
         side_view = _read_json(PROJECT_ROOT / "ai-artifact-side-view.json")
@@ -803,9 +803,9 @@ class AtomLanguageHarnessV2IntegrationTests(unittest.TestCase):
         architecture = _read_json(
             PROJECT_ROOT / "atom-language-harness-architecture.json"
         )
-        expected_test = "tests/test_atom_language_harness_v2_integration.py"
-        self.assertEqual(registry["active_runtime"], "language-harness-v2")
-        active = registry["runtimes"]["language-harness-v2"]
+        expected_test = "tests/test_atom_language_harness_v3_integration.py"
+        self.assertEqual(registry["active_runtime"], "language-harness-v3")
+        active = registry["runtimes"]["language-harness-v3"]
         self.assertEqual(active["integration_test"], expected_test)
         self.assertEqual(knowledge["integration_test"], expected_test)
         self.assertEqual(side_view["integration_test"], expected_test)

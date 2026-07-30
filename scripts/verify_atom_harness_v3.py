@@ -1,4 +1,4 @@
-"""Fail-closed repository policy checks for the Atom Harness V2 release."""
+"""Fail-closed repository policy checks for the Atom Harness V3 release."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ MAX_RUST_CRATE_LINES = 4_000
 RUST_SUFFIX = "." + "r" + "s"
 
 REQUIRED_FILES = (
-    ".github/workflows/atom-harness-v2-ci.yml",
+    ".github/workflows/atom-harness-v3-ci.yml",
     "ai-artifact-side-view.json",
     "ai-provider-fabric.json",
     "ai-run-transaction.json",
@@ -28,17 +28,25 @@ REQUIRED_FILES = (
     "atom_harness_experiment.py",
     "atom_harness_knowledge.py",
     "atom_harness_runtime.py",
+    "atom_harness_session.py",
+    "atom_harness_session_cli.py",
     "atom_harness_side_view.py",
     "atom_llm_protocol.py",
     "atom_llm_provider.py",
     "atom_language_model_contract.py",
     "atom_provider_fabric.py",
+    "atom_resident_language_lane.py",
     "atom_run_transaction.py",
     "install-atom-language-model.ps1",
+    "run-atom-harness-session.ps1",
     "rust-toolchain.toml",
     "scripts/certify_atom_language_model.py",
+    "scripts/certify_resident_language_lane.py",
+    "scripts/verify_atom_harness_v3.py",
     "tests/test_atom_language_harness_v2_integration.py",
+    "tests/test_atom_language_harness_v3_integration.py",
     "tests/test_atom_provider_protocol_v2.py",
+    "tests/test_atom_resident_language_lane.py",
 )
 
 FORBIDDEN_GIT_SUFFIXES = {
@@ -56,6 +64,7 @@ FORBIDDEN_GIT_SUFFIXES = {
 FORBIDDEN_GIT_PARTS = {
     "__pycache__",
     ".atom-harness-v2",
+    ".atom-harness-v3",
     ".pytest_cache",
     ".ruff_cache",
     "atom_harness_outputs",
@@ -88,7 +97,7 @@ SECRET_PATTERNS = (
 
 
 class PolicyFailure(RuntimeError):
-    """Raised when the repository is not safe to publish as V2."""
+    """Raised when the repository is not safe to publish as V3."""
 
 
 def _load_json(relative_path: str) -> dict[str, Any]:
@@ -123,7 +132,7 @@ def _git_candidates() -> list[Path]:
 def _check_required_files() -> None:
     missing = [name for name in REQUIRED_FILES if not (ROOT / name).is_file()]
     if missing:
-        raise PolicyFailure("required V2 files are absent: " + ", ".join(missing))
+        raise PolicyFailure("required V3 files are absent: " + ", ".join(missing))
 
 
 def _check_git_surface() -> dict[str, int]:
@@ -131,6 +140,8 @@ def _check_git_surface() -> dict[str, int]:
     secret_files_scanned = 0
     for path in candidates:
         relative = path.relative_to(ROOT)
+        if not path.is_file():
+            continue
         lowered_parts = {part.casefold() for part in relative.parts}
         if lowered_parts & FORBIDDEN_GIT_PARTS:
             raise PolicyFailure(f"generated path is a Git candidate: {relative}")
@@ -169,12 +180,12 @@ def _check_runtime_declarations() -> dict[str, str]:
     architecture = _load_json("atom-language-harness-architecture.json")
     language_model = _load_json("atom-language-model.json")
 
-    if registry.get("active_runtime") != "language-harness-v2":
-        raise PolicyFailure("language-harness-v2 is not the active runtime")
-    runtime = registry.get("runtimes", {}).get("language-harness-v2")
+    if registry.get("active_runtime") != "language-harness-v3":
+        raise PolicyFailure("language-harness-v3 is not the active runtime")
+    runtime = registry.get("runtimes", {}).get("language-harness-v3")
     if not isinstance(runtime, dict):
-        raise PolicyFailure("language-harness-v2 registry entry is absent")
-    expected_test = "tests/test_atom_language_harness_v2_integration.py"
+        raise PolicyFailure("language-harness-v3 registry entry is absent")
+    expected_test = "tests/test_atom_language_harness_v3_integration.py"
     declarations = (knowledge, side_view, provider, transaction)
     for declaration in declarations:
         if declaration.get("project_kind") != "ai-harness":
@@ -182,16 +193,20 @@ def _check_runtime_declarations() -> dict[str, str]:
         if declaration.get("runtime_entrypoint") != "atom_harness_experiment.py":
             raise PolicyFailure("runtime entrypoint declarations disagree")
         if declaration.get("integration_test") != expected_test:
-            raise PolicyFailure("V2 integration-test declarations disagree")
+            raise PolicyFailure("V3 integration-test declarations disagree")
     if runtime.get("integration_test") != expected_test:
-        raise PolicyFailure("registry V2 integration test disagrees")
+        raise PolicyFailure("registry V3 integration test disagrees")
     if runtime.get("language_model_contract") != "atom-language-model.json":
         raise PolicyFailure("registry language-model contract is absent")
     if (
         runtime.get("language_model_certification")
-        != "scripts/certify_atom_language_model.py"
+        != "scripts/certify_resident_language_lane.py"
     ):
         raise PolicyFailure("registry language-model certification is absent")
+    if runtime.get("session_entrypoint") != "atom_harness_session_cli.py":
+        raise PolicyFailure("registry resident session entrypoint is absent")
+    if runtime.get("resident_lane_runtime") != "ATOM_RESIDENT_LANGUAGE_LANE_RUNTIME":
+        raise PolicyFailure("registry resident lane runtime is absent")
     if language_model.get("runtime") != "atom-language-model-contract-v1":
         raise PolicyFailure("official language-model runtime is invalid")
 
@@ -222,6 +237,11 @@ def _check_runtime_declarations() -> dict[str, str]:
         "model_load_latency_visible",
         "generation_throughput_visible",
         "primary_atom_claim_visible",
+        "resident_lane_state_visible",
+        "cold_start_and_warm_reuse_visible",
+        "queue_wait_visible",
+        "process_generation_visible",
+        "intent_assistance_visible",
     )
     if side.get("placement") != "side":
         raise PolicyFailure("artifact view is not declared at the side")
@@ -242,6 +262,14 @@ def _check_runtime_declarations() -> dict[str, str]:
         "cancellation",
         "provider_cancellation_capability_exposed",
         "backpressure_vibrations",
+        "resident_model_preload",
+        "authenticated_loopback_transport",
+        "external_proxy_disabled_for_loopback",
+        "in_memory_transport_secret",
+        "typed_resident_on_off_ramps",
+        "bounded_resident_queue",
+        "supervised_crash_recovery",
+        "one_model_load_per_process_generation",
     )
     if fabric.get("all_providers_must_be_preemptible") is not False:
         raise PolicyFailure("provider cancellation capability must remain honest")
@@ -264,7 +292,7 @@ def _check_runtime_declarations() -> dict[str, str]:
         raise PolicyFailure("official language-model provider is not local")
     if language_model.get("role") != "language-only-membrane":
         raise PolicyFailure("official language-model role is invalid")
-    if language_model.get("adoption_status") != "certified-local-default":
+    if language_model.get("adoption_status") != "certified-resident-local-default":
         raise PolicyFailure("official language-model adoption is not certified")
     if artifact.get("filename") != "qwen3-4b-instruct-2507-q8_0.gguf":
         raise PolicyFailure("official GGUF filename is invalid")
@@ -276,8 +304,28 @@ def _check_runtime_declarations() -> dict[str, str]:
         raise PolicyFailure("official harness context is invalid")
     if policy.get("chat_template") != "qwen-chatml-manual-v1":
         raise PolicyFailure("official chat template is invalid")
-    if policy.get("executable") != "llama-completion":
+    if policy.get("executable") != "llama-server":
         raise PolicyFailure("official llama.cpp executable is invalid")
+    resident_lane = policy.get("resident_lane")
+    if not isinstance(resident_lane, dict):
+        raise PolicyFailure("official resident language lane is absent")
+    if (
+        resident_lane.get("runtime") != "atom-resident-language-lane-v1"
+        or resident_lane.get("topology") != "spiderweb-permanent-elevated-language-lane"
+        or resident_lane.get("host") != "127.0.0.1"
+        or resident_lane.get("parallel_slots") != 1
+        or resident_lane.get("max_queue_depth") != 8
+    ):
+        raise PolicyFailure("official resident language lane policy is invalid")
+    _require_true(
+        resident_lane,
+        "api_key_in_memory_only",
+        "external_proxy_disabled",
+        "preload_inference_path",
+        "automatic_restart_on_next_request",
+    )
+    if resident_lane.get("web_ui_enabled") is not False:
+        raise PolicyFailure("resident language lane web UI must remain disabled")
     _require_true(
         policy,
         "model_integrity_required",
@@ -293,11 +341,21 @@ def _check_runtime_declarations() -> dict[str, str]:
         "machine_grounding_passed",
         "wiki_graph_and_rag_passed",
         "artifact_side_view_passed",
+        "single_model_load_before_fault_passed",
+        "warm_request_reuse_passed",
+        "resident_backpressure_passed",
+        "crash_recovery_passed",
+        "expanded_domain_matrix_passed",
+        "exact_vocabulary_intent_assistance_passed",
     )
-    if latest_evidence.get("case_count") != 3:
+    if latest_evidence.get("runtime") != "atom-resident-language-certification-v1":
+        raise PolicyFailure("official resident certification runtime is invalid")
+    if latest_evidence.get("case_count") != 20:
         raise PolicyFailure("official live-model case count is invalid")
-    if latest_evidence.get("completion_count") != 5:
+    if latest_evidence.get("completion_count") != 36:
         raise PolicyFailure("official live-model completion count is invalid")
+    if latest_evidence.get("domain_count") != 8:
+        raise PolicyFailure("official live-model domain count is invalid")
     if not re.fullmatch(
         r"[0-9a-f]{64}",
         str(latest_evidence.get("report_sha256", "")),
@@ -306,16 +364,17 @@ def _check_runtime_declarations() -> dict[str, str]:
 
     architecture_text = json.dumps(architecture, sort_keys=True)
     for marker in (
-        "atom-language-harness-v2",
-        "atom-resilient-provider-fabric-v2",
+        "atom-language-harness-v3",
+        "atom-resilient-provider-fabric-v3",
         "atom-run-transaction-v2",
         "atom-language-harness-wiki-v2",
         "atom-language-harness-graph-rag-v2",
-        "atom-language-harness-side-view-v2",
+        "atom-language-harness-side-view-v3",
+        "atom-resident-language-lane-v1",
         "Qwen/Qwen3-4B-Instruct-2507",
         "qwen3-4b-instruct-2507-q8_0.gguf",
-        "llama-completion",
-        "atom-language-model-certification-v1",
+        "llama-server",
+        "atom-resident-language-certification-v1",
         str(artifact["sha256"]),
     ):
         if marker not in architecture_text:
@@ -328,14 +387,16 @@ def _check_runtime_declarations() -> dict[str, str]:
 
 
 def _check_ci_contract() -> dict[str, str]:
-    workflow = (ROOT / ".github" / "workflows" / "atom-harness-v2-ci.yml").read_text(
+    workflow = (ROOT / ".github" / "workflows" / "atom-harness-v3-ci.yml").read_text(
         encoding="utf-8"
     )
     for marker in (
         "ruff format --check",
         "ruff check",
         "py_compile",
-        "scripts/verify_atom_harness_v2.py",
+        "scripts/verify_atom_harness_v3.py",
+        "test_atom_language_harness_v3_integration.py",
+        "test_atom_resident_language_lane.py",
         "test_atom_language_harness_v2_integration.py",
         "test_atom_provider_protocol_v2.py",
         "test_atom_language_harness_integration.py",
@@ -350,8 +411,9 @@ def _check_ci_contract() -> dict[str, str]:
         "cargo test",
         "Language.Parser",
         "atom_language_model_contract.py",
-        "certify_atom_language_model.py",
+        "certify_resident_language_lane.py",
         "install-atom-language-model.ps1",
+        "run-atom-harness-session.ps1",
         "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
         "persist-credentials: false",
         "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
@@ -490,7 +552,7 @@ def main() -> int:
         json.dumps(
             {
                 "passed": True,
-                "policy": "atom-harness-v2",
+                "policy": "atom-harness-v3",
                 **git_surface,
                 **declarations,
                 **ci_contract,

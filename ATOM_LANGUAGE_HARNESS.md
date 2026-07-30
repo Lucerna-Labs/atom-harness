@@ -1,4 +1,4 @@
-# Atom Language Harness V2
+# Atom Language Harness V3
 
 The active product is a local AI harness. Atom remains the semantic authority:
 it owns causal evidence, the durable database, the runtime wiki graph, graph
@@ -19,14 +19,14 @@ The language path has two passes:
    packet. If retrieval is insufficient, the harness emits a deterministic
    abstention without asking the LLM to fill the gap.
 
-LLM output never becomes evidence and has no write path to Atom DB. V2 adds a
-policy-routed provider fabric and an atomic run transaction around that same
-authority boundary.
+LLM output never becomes evidence and has no write path to Atom DB. V3 keeps
+the policy-routed provider fabric and atomic run transaction, then adds a
+supervised resident language lane around that same authority boundary.
 
 ## Run
 
-The default provider is local llama.cpp through its non-interactive
-`llama-completion` executable. Its selected model is
+The default provider is local llama.cpp through an authenticated loopback
+`llama-server` process. Its selected model is
 `Qwen/Qwen3-4B-Instruct-2507`, using the official ggml-org Q8_0 GGUF. Install
 and SHA-256 verify the weight once:
 
@@ -44,24 +44,46 @@ Then run the harness without a provider or model override:
 The default path is the sibling model store
 `C:\Projects\atom-harness-models\Qwen3-4B-Instruct-2507-Q8_0`. The 4.28 GB
 weight is not part of Git. The runtime verifies its exact byte count and
-SHA-256 before provider admission. The declared Qwen ChatML transport uses
-temporary prompt and schema files, a 32,768-token context window, reasoning
-off, temperature zero, and seed one.
+SHA-256 before provider admission. The declared Qwen ChatML transport uses a
+32,768-token context window, reasoning off, temperature zero, and seed one.
+The resident process receives its API key only through child-process memory,
+disables its web UI and logs, warms the schema path, and automatically
+restarts on the next request after a failure.
 
-Run all three live model certification cases, including the real two-pass
-wiki/RAG path, unsupported-question abstention, side view, load latency, and
-generation throughput:
+For several questions, use one resident session:
 
 ```powershell
-py -3.13 scripts\certify_atom_language_model.py
+.\run-atom-harness-session.ps1 `
+  -Question @(
+    'In the language domain, what is the direction from trust to belief?',
+    'What is tomorrow''s weather in Paris?'
+  )
 ```
 
-The adoption run on 2026-07-30 passed all three cases and five real local
-completions with exact machine grounding, wiki graph and RAG, immutable Atom
-memory, committed transactions, and the bound side view. Model-load latency
-was 3,817.31 to 4,464.56 ms, with a 3,968.90 ms median. Generation throughput
-was 74.24 to 93.55 tokens per second, with a 93.33 median. These measurements
-are revision-specific and must be refreshed after model-path changes.
+Each question still receives its own atomic artifact directory. The session
+report records process generation, model-load count, restart count, and the
+artifact identity for every request.
+
+Run the live resident certification, including 20 full harness cases across
+all eight Atom domains, unsupported-question abstention, one-load reuse,
+concurrent backpressure, an injected process failure, full recovery, the side
+view, cold-start latency, warm-request latency, and generation throughput:
+
+```powershell
+py -3.13 scripts\certify_resident_language_lane.py
+```
+
+The machine-readable adoption result and current performance measurements are
+stored in `atom-language-model.json`. They are revision-specific and must be
+refreshed after changes to the model, server, prompt transport, lexical intent
+assistance, provider fabric, wiki/RAG path, artifact binding, or restart logic.
+The 2026-07-30 resident adoption run passed 20 cases, 36 pre-fault
+completions, and all eight domains with one model load. It recorded one
+4,864 ms cold start, 35 warm requests with a 2,077 ms median, and a
+generation-throughput median of 89.922 tokens per second. The concurrent probe
+recorded a 944 ms queue wait. The injected active-request failure surfaced as
+`ProviderTransportError`, then the next full request passed on process
+generation two with exactly one supervised restart.
 
 Cloud evidence egress is denied by default, even when
 `OPENROUTER_API_KEY` is present. To authorize OpenRouter for the current
@@ -126,7 +148,7 @@ verification or quarantined.
 ## Provider boundary
 
 `JsonLanguageModel` in `atom_llm_protocol.py` is the provider interface.
-`LlamaCppJsonLanguageModel` is the default local implementation and
+`LlamaCppResidentJsonLanguageModel` is the default local implementation and
 `OpenRouterJsonLanguageModel` is the optional cloud implementation. The
 official local model identity, artifact revision, byte count, SHA-256, runtime
 settings, certification surfaces, and escalation policy are declared in
@@ -139,10 +161,12 @@ declare whether it is preemptible, honor cancellation when that capability is
 true, and expose a non-secret manifest. It does not receive an Atom DB handle
 or a tool runner.
 
-The local adapter refuses `llama-cli`, which is interactive and decorates
-stdout. It requires `llama-completion`, closes stdin, passes private prompts
-only through temporary files, accepts only its fixed end-of-text sentinel
-after one JSON object, and never persists raw prompts or backend logs.
+The resident adapter requires `llama-server`, binds it to loopback, supplies a
+random API key only in the child environment, closes stdin, disables the web
+UI and logs, limits response bytes, and accepts schema-constrained JSON from
+the `/completion` API. It never persists raw prompts, transport credentials,
+or backend logs. The earlier one-shot `llama-completion` adapter remains only
+as a compatibility and regression boundary.
 
 ## Spiderweb routing
 
@@ -161,21 +185,30 @@ backpressure propagate as executable Spiderweb vibrations into orchestration.
 Insufficient-evidence pressure propagates vertically into the fail-closed
 response.
 
+The resident model is an elevated permanent language lane, not a replacement
+for the four layers. `JsonGenerationRequest` is its typed on-ramp and
+`JsonGenerationResult` is its typed off-ramp. A bounded wait produces a
+vertical backpressure vibration. Cold start and restart propagate from L0
+through orchestration. The runtime records the resident intersection only
+after actual completion flow occurs.
+
 ## Verification
 
-Run the policy checker and the declared V2 integration test with Python 3.13
+Run the policy checker and the declared V3 integration tests with Python 3.13
 and NumPy:
 
 ```powershell
-py -3.13 scripts/verify_atom_harness_v2.py
+py -3.13 scripts/verify_atom_harness_v3.py
 py -3.13 -m unittest discover -s tests `
-  -p 'test_atom_language_harness_v2_integration.py' -v
+  -p 'test_atom_language_harness_v3_integration.py' -v
+py -3.13 -m unittest discover -s tests `
+  -p 'test_atom_resident_language_lane.py' -v
 ```
 
 When the official weight is installed, run the live certification too:
 
 ```powershell
-py -3.13 scripts\certify_atom_language_model.py
+py -3.13 scripts\certify_resident_language_lane.py
 ```
 
 The suite builds and exercises the Rust store, wiki graph, graph RAG, language

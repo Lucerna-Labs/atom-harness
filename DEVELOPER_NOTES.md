@@ -1,5 +1,195 @@
 # Atom Harness Developer Notes
 
+## V3 resident language-lane engineering record
+
+V3 changes the local provider lifecycle, not the product authority boundary.
+Qwen remains a language-only membrane. Atom still owns evidence, causal
+memory, the wiki graph, graph RAG, primary-claim selection, citation closure,
+grounding validation, and abstention. The language process receives no Atom DB
+handle and has no evidence-write path.
+
+### Why the resident lane exists
+
+The V2 local adapter started `llama-completion` once for every intent or
+grounded-response pass. That was simple and isolated, but it reloaded the same
+4.28 GB model for every completion. V3 keeps one supervised `llama-server`
+process alive for a session. The first admitted request loads the model and
+warms the schema-constrained inference path. Later requests reuse that process
+and report zero cold-start time. An injected process loss is not hidden: the
+active request receives a typed transport failure, the lane enters a stopped
+state, and the next request creates a new process generation and performs the
+same warmup before traffic resumes.
+
+The resident lane is represented as an elevated permanent Spiderweb lane. It
+does not flatten the four layers or replace the provider fabric.
+`JsonGenerationRequest` is the typed on-ramp and `JsonGenerationResult` is the
+typed off-ramp. The bounded admission queue produces vertical backpressure
+vibrations. Cold start and restart propagate from L0 transport through L2 flow
+and L3 orchestration. The intersection is recorded only after real resident
+flow occurs.
+
+### Process and transport boundary
+
+`atom_resident_language_lane.py` owns the child-process lifecycle. Admission
+requires an executable whose basename is exactly `llama-server` and a local
+GGUF. The server is bound to `127.0.0.1` on an ephemeral port. A random API key
+is generated in memory and supplied only through the child environment. The
+key, port, prompts, raw model output, and temporary log paths do not enter
+provider manifests or committed artifacts.
+
+Every loopback request uses an explicit no-proxy opener. Process-level HTTP
+proxy settings therefore cannot redirect private prompts or health checks away
+from the local server.
+
+The server starts with continuous batching, prompt caching, metrics and slot
+endpoints, no web UI, disabled logs, reasoning off, a fixed context limit, and
+the configured GPU-layer policy. Standard input is closed. Standard output and
+error are redirected to a private temporary directory with hard byte limits.
+HTTP health, error, and completion bodies also have hard limits. The
+completion envelope is SHA-256 bound before its schema-constrained content is
+parsed.
+
+The lifecycle state exposed to operators contains only non-secret evidence:
+state, liveness, process generation, model-load count, restart count, forced
+termination count, request counters, active and queued counts, last cold-start
+and warmup durations, and the last exit code. `close()` is idempotent and
+stops the child before the temporary authentication state is removed.
+
+### Admission, pressure, cancellation, and recovery
+
+The resident lane has a bounded semaphore and a separately bounded waiting
+queue. The default contract is one active slot and eight queued requests.
+Excess work fails with `ProviderCapacityError`; a bounded wait records
+`resident-language-lane-backpressure`. Cancellation and request timeout stop
+the child process so a background HTTP request cannot continue using private
+evidence after the caller has left. Unexpected process exit becomes
+`ProviderTransportError`. The next admitted request performs a supervised
+restart and reports the new generation.
+
+`ProviderFabric` validates the full lane envelope before it can enter a route.
+The validator checks runtime, stage, integer counters, possible load/restart
+relationships, reuse semantics, exact on-ramp and off-ramp shapes, optional
+transport hash, bounded vibrations, and propagation targets. Lane evidence is
+included in the route hash, completion manifest, Spiderweb trace, final
+artifact hash, workflow binding, and side-view binding.
+
+### Exact vocabulary assistance
+
+The broad domain evaluation found an important 4B-model failure mode: the
+model sometimes abstained from a valid request because it did not know the
+answer, and sometimes guessed a direction while parsing a question that asked
+Atom to retrieve that direction. V3 separates literal parsing assistance from
+semantic authority.
+
+`atom_harness_runtime.py` computes exact, boundary-aware vocabulary anchors
+from the already preloaded Atom wiki. A narrow grammar recognizes explicit
+`from X to Y`, `how X affects Y`, and `does X affect Y` forms. It can assign
+cause and effect roles, including self-relations where X and Y are identical.
+It never adds a value absent from the wiki and never claims that a relation
+exists. If the exact grammar is unambiguous, the final intent is retrieval and
+Atom graph RAG decides whether evidence exists. A direction emitted by the
+model is removed unless the user explicitly supplied that exact direction
+value. Exact user-stated anchors are promoted to required query features.
+
+The assistance record is committed as
+`atom-exact-vocabulary-anchor-v1`. It contains the anchors, narrow proposal,
+model action, final action, a false semantic-authority marker, and its own
+canonical hash. The side view verifies that hash and shows the anchor count
+and model-to-final intent path. This makes deterministic assistance visible
+instead of silently correcting model output.
+
+### Session host
+
+`AtomHarnessSession` owns one `ProviderFabric` across multiple calls to the
+full harness. It assigns a unique hash-derived output directory to every
+question, counts started, completed, and failed requests, exposes resident
+snapshots without secrets, and closes the fabric exactly once. Explicit output
+directories still increment session counts.
+
+`atom_harness_session_cli.py` accepts repeated `--question` values or a bounded
+JSON string array. `run-atom-harness-session.ps1` is the public Windows
+launcher. The final `atom_harness_session.json` binds every artifact hash,
+transaction ID, output directory, process generation, and model-load count.
+The single-question launcher remains available, but a process naturally ends
+after that one question and therefore cannot provide cross-question reuse.
+
+### V3 module map
+
+| Surface | V3 responsibility |
+| --- | --- |
+| `atom_resident_language_lane.py` | Authenticated loopback server supervision, warmup, bounded admission, metrics, cancellation, shutdown, and restart |
+| `atom_llm_provider.py` | Exact GGUF admission plus the resident JSON provider; the V2 one-shot provider remains for compatibility tests |
+| `atom_provider_fabric.py` | Hash-bound lane-envelope validation, route propagation, pressure vibration propagation, and provider lifecycle closure |
+| `atom_harness_runtime.py` | Exact vocabulary assistance, typed resident ramps, resident intersection, cold/warm trace evidence, and unchanged Atom authority |
+| `atom_harness_session.py` | Reusable multi-request fabric and output allocation |
+| `atom_harness_session_cli.py` | Bounded multi-question command-line host and session report |
+| `run-atom-harness-session.ps1` | Non-secret Windows entrypoint using contract defaults |
+| `atom_harness_side_view.py` | User-visible cold start, warm reuse, process generation, model loads, restart count, queue wait, and intent-assistance path |
+| `scripts/certify_resident_language_lane.py` | Live domain matrix, sequential soak, concurrency pressure, injected crash, and recovery certification |
+| `tests/test_atom_resident_language_lane.py` | Deterministic reuse, queue, capacity, crash, route binding, closure, and session tests without model weights |
+| `tests/test_atom_language_harness_v3_integration.py` | Runtime-wired resident lane, Spiderweb ramps, wiki/RAG, side view, exact anchors, transaction, and declarations |
+| `scripts/verify_atom_harness_v3.py` | Fail-closed V3 repository, declaration, CI, secret, Git, model-contract, and crate-size policy |
+
+### Live certification contract
+
+The V3 live gate is intentionally broader than the V2 three-case adoption
+smoke. It requires:
+
+1. Direct and paraphrased known-relation requests in all eight crystallized
+   Atom domains.
+2. Four unsupported or adversarial open-world requests that must abstain.
+3. Twenty full harness cases and thirty-six language completions before fault
+   injection.
+4. Exactly one process generation and one model load throughout the sequential
+   soak.
+5. Exactly one cold completion and thirty-five warm completions.
+6. Two concurrent schema-bound requests with a real bounded-queue vibration
+   and no reload.
+7. A process termination during active generation that surfaces as a typed
+   transport failure.
+8. A new process generation, exactly one supervised restart, and a successful
+   full harness answer after the injected failure.
+9. Fresh wiki graph and graph RAG, primary-claim grounding, closed-world
+   citations, immutable Atom memory, atomic transaction verification, and the
+   user-visible side view for every applicable case.
+
+The exact report hash, llama.cpp identity, cold-start latency, warm latency,
+throughput, and pass flags are copied into `atom-language-model.json` only
+after a successful live run. Any later source, declaration, or documentation
+edit still requires the entire relevant check set and live certification to be
+rerun before publication.
+
+The resident adoption baseline completed at
+`2026-07-30T22:47:42.767934+00:00` with llama.cpp 10173
+(`e9fa0781f`) and GPU layers set to `all`. Its report SHA-256 is
+`5f6242672e1e6b29b244b0ff6ccd6a795924d57c29645b943d33e63217d6924f`.
+All 20 cases, all eight domains, and all 36 pre-fault completions passed. The
+pre-fault snapshot recorded generation one, one model load, no restart, and no
+failed request. One completion carried a 4,864 ms cold start; the other 35
+were warm. Warm request latency ranged from 921 to 3,993 ms with a 2,077 ms
+median. Generation throughput ranged from 73.330 to 93.661 tokens per second
+with an 89.922 median. The concurrency probe completed both requests without a
+reload and recorded a 944 ms resident queue wait. The injected crash surfaced
+as `ProviderTransportError`; the recovery request passed on process generation
+two with model-load count two and restart count one.
+
+### Operational boundaries
+
+- The resident lane is local by default. OpenRouter remains opt-in and does not
+  share this local process.
+- The API key proves local transport admission; it does not turn model output
+  into evidence.
+- A successful restart is expected to increase model-load count. The
+  single-load claim applies to a healthy pre-fault process generation.
+- Metrics are revision-specific. Model, llama.cpp, GPU policy, prompt, schema,
+  and cache changes invalidate performance comparisons.
+- The default parallel slot count is one because the current certification
+  prioritizes bounded memory and observable pressure over throughput.
+- The server has no silent installer or updater. The harness is a development
+  application and the GGUF remains outside Git.
+- Retired generative-English distillation remains retired. V3 does not restore
+  a teacher/student training pipeline.
+
 ## V2 engineering record
 
 V2 keeps the V1 product identity and hardens the operational shell around it.

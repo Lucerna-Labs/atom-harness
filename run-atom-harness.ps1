@@ -44,6 +44,18 @@ param(
     [ValidateRange(1, 3600)]
     [int]$ProviderTimeoutSeconds = 240,
 
+    [ValidateRange(0, 3600)]
+    [int]$LaneStartupTimeoutSeconds = 0,
+
+    [ValidateRange(0, 3600)]
+    [double]$LaneAcquireTimeoutSeconds = 0,
+
+    [ValidateRange(0, 16)]
+    [int]$LaneParallelSlots = 0,
+
+    [ValidateRange(0, 256)]
+    [int]$LaneMaxQueueDepth = 0,
+
     [ValidateRange(0, 131072)]
     [int]$ContextLength = 0,
 
@@ -53,11 +65,11 @@ param(
         'auto'
     }),
 
-    [Alias('LlamaCli')]
-    [string]$LlamaCompletion = $(if ($env:ATOM_LLAMA_COMPLETION) {
+    [Alias('LlamaCompletion', 'LlamaCli')]
+    [string]$LlamaServer = $(if ($env:ATOM_LLAMA_SERVER) {
+        $env:ATOM_LLAMA_SERVER
+    } elseif ($env:ATOM_LLAMA_COMPLETION) {
         $env:ATOM_LLAMA_COMPLETION
-    } elseif ($env:ATOM_LLAMA_CLI) {
-        $env:ATOM_LLAMA_CLI
     } else {
         ''
     })
@@ -75,7 +87,8 @@ try {
 if (
     $modelContract.schema -ne 1 -or
     $modelContract.runtime -ne 'atom-language-model-contract-v1' -or
-    $modelContract.default_provider -ne 'llama-cpp'
+    $modelContract.default_provider -ne 'llama-cpp' -or
+    $modelContract.runtime_policy.executable -ne 'llama-server'
 ) {
     throw 'The Atom language-model contract identity is invalid.'
 }
@@ -84,8 +97,33 @@ $officialModelSha256 = [string]$modelContract.artifact.sha256
 $officialModelBytes = [long]$modelContract.artifact.bytes
 $officialChatTemplate = [string]$modelContract.runtime_policy.chat_template
 $officialContextLength = [int]$modelContract.runtime_policy.harness_context_tokens
-if (-not $LlamaCompletion) {
-    $LlamaCompletion = [string]$modelContract.runtime_policy.executable
+$residentLane = $modelContract.runtime_policy.resident_lane
+if (
+    $residentLane.runtime -ne 'atom-resident-language-lane-v1' -or
+    $residentLane.topology -ne 'spiderweb-permanent-elevated-language-lane' -or
+    $residentLane.host -ne '127.0.0.1' -or
+    $residentLane.api_key_in_memory_only -ne $true -or
+    $residentLane.external_proxy_disabled -ne $true -or
+    $residentLane.preload_inference_path -ne $true -or
+    $residentLane.automatic_restart_on_next_request -ne $true -or
+    $residentLane.web_ui_enabled -ne $false
+) {
+    throw 'The Atom resident language-lane contract is invalid.'
+}
+if (-not $LlamaServer) {
+    $LlamaServer = [string]$modelContract.runtime_policy.executable
+}
+if ($LaneStartupTimeoutSeconds -eq 0) {
+    $LaneStartupTimeoutSeconds = [int]$residentLane.startup_timeout_seconds
+}
+if ($LaneAcquireTimeoutSeconds -eq 0) {
+    $LaneAcquireTimeoutSeconds = [double]$residentLane.acquire_timeout_seconds
+}
+if ($LaneParallelSlots -eq 0) {
+    $LaneParallelSlots = [int]$residentLane.parallel_slots
+}
+if ($PSBoundParameters.ContainsKey('LaneMaxQueueDepth') -eq $false) {
+    $LaneMaxQueueDepth = [int]$residentLane.max_queue_depth
 }
 if ($ContextLength -eq 0) {
     $ContextLength = $officialContextLength
@@ -159,11 +197,11 @@ if ($providerNames -contains 'llama-cpp') {
     if (-not $ChatTemplate) {
         throw 'A custom local GGUF requires -ChatTemplate.'
     }
-    $completionCommand = Get-Command $LlamaCompletion -ErrorAction SilentlyContinue
-    if (-not $completionCommand -and -not (
-        Test-Path -LiteralPath $LlamaCompletion -PathType Leaf
+    $serverCommand = Get-Command $LlamaServer -ErrorAction SilentlyContinue
+    if (-not $serverCommand -and -not (
+        Test-Path -LiteralPath $LlamaServer -PathType Leaf
     )) {
-        throw 'llama-completion is absent from PATH and the configured path.'
+        throw 'llama-server is absent from PATH and the configured path.'
     }
 }
 if ($env:ATOM_ALLOW_CLOUD_DATA -eq '1') {
@@ -174,7 +212,7 @@ $arguments = @(
     (Join-Path $projectRoot 'atom_harness_experiment.py'),
     '--question', $Question,
     '--providers', $ProviderChain,
-    '--llama-completion', $LlamaCompletion,
+    '--llama-server', $LlamaServer,
     '--max-provider-retries', $MaxProviderRetries,
     '--retry-backoff-seconds', $RetryBackoffSeconds,
     '--circuit-failure-threshold', $CircuitFailureThreshold,
@@ -182,6 +220,10 @@ $arguments = @(
     '--max-concurrency', $MaxConcurrency,
     '--acquire-timeout-seconds', $AcquireTimeoutSeconds,
     '--provider-timeout-seconds', $ProviderTimeoutSeconds,
+    '--lane-startup-timeout-seconds', $LaneStartupTimeoutSeconds,
+    '--lane-acquire-timeout-seconds', $LaneAcquireTimeoutSeconds,
+    '--lane-parallel-slots', $LaneParallelSlots,
+    '--lane-max-queue-depth', $LaneMaxQueueDepth,
     '--context-length', $ContextLength,
     '--gpu-layers', $GpuLayers
 )

@@ -13,7 +13,12 @@
     "selected_model_identity_visible": true,
     "model_load_latency_visible": true,
     "generation_throughput_visible": true,
-    "primary_atom_claim_visible": true
+    "primary_atom_claim_visible": true,
+    "resident_lane_state_visible": true,
+    "cold_start_and_warm_reuse_visible": true,
+    "queue_wait_visible": true,
+    "process_generation_visible": true,
+    "intent_assistance_visible": true
   },
-  "integration_test": "tests/test_atom_language_harness_v2_integration.py"
+  "integration_test": "tests/test_atom_language_harness_v3_integration.py"
 }

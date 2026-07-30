@@ -33,11 +33,12 @@ from atom_harness_side_view import (
 )
 from atom_language_model_contract import (
     default_official_model_path,
+    load_language_model_contract,
     resolve_chat_template,
     resolve_model_integrity,
 )
 from atom_llm_provider import (
-    LlamaCppJsonLanguageModel,
+    LlamaCppResidentJsonLanguageModel,
     OpenRouterJsonLanguageModel,
     UnavailableJsonLanguageModel,
 )
@@ -64,8 +65,8 @@ from atom_run_transaction import (
 )
 
 
-ATOM_HARNESS_EXPERIMENT_RUNTIME = "atom-language-harness-experiment-v2"
-ATOM_HARNESS_WORKFLOW_RUNTIME = "atom-language-harness-workflow-v2"
+ATOM_HARNESS_EXPERIMENT_RUNTIME = "atom-language-harness-experiment-v3"
+ATOM_HARNESS_WORKFLOW_RUNTIME = "atom-language-harness-workflow-v3"
 
 
 def _sha256(path: Path) -> str:
@@ -105,11 +106,30 @@ def _checks(answer: Mapping[str, Any]) -> dict[str, bool]:
     completion_routes = {
         item["stage"]: item for item in provider_routes if item["completed"]
     }
+    completions_by_stage = {item["stage"]: item for item in answer["completions"]}
+    intent_assistance = answer["intent_assistance"]
+    resident_routes = [
+        item
+        for item in provider_routes
+        if isinstance(item.get("language_lane"), Mapping)
+    ]
     return {
         "language_model_is_replaceable_json_membrane": (
             answer["language_model"]["protocol"] == ATOM_LANGUAGE_MODEL_PROTOCOL
             and answer["language_model"]["provider_runtime"]
             == ATOM_PROVIDER_FABRIC_RUNTIME
+        ),
+        "intent_assistance_is_hash_bound_and_non_authoritative": (
+            intent_assistance["runtime"] == "atom-exact-vocabulary-anchor-v1"
+            and intent_assistance["semantic_authority"] is False
+            and intent_assistance["assistance_hash"]
+            == canonical_hash(
+                {
+                    key: intent_assistance[key]
+                    for key in sorted(intent_assistance)
+                    if key != "assistance_hash"
+                }
+            )
         ),
         "wiki_graph_and_rag_are_runtime_wired": (
             answer["knowledge"]["wiki_runtime"] == ATOM_HARNESS_WIKI_RUNTIME
@@ -203,6 +223,16 @@ def _checks(answer: Mapping[str, Any]) -> dict[str, bool]:
                 == completion_routes[completion["stage"]]["selected_provider"]["model"]
                 for completion in answer["completions"]
             )
+        ),
+        "resident_language_lane_is_hash_bound": all(
+            isinstance(route.get("language_lane"), Mapping)
+            and route["stage"] in completions_by_stage
+            and route["language_lane"]
+            == completions_by_stage[route["stage"]]["language_lane"]
+            and isinstance(route["language_lane"].get("on_ramp"), Mapping)
+            and isinstance(route["language_lane"].get("off_ramp"), Mapping)
+            and route["language_lane"].get("model_load_count", 0) >= 1
+            for route in resident_routes
         ),
         "provider_failure_is_fail_closed": (
             not answer["degraded"]
@@ -428,15 +458,23 @@ def _build_provider_fabric(
                     chat_template=arguments.chat_template,
                 )
                 providers.append(
-                    LlamaCppJsonLanguageModel(
+                    LlamaCppResidentJsonLanguageModel(
                         arguments.model_path,
-                        executable=arguments.llama_completion,
+                        executable=arguments.llama_server,
                         expected_model_sha256=expected_sha256,
                         expected_model_bytes=expected_bytes,
                         chat_template=chat_template,
                         context_length=arguments.context_length,
                         gpu_layers=arguments.gpu_layers,
                         timeout_seconds=arguments.provider_timeout_seconds,
+                        startup_timeout_seconds=(
+                            arguments.lane_startup_timeout_seconds
+                        ),
+                        lane_acquire_timeout_seconds=(
+                            arguments.lane_acquire_timeout_seconds
+                        ),
+                        parallel_slots=arguments.lane_parallel_slots,
+                        max_queue_depth=arguments.lane_max_queue_depth,
                     )
                 )
             except ValueError as error:
@@ -470,6 +508,9 @@ def _build_provider_fabric(
 
 
 def main() -> None:
+    language_contract = load_language_model_contract()
+    runtime_policy = language_contract["runtime_policy"]
+    resident_policy = runtime_policy["resident_lane"]
     parser = argparse.ArgumentParser(
         description=(
             "Run Atom-owned causal evidence through a policy-routed "
@@ -499,16 +540,20 @@ def main() -> None:
         default=os.environ.get("ATOM_LLM_CHAT_TEMPLATE"),
     )
     parser.add_argument(
+        "--llama-server",
         "--llama-completion",
-        "--llama-cli",
-        dest="llama_completion",
+        dest="llama_server",
         default=(
-            os.environ.get("ATOM_LLAMA_COMPLETION")
-            or os.environ.get("ATOM_LLAMA_CLI")
-            or "llama-completion"
+            os.environ.get("ATOM_LLAMA_SERVER")
+            or os.environ.get("ATOM_LLAMA_COMPLETION")
+            or runtime_policy["executable"]
         ),
     )
-    parser.add_argument("--context-length", type=int, default=32_768)
+    parser.add_argument(
+        "--context-length",
+        type=int,
+        default=int(runtime_policy["harness_context_tokens"]),
+    )
     parser.add_argument(
         "--gpu-layers",
         default=os.environ.get("ATOM_LLM_GPU_LAYERS", "auto"),
@@ -537,6 +582,36 @@ def main() -> None:
     parser.add_argument("--max-concurrency", type=int, default=2)
     parser.add_argument("--acquire-timeout-seconds", type=float, default=30.0)
     parser.add_argument("--provider-timeout-seconds", type=int, default=240)
+    parser.add_argument(
+        "--lane-startup-timeout-seconds",
+        type=int,
+        default=int(resident_policy["startup_timeout_seconds"]),
+    )
+    parser.add_argument(
+        "--lane-acquire-timeout-seconds",
+        type=float,
+        default=float(resident_policy["acquire_timeout_seconds"]),
+    )
+    parser.add_argument(
+        "--lane-parallel-slots",
+        type=int,
+        default=int(
+            os.environ.get(
+                "ATOM_LLM_LANE_PARALLEL_SLOTS",
+                resident_policy["parallel_slots"],
+            )
+        ),
+    )
+    parser.add_argument(
+        "--lane-max-queue-depth",
+        type=int,
+        default=int(
+            os.environ.get(
+                "ATOM_LLM_LANE_MAX_QUEUE_DEPTH",
+                resident_policy["max_queue_depth"],
+            )
+        ),
+    )
     arguments = parser.parse_args()
     output_dir = arguments.output_dir or _default_output_dir()
     try:
@@ -553,46 +628,49 @@ def main() -> None:
     if hasattr(signal, "SIGTERM"):
         signal.signal(signal.SIGTERM, cancel_request)
     try:
-        artifact = run_atom_language_harness(
-            output_dir,
-            question=arguments.question,
-            language_model=fabric,
-            forge_path=arguments.forge,
-            evidence_path=arguments.evidence,
-            model_path=arguments.model,
-            cancellation=cancellation,
+        try:
+            artifact = run_atom_language_harness(
+                output_dir,
+                question=arguments.question,
+                language_model=fabric,
+                forge_path=arguments.forge,
+                evidence_path=arguments.evidence,
+                model_path=arguments.model,
+                cancellation=cancellation,
+            )
+        except ProviderCancelledError as error:
+            parser.exit(130, f"Atom harness cancelled: {error}\n")
+        except (FileExistsError, RunTransactionError) as error:
+            parser.exit(2, f"Atom harness transaction refused: {error}\n")
+        print(
+            json.dumps(
+                {
+                    "passed": artifact["passed"],
+                    "answerable": artifact["response"]["answerable"],
+                    "answer": artifact["response"]["answer"],
+                    "citations": artifact["response"]["citations"],
+                    "outcome": artifact["outcome"],
+                    "degraded": artifact["degraded"],
+                    "provider_routes": [
+                        {
+                            "stage": item["stage"],
+                            "disposition": item["disposition"],
+                            "selected_provider": item["selected_provider"],
+                        }
+                        for item in artifact["provider_routes"]
+                    ],
+                    "transaction_id": artifact["transaction"]["transaction_id"],
+                    "output_dir": str(output_dir.resolve()),
+                    "side_view": str(
+                        (output_dir / "atom_harness_side_view.html").resolve()
+                    ),
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
         )
-    except ProviderCancelledError as error:
-        parser.exit(130, f"Atom harness cancelled: {error}\n")
-    except (FileExistsError, RunTransactionError) as error:
-        parser.exit(2, f"Atom harness transaction refused: {error}\n")
-    print(
-        json.dumps(
-            {
-                "passed": artifact["passed"],
-                "answerable": artifact["response"]["answerable"],
-                "answer": artifact["response"]["answer"],
-                "citations": artifact["response"]["citations"],
-                "outcome": artifact["outcome"],
-                "degraded": artifact["degraded"],
-                "provider_routes": [
-                    {
-                        "stage": item["stage"],
-                        "disposition": item["disposition"],
-                        "selected_provider": item["selected_provider"],
-                    }
-                    for item in artifact["provider_routes"]
-                ],
-                "transaction_id": artifact["transaction"]["transaction_id"],
-                "output_dir": str(output_dir.resolve()),
-                "side_view": str(
-                    (output_dir / "atom_harness_side_view.html").resolve()
-                ),
-            },
-            indent=2,
-            ensure_ascii=False,
-        )
-    )
+    finally:
+        fabric.close()
 
 
 if __name__ == "__main__":

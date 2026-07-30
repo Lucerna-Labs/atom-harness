@@ -2,7 +2,7 @@
   "schema": 1,
   "runtime": "atom-language-model-contract-v1",
   "role": "language-only-membrane",
-  "adoption_status": "certified-local-default",
+  "adoption_status": "certified-resident-local-default",
   "default_provider": "llama-cpp",
   "base_model": {
     "model_id": "Qwen/Qwen3-4B-Instruct-2507",
@@ -29,8 +29,23 @@
     "seed": 1,
     "reasoning": "off",
     "chat_template": "qwen-chatml-manual-v1",
-    "executable": "llama-completion",
-    "structured_output": "llama.cpp-json-schema",
+    "executable": "llama-server",
+    "structured_output": "llama.cpp-resident-json-schema",
+    "server_api": "authenticated-loopback-/completion",
+    "resident_lane": {
+      "runtime": "atom-resident-language-lane-v1",
+      "topology": "spiderweb-permanent-elevated-language-lane",
+      "host": "127.0.0.1",
+      "api_key_in_memory_only": true,
+      "external_proxy_disabled": true,
+      "parallel_slots": 1,
+      "max_queue_depth": 8,
+      "startup_timeout_seconds": 180,
+      "acquire_timeout_seconds": 30,
+      "preload_inference_path": true,
+      "automatic_restart_on_next_request": true,
+      "web_ui_enabled": false
+    },
     "model_integrity_required": true,
     "local_is_default": true,
     "cloud_requires_explicit_provider_and_consent": true,
@@ -38,11 +53,14 @@
     "llm_may_mutate_atom_memory": false
   },
   "certification": {
-    "script": "scripts/certify_atom_language_model.py",
+    "script": "scripts/certify_resident_language_lane.py",
     "required_cases": [
-      "direct-known-relation",
-      "paraphrased-known-relation",
-      "unsupported-open-world-question"
+      "direct-known-relation-all-eight-domains",
+      "paraphrased-known-relation-all-eight-domains",
+      "unsupported-open-world-weather",
+      "unsupported-open-world-sports",
+      "unsupported-instruction-injection",
+      "unsupported-creative-request"
     ],
     "required_surfaces": [
       "intent-schema",
@@ -53,30 +71,55 @@
       "wiki-graph",
       "artifact-side-view",
       "model-load-latency",
-      "generation-throughput"
+      "generation-throughput",
+      "single-model-load",
+      "warm-request-reuse",
+      "resident-backpressure",
+      "crash-recovery",
+      "expanded-domain-matrix",
+      "exact-vocabulary-intent-assistance"
     ],
     "latest_evidence": {
-      "runtime": "atom-language-model-certification-v1",
-      "verified_utc": "2026-07-30T21:05:16.824630+00:00",
-      "report_sha256": "48a23b7c9e3e18ea3cdfb87f912e4a7c73141977e895ea71824a19ed8bd3cbdd",
+      "runtime": "atom-resident-language-certification-v1",
+      "verified_utc": "2026-07-30T22:47:42.767934+00:00",
+      "report_sha256": "5f6242672e1e6b29b244b0ff6ccd6a795924d57c29645b943d33e63217d6924f",
       "llama_cpp_version": "10173 (e9fa0781f)",
       "context_tokens": 32768,
       "gpu_layers": "all",
-      "case_count": 3,
-      "completion_count": 5,
+      "case_count": 20,
+      "completion_count": 36,
+      "domain_count": 8,
       "all_cases_passed": true,
       "machine_grounding_passed": true,
       "wiki_graph_and_rag_passed": true,
       "artifact_side_view_passed": true,
-      "model_load_latency_ms": {
-        "minimum": 3817.31,
-        "median": 3968.9,
-        "maximum": 4464.56
+      "single_model_load_before_fault_passed": true,
+      "warm_request_reuse_passed": true,
+      "resident_backpressure_passed": true,
+      "crash_recovery_passed": true,
+      "expanded_domain_matrix_passed": true,
+      "exact_vocabulary_intent_assistance_passed": true,
+      "pre_fault_process_generation": 1,
+      "pre_fault_model_load_count": 1,
+      "warm_completion_count": 35,
+      "backpressure_wait_ms": 944,
+      "recovery_process_generation": 2,
+      "recovery_model_load_count": 2,
+      "recovery_restart_count": 1,
+      "cold_start_latency_ms": {
+        "minimum": 4864.0,
+        "median": 4864.0,
+        "maximum": 4864.0
+      },
+      "warm_request_latency_ms": {
+        "minimum": 921.0,
+        "median": 2077.0,
+        "maximum": 3993.0
       },
       "generation_throughput_tokens_per_second": {
-        "minimum": 74.24,
-        "median": 93.33,
-        "maximum": 93.55
+        "minimum": 73.33,
+        "median": 89.922,
+        "maximum": 93.661
       }
     }
   },

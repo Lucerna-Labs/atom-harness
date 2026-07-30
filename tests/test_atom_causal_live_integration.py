@@ -236,9 +236,10 @@ class AtomCausalLiveIntegrationTests(unittest.TestCase):
         registry = _read_json(PROJECT_ROOT / "ai-runtime-registry.json")
         knowledge_contract = _read_json(PROJECT_ROOT / "ai-runtime-knowledge.json")
         side_view_contract = _read_json(PROJECT_ROOT / "ai-artifact-side-view.json")
-        self.assertEqual(registry["active_runtime"], "language-harness-v2")
+        self.assertEqual(registry["active_runtime"], "language-harness-v3")
         self.assertNotIn("generative-english", registry["runtimes"])
         self.assertIn("language-harness-v2", registry["runtimes"])
+        self.assertIn("language-harness-v3", registry["runtimes"])
         causal_live = registry["runtimes"]["causal-live"]
         architecture = _read_json(PROJECT_ROOT / "atom-causal-live-architecture.json")
         self.assertEqual(

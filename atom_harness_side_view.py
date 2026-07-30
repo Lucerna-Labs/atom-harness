@@ -17,7 +17,7 @@ from atom_harness_runtime import (
 from atom_provider_fabric import ATOM_PROVIDER_FABRIC_RUNTIME
 
 
-ATOM_HARNESS_SIDE_VIEW_RUNTIME = "atom-language-harness-side-view-v2"
+ATOM_HARNESS_SIDE_VIEW_RUNTIME = "atom-language-harness-side-view-v3"
 
 
 def _validate_hash(
@@ -71,6 +71,11 @@ def _validate_binding(
         "trace_hash",
         "Spiderweb trace",
     )
+    _validate_hash(
+        artifact["intent_assistance"],
+        "assistance_hash",
+        "intent assistance",
+    )
     _validate_hash(graph, "knowledge_hash", "wiki graph")
     if artifact["runtime"] != ATOM_LANGUAGE_HARNESS_RUNTIME:
         raise ValueError("harness artifact runtime is invalid")
@@ -95,6 +100,17 @@ def _validate_binding(
         raise ValueError("side view is detached from provider routes")
     for route in artifact["provider_routes"]:
         _validate_hash(route, "route_hash", "provider route")
+    routes_by_stage = {
+        route["stage"]: route
+        for route in artifact["provider_routes"]
+        if route.get("completed") is True
+    }
+    for completion in artifact["completions"]:
+        lane = completion.get("language_lane")
+        route = routes_by_stage.get(completion["stage"])
+        if isinstance(lane, Mapping) and lane:
+            if route is None or route.get("language_lane") != lane:
+                raise ValueError("side view is detached from resident lane evidence")
     if workflow["graph_knowledge_hash"] != graph["knowledge_hash"]:
         raise ValueError("side view is detached from wiki graph")
     if workflow["knowledge_hash"] != artifact["knowledge"]["knowledge_hash"]:
@@ -219,14 +235,28 @@ def _provider_route_card(route: Mapping[str, Any]) -> str:
 
 def _performance_card(completion: Mapping[str, Any]) -> str:
     performance = completion.get("performance")
+    lane = completion.get("language_lane")
     if not isinstance(performance, Mapping) or not performance:
         detail = "Backend performance metrics unavailable."
     else:
+        cold_start = performance.get("cold_start_ms")
         load = performance.get("load_ms")
         throughput = performance.get("generation_tokens_per_second")
         tokens = performance.get("generated_tokens")
         parts = [
-            f"load {_escape(load)} ms" if load is not None else "load unavailable",
+            (
+                f"cold start {_escape(cold_start)} ms"
+                if cold_start not in (None, 0)
+                else (
+                    "resident model reused"
+                    if performance.get("warm_request") is True
+                    else (
+                        f"load {_escape(load)} ms"
+                        if load is not None
+                        else "load unavailable"
+                    )
+                )
+            ),
             (
                 f"generation {_escape(throughput)} tok/s"
                 if throughput is not None
@@ -235,6 +265,15 @@ def _performance_card(completion: Mapping[str, Any]) -> str:
         ]
         if tokens is not None:
             parts.append(f"{_escape(tokens)} generated tokens")
+        if isinstance(lane, Mapping) and lane:
+            parts.extend(
+                (
+                    f"lane generation {_escape(lane.get('process_generation'))}",
+                    f"model loads {_escape(lane.get('model_load_count'))}",
+                    f"restarts {_escape(lane.get('restart_count'))}",
+                    f"queue wait {_escape(lane.get('queue_wait_ms'))} ms",
+                )
+            )
         detail = " &middot; ".join(parts)
     return f"""
 <article class="route performance">
@@ -317,6 +356,10 @@ def render_atom_harness_artifact(
         for item in artifact["spiderweb_trace"]["layers"]
     )
     model = artifact["language_model"]
+    intent_assistance = artifact["intent_assistance"]
+    anchor_count = sum(
+        len(values) for values in intent_assistance["lexical_anchors"].values()
+    )
     policy = model["policy"]
     timings = artifact["timings"]
     selected_model = _selected_model_label(artifact)
@@ -335,7 +378,7 @@ def render_atom_harness_artifact(
 <meta http-equiv="Content-Security-Policy"
   content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none';
   form-action 'none'">
-<title>Atom Language Harness V2</title>
+<title>Atom Language Harness V3</title>
 <style>
 :root {{
   color-scheme: dark;
@@ -491,7 +534,7 @@ ul {{ padding-left: 20px; }}
 <body>
 <header>
   <div>
-    <h1>Atom Language Harness V2</h1>
+    <h1>Atom Language Harness V3</h1>
     <p>Atom owns evidence. The LLM supplies language.</p>
   </div>
   <div class="badge">{_escape(status_label)}</div>
@@ -520,6 +563,12 @@ ul {{ padding-left: 20px; }}
         <strong>{_yes_no(model["capabilities"]["supports_cancellation"])}</strong></div>
       <div class="meta"><span>Atom snapshot</span>
         <strong>{_escape(packet["snapshot_sequence"])}</strong></div>
+      <div class="meta"><span>Exact vocabulary anchors</span>
+        <strong>{_escape(anchor_count)}</strong></div>
+      <div class="meta"><span>Intent path</span>
+        <strong>{_escape(intent_assistance["model_action"])} to {
+        _escape(intent_assistance["final_action"])
+    }</strong></div>
       <div class="meta"><span>Wiki nodes</span>
         <strong>{_escape(graph["node_count"])}</strong></div>
       <div class="meta"><span>Memory writes by LLM</span>

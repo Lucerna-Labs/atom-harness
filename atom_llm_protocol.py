@@ -413,6 +413,7 @@ class JsonGenerationResult:
     raw_sha256: str
     route: Mapping[str, Any] = field(default_factory=dict)
     performance: Mapping[str, Any] = field(default_factory=dict)
+    lane: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -452,6 +453,11 @@ class JsonGenerationResult:
             "performance",
             _json_mapping(self.performance, "language result performance"),
         )
+        object.__setattr__(
+            self,
+            "lane",
+            _json_mapping(self.lane, "language result lane"),
+        )
 
 
 class JsonLanguageModel(Protocol):
@@ -470,6 +476,9 @@ class JsonLanguageModel(Protocol):
 
     def manifest(self) -> Mapping[str, Any]:
         """Return non-secret provider identity and capability metadata."""
+
+    def close(self) -> None:
+        """Release provider-owned runtime resources."""
 
 
 def _strict_text(
