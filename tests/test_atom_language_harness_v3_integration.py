@@ -26,7 +26,10 @@ from atom_harness_runtime import (
     _lexical_proposal,
     _validated_intent_for_question,
 )
-from atom_harness_side_view import ATOM_HARNESS_SIDE_VIEW_RUNTIME
+from atom_harness_side_view import (
+    ATOM_HARNESS_SIDE_VIEW_RUNTIME,
+    render_atom_harness_artifact,
+)
 from atom_llm_protocol import (
     ATOM_GROUNDED_RESPONSE_RUNTIME,
     ATOM_LANGUAGE_INTENT_RUNTIME,
@@ -293,6 +296,19 @@ class AtomLanguageHarnessV3IntegrationTests(unittest.TestCase):
         self.assertIn("model loads 1", self.side_view)
         self.assertIn("restarts 0", self.side_view)
         self.assertIn("queue wait 0 ms", self.side_view)
+
+    def test_declared_renderer_binds_the_committed_artifact_to_the_side_view(
+        self,
+    ) -> None:
+        committed_artifact = _read_json(self.output_dir / "atom_harness_artifact.json")
+        committed_workflow = _read_json(self.output_dir / "atom_harness_workflow.json")
+        committed_graph = _read_json(self.output_dir / "atom_harness_wiki_graph.json")
+        rendered = render_atom_harness_artifact(
+            committed_artifact,
+            committed_workflow,
+            committed_graph,
+        )
+        self.assertEqual(rendered, self.side_view)
 
     def test_spiderweb_trace_exposes_typed_resident_highway(self) -> None:
         trace = self.artifact["spiderweb_trace"]

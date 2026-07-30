@@ -245,6 +245,26 @@ def _check_runtime_declarations() -> dict[str, str]:
     )
     if side.get("placement") != "side":
         raise PolicyFailure("artifact view is not declared at the side")
+    if side.get("module_path") != "atom_harness_side_view.py":
+        raise PolicyFailure("artifact side-view module declaration is invalid")
+    runtime_marker = side.get("runtime_marker")
+    binding_marker = side.get("artifact_binding_marker")
+    if not isinstance(runtime_marker, str) or len(runtime_marker.strip()) < 3:
+        raise PolicyFailure("artifact side-view runtime marker is invalid")
+    if not isinstance(binding_marker, str) or len(binding_marker.strip()) < 3:
+        raise PolicyFailure("artifact side-view binding marker is invalid")
+    entrypoint_text = (ROOT / "atom_harness_experiment.py").read_text(encoding="utf-8")
+    side_view_text = (ROOT / "atom_harness_side_view.py").read_text(encoding="utf-8")
+    integration_text = (ROOT / expected_test).read_text(encoding="utf-8")
+    if runtime_marker not in entrypoint_text:
+        raise PolicyFailure("runtime entrypoint does not wire the side-view marker")
+    if binding_marker not in side_view_text:
+        raise PolicyFailure("side-view module does not bind the artifact")
+    for marker in (runtime_marker, binding_marker):
+        if marker not in integration_text:
+            raise PolicyFailure(
+                f"V3 integration test does not exercise side-view marker {marker}"
+            )
     _require_true(
         fabric,
         "ordered_fallback",

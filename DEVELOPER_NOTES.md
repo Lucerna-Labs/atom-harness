@@ -8,6 +8,21 @@ memory, the wiki graph, graph RAG, primary-claim selection, citation closure,
 grounding validation, and abstention. The language process receives no Atom DB
 handle and has no evidence-write path.
 
+### Side-view binding verification correction
+
+The initial V3 publication produced and validated the real side-view file, but
+the declared V3 integration test referred to the renderer only indirectly
+through `run_atom_language_harness`. The global completion audit correctly
+required the exact declared binding marker, `render_atom_harness_artifact`, to
+be exercised by that test.
+
+The V3 integration test now reloads the committed artifact, workflow, and wiki
+graph, calls the declared renderer directly, and requires its result to match
+the committed HTML exactly. The V3 repository policy mirrors the global audit:
+it requires the declared runtime marker in the entrypoint, the binding marker
+in the side-view module, and both markers in the declared integration test.
+This turns a release-time convention into a CI-enforced repository invariant.
+
 ### Why the resident lane exists
 
 The V2 local adapter started `llama-completion` once for every intent or
