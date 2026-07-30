@@ -10,6 +10,8 @@
       "artifact_binding_marker": "render_atom_harness_artifact",
       "provider_fabric_runtime": "ATOM_PROVIDER_FABRIC_RUNTIME",
       "transaction_runtime": "ATOM_RUN_TRANSACTION_RUNTIME",
+      "language_model_contract": "atom-language-model.json",
+      "language_model_certification": "scripts/certify_atom_language_model.py",
       "integration_test": "tests/test_atom_language_harness_v2_integration.py"
     },
     "causal-live": {

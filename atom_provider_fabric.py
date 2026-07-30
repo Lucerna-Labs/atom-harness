@@ -35,6 +35,7 @@ _PROVIDER_MANIFEST_FIELDS = frozenset(
         "api_key_present",
         "available",
         "capabilities",
+        "chat_template",
         "context_length",
         "endpoint",
         "gpu_layers",

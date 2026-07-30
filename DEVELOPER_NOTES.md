@@ -17,21 +17,27 @@ The V2 changes are:
   only typed retryable failures with bounded exponential backoff, opens
   circuits, bounds concurrent calls, and emits Spiderweb vibrations for retry,
   fallback, privacy blocking, circuits, and backpressure.
-- `atom_llm_provider.py` enforces exactly one JSON object, rejects duplicate
-  keys and surrounding prose, maps backend failures to typed errors, and never
-  persists API keys, raw backend errors, prompts, model paths, or temporary
-  files in provider manifests.
+- `atom_llm_provider.py` binds every local model to its expected size and
+  SHA-256, requires the non-interactive `llama-completion` executable, applies
+  an explicit prompt transport, enforces exactly one JSON object, accepts only
+  the backend's fixed end-of-text sentinel, rejects duplicate keys and all
+  other surrounding text, separates load latency from generation throughput,
+  maps backend failures to typed errors, and never persists API keys, raw
+  backend errors, prompts, model paths, or temporary files in provider
+  manifests.
 - `atom_run_transaction.py` takes an exact-target lock, stages the whole
   bundle, atomically writes each file, seals a SHA-256 file manifest, publishes
   with one directory rename, refuses overwrite, and recovers or quarantines
   dead-process state.
 - `atom_harness_runtime.py` treats the provider fabric as an executable part of
   the Spiderweb. Provider outcomes alter routing and vibrations; they are not
-  trace decoration. Exhaustion degrades to a fixed Atom abstention while
-  cancellation aborts the transaction.
+  trace decoration. Atom selects a primary claim from graph RAG, constrains the
+  response grounding object to that exact claim, and rejects mismatches.
+  Exhaustion degrades to a fixed Atom abstention while cancellation aborts the
+  transaction.
 - `atom_harness_side_view.py` renders the real artifact beside evidence and
   exposes route attempts, selected provider, privacy policy, failure classes,
-  timings, degraded status, and transaction identity.
+  timings, degraded status, the primary Atom claim, and transaction identity.
 - `scripts/verify_atom_harness_v2.py` enforces runtime declarations, wiki/RAG
   and side-view wiring, provider and transaction controls, Git artifact safety,
   credential-shaped text checks, the 100 MiB Git file ceiling, and the 4,000
@@ -90,6 +96,55 @@ Verification claims are revision-specific. After the latest source or
 documentation edit, rerun every relevant check and the privacy-blocked launcher
 path. A prior cloud or local-model result is useful history, but it is not
 fresh V2 evidence and never authorizes a new cloud transfer.
+
+### Official local language model selection
+
+The selected default language membrane is
+`Qwen/Qwen3-4B-Instruct-2507`. The admitted artifact is the official ggml-org
+Q8_0 conversion:
+
+| Field | Contract value |
+| --- | --- |
+| Repository | `ggml-org/Qwen3-4B-Instruct-2507-Q8_0-GGUF` |
+| File | `qwen3-4b-instruct-2507-q8_0.gguf` |
+| Size | 4,280,403,520 bytes |
+| SHA-256 | `ae916ede1c010a26955ee8ae2e908bf8815a3f135ec860439ab924701c69d5f1` |
+| License | Apache-2.0 |
+| Backend | `llama-completion` 10173 (`e9fa0781f`) |
+| Prompt transport | `qwen-chatml-manual-v1` through temporary files |
+| Harness context | 32,768 tokens |
+| Reasoning | off |
+| Sampling | temperature 0, seed 1 |
+| Adoption | certified local default |
+
+The source model is a 4B dense causal language model with 3.6B non-embedding
+parameters, native 262,144-token context, and non-thinking-only behavior. Those
+properties match this harness better than a 35B class agentic model:
+
+- Atom already owns causal evidence, memory, wiki graph, graph RAG, policy,
+  citation validity, and abstention.
+- The LLM has only two bounded jobs: map language to a schema and render a
+  bounded packet back into language.
+- Q8_0 spends local memory on fidelity for instruction following and strict
+  schema generation while remaining small enough for the available local GPU.
+- Non-thinking-only output matches the explicit reasoning-off boundary and
+  avoids hidden reasoning blocks crossing the one-object JSON transport.
+
+This selection passed live certification for the exact weight, llama.cpp
+revision, prompt transport, 32K context policy, machine-grounding boundary,
+GPU-layer route, and all declared cases. The machine-readable source of truth
+is `atom-language-model.json`. `install-atom-language-model.ps1` reads that
+contract, downloads and verifies the weight outside Git, and refuses an
+integrity mismatch. `scripts/certify_atom_language_model.py` requires direct
+and paraphrased known-relation answers, an unsupported open-world abstention,
+both schema passes, wiki/RAG, closed-world citations, exact primary-claim
+grounding, the real side view, and separate model-load and
+generation-throughput metrics.
+
+Do not move to the 8B candidate merely because it exists. Escalate only after a
+recorded certification failure attributable to model capacity. A 35B class
+model is not the default escalation target because the harness does not grant
+the language membrane 35B parameters worth of semantic authority.
 
 ## 1. Product identity
 
@@ -183,6 +238,8 @@ Documentation alone is not evidence that they still hold.
 | File | Responsibility |
 | --- | --- |
 | `atom_harness_experiment.py` | CLI entrypoint, provider construction, runtime execution, artifact writing, hash checks |
+| `atom-language-model.json` | Official local model identity, artifact hash, runtime policy, certification surfaces, and escalation boundary |
+| `atom_language_model_contract.py` | Fail-closed loader, default model-store resolution, and explicit custom-GGUF integrity policy |
 | `atom_harness_runtime.py` | Two-pass language flow, Atom authority gate, memory immutability check, Spiderweb trace |
 | `atom_harness_knowledge.py` | Wiki graph construction, vocabulary preload, graph-first RAG, bounded evidence packets |
 | `atom_llm_protocol.py` | Provider-neutral request/result protocol, strict intent and response schemas, boundary validation |
@@ -194,6 +251,8 @@ Documentation alone is not evidence that they still hold.
 | `atom_causal_memory.py` | Python bridge to the dependency-free Rust Atom memory binary |
 | `atom_causal_memory_rust/` | Atom DB, causal memory, retrieval field, and CLI workspace |
 | `run-atom-harness.ps1` | Windows launcher with Python/NumPy discovery and provider selection |
+| `install-atom-language-model.ps1` | Resumable official-weight download with byte-count and SHA-256 verification |
+| `scripts/certify_atom_language_model.py` | Live three-case certification and separate load-latency and generation-throughput evidence |
 | `ai-runtime-knowledge.json` | Required runtime wiki and RAG declaration |
 | `ai-artifact-side-view.json` | Required user-visible side-view declaration |
 | `ai-provider-fabric.json` | Required provider admission and resilience declaration |
@@ -320,15 +379,11 @@ response, route, and manifest byte sizes are bounded. Admission is fail-closed.
 
 ### OpenRouter
 
-`OpenRouterJsonLanguageModel` reads `OPENROUTER_API_KEY` from the process
+`OpenRouterJsonLanguageModel` optionally reads `OPENROUTER_API_KEY` from the process
 environment, sends a schema-constrained chat completion, uses temperature zero,
 and requires provider parameter support. It is classified as cloud and cannot
-receive Atom data without explicit cloud consent. The configured default model
-is:
-
-```text
-mistralai/mistral-small-3.2-24b-instruct
-```
+receive Atom data without explicit cloud consent. There is no implicit cloud
+model. The operator must provide the exact current provider model ID.
 
 The standard-library OpenRouter adapter reports
 `supports_cancellation = false` because an in-flight synchronous HTTP request
@@ -343,16 +398,41 @@ names and non-secret defaults only.
 
 ### Local llama.cpp
 
-`LlamaCppJsonLanguageModel` invokes `llama-cli` with a local GGUF, a JSON schema
-file, deterministic temperature, configured context length, and configurable
-GPU-layer count. Prompt and schema data are passed through temporary files to
-avoid Windows command-line length limits.
+`LlamaCppJsonLanguageModel` is the configured default. It invokes
+`llama-completion`, not the interactive `llama-cli`, with a local GGUF, a JSON
+schema file, deterministic temperature, configured context length, reasoning
+disabled, performance timings enabled, and configurable GPU-layer count.
+Prompt and schema data are passed through temporary files to avoid Windows
+command-line length limits and private-prompt exposure in process arguments.
+Stdin is closed so the child cannot attach to Codex or another parent console.
+
+The Qwen adapter uses `qwen-chatml-manual-v1`: separate system and user roles
+are written into the prompt file, payload JSON escapes ChatML delimiter
+characters, and the assistant prefix is present before grammar-constrained
+generation starts. The adapter refuses unknown prompt transports and refuses
+`llama-cli`. A custom GGUF therefore requires both an expected SHA-256 and an
+explicit supported chat-template declaration.
+
+`llama-completion` writes a fixed `[end of text]` display sentinel after the
+generated object. The parser strips exactly one copy at the end and then
+applies the ordinary one-object boundary. Arbitrary suffixes, duplicate keys,
+prose, banners, and malformed JSON remain rejected. Performance parsing
+supports both current `common_perf_print` and prior
+`llama_perf_context_print` timing lines without retaining backend logs.
+
+Every local GGUF must have an expected SHA-256 before it is admitted. The
+official filename automatically resolves to the byte count and SHA-256 in
+`atom-language-model.json`; a custom filename requires an explicit expected
+hash. Byte-count mismatch and hash mismatch fail before question or Atom
+evidence data reaches the model. The provider records the verified content
+hash, not its machine-local path.
 
 A GGUF file being present does not prove compatibility. The previously probed
 `Ternary-Bonsai-4B-Q2_0_g64.gguf` failed against the installed llama.cpp build
 with `invalid ggml type 42`. Use a GGUF supported by the installed llama.cpp
 version and run a real two-pass request before claiming that local provider is
-verified.
+verified. The installed Qwen artifact was promoted only after the declared
+three-case certification, not merely because it loaded.
 
 ### Scripted provider
 
@@ -402,8 +482,9 @@ Prerequisites:
 - Python 3.13 with the versions pinned by `requirements-dev.txt` for release
   verification;
 - Rust 1.96.0 with Clippy and rustfmt, pinned by `rust-toolchain.toml`;
-- either an explicitly authorized OpenRouter process or a compatible
-  `llama-cli` plus GGUF.
+- `llama-completion` plus the hash-verified official GGUF for the default
+  path; or
+- an explicitly configured and authorized OpenRouter process.
 
 Install the Python runtime dependency:
 
@@ -421,22 +502,44 @@ The release set pins NumPy, Ruff, and PyTorch. PyTorch is required by the
 retained field and neural regression surfaces even though it is not on the
 Atom Language Harness V2 production path.
 
-Run with OpenRouter:
+Install the official local model outside Git:
+
+```powershell
+.\install-atom-language-model.ps1
+```
+
+Run the default local path:
+
+```powershell
+.\run-atom-harness.ps1 `
+  -Question 'In the language domain, what is the direction from trust to belief?'
+```
+
+Certify the exact model and backend through all live surfaces:
+
+```powershell
+py -3.13 scripts\certify_atom_language_model.py
+```
+
+Run with OpenRouter only after selecting its exact model ID:
 
 ```powershell
 $env:OPENROUTER_API_KEY = '<secret from your secret manager>'
 .\run-atom-harness.ps1 `
   -Provider openrouter `
+  -LlmModel '<explicit OpenRouter model ID>' `
   -AllowCloud `
   -Question 'In the language domain, what is the direction from trust to belief?'
 ```
 
-Run with llama.cpp:
+Run with a custom llama.cpp model:
 
 ```powershell
 .\run-atom-harness.ps1 `
   -Provider llama-cpp `
   -ModelPath 'C:\models\compatible-model.gguf' `
+  -ModelSha256 '<expected SHA-256>' `
+  -ChatTemplate raw-prompt-v1 `
   -Question 'In the language domain, what is the direction from trust to belief?'
 ```
 
@@ -446,6 +549,9 @@ Run an ordered local-to-cloud chain only when cloud transfer is intended:
 .\run-atom-harness.ps1 `
   -ProviderChain 'llama-cpp,openrouter' `
   -ModelPath 'C:\models\compatible-model.gguf' `
+  -ModelSha256 '<expected SHA-256>' `
+  -ChatTemplate raw-prompt-v1 `
+  -LlmModel '<explicit OpenRouter model ID>' `
   -AllowCloud `
   -Question 'In the language domain, what is the direction from trust to belief?'
 ```
@@ -462,18 +568,22 @@ Python formatting, linting, and integration:
 
 ```powershell
 ruff check `
-  atom_llm_protocol.py atom_llm_provider.py atom_provider_fabric.py `
+  atom_language_model_contract.py atom_llm_protocol.py atom_llm_provider.py `
+  atom_provider_fabric.py `
   atom_run_transaction.py atom_harness_knowledge.py atom_harness_runtime.py `
   atom_harness_side_view.py atom_harness_experiment.py `
+  scripts/certify_atom_language_model.py `
   tests/test_atom_language_harness_integration.py `
   tests/test_atom_language_harness_v2_integration.py `
   tests/test_atom_provider_protocol_v2.py `
   tests/test_atom_causal_live_integration.py
 
 ruff format --check `
-  atom_llm_protocol.py atom_llm_provider.py atom_provider_fabric.py `
+  atom_language_model_contract.py atom_llm_protocol.py atom_llm_provider.py `
+  atom_provider_fabric.py `
   atom_run_transaction.py atom_harness_knowledge.py atom_harness_runtime.py `
   atom_harness_side_view.py atom_harness_experiment.py `
+  scripts/certify_atom_language_model.py `
   tests/test_atom_language_harness_integration.py `
   tests/test_atom_language_harness_v2_integration.py `
   tests/test_atom_provider_protocol_v2.py `
@@ -488,6 +598,9 @@ py -3.13 -m unittest discover -s tests `
   -p 'test_atom_language_harness_integration.py' -v
 py -3.13 -m unittest discover -s tests `
   -p 'test_atom_causal_live_integration.py' -v
+
+# Requires the installed 4.28 GB weight.
+py -3.13 scripts/certify_atom_language_model.py
 ```
 
 Rust workspace:
@@ -506,6 +619,10 @@ Verify all of the following in the retained output:
 
 - `passed` and `answerable` have the expected values;
 - citations are members of the evidence packet;
+- every answerable response grounding object exactly matches the packet's
+  primary Atom claim and cites its source experience;
+- the admitted model byte count and SHA-256 match the contract;
+- load latency and generation throughput are reported separately;
 - store hashes before and after are identical;
 - artifact, packet, graph, trace, and workflow hashes match;
 - the side view is bound to that exact artifact;
@@ -530,6 +647,49 @@ party. An on-device probe with the available
 return a JSON object under the required intent schema. That model is therefore
 not a verified local provider for this harness. Treat every provider claim as
 model-, backend-, and revision-specific.
+
+### Certified Qwen adoption evidence
+
+The grounded adoption run completed at
+`2026-07-30T21:05:16.824630+00:00` with llama.cpp 10173
+(`e9fa0781f`), `llama-completion`, `qwen-chatml-manual-v1`, a 32,768-token
+context, and `--gpu-layers all`. The exact
+`qwen3-4b-instruct-2507-q8_0.gguf` was 4,280,403,520 bytes and matched
+SHA-256
+`ae916ede1c010a26955ee8ae2e908bf8815a3f135ec860439ab924701c69d5f1`.
+
+All three isolated cases passed:
+
+- `direct-known-relation` answered with the exact primary claim, one
+  packet-local citation, artifact SHA-256
+  `0c0f7779a5cbcdae12ee1248cf6b2ba72f56febd0d02f142cf116e22f75039e7`,
+  and side-view SHA-256
+  `421cb4b9ddb6ae43f1069f449229851f2ef1e131b3e00bd04874042dd7e8079f`.
+- `paraphrased-known-relation` answered with the same machine-grounded claim,
+  one packet-local citation, artifact SHA-256
+  `edcb18732d50d9efe9fb99547b657f9b21b7287673d06dd8ae6c6aaaa367ab5f`,
+  and side-view SHA-256
+  `c27846fcd09e58d64dd88c8d2f0d8988a90149c507ef0b58ada844dfdc320a94`.
+- `unsupported-open-world-question` returned Atom's deterministic abstention
+  with no citation or grounding claim, artifact SHA-256
+  `094ea4c2ae424f2b2afbb8c45e2d1bf9c98d23ce6555fb5a145d8b3ea061179a`,
+  and side-view SHA-256
+  `1d138fb9b7d04e6ed2f64afa4db3fddc3064a7fc00b65a4f68411bef7d058fe4`.
+
+The five live completions recorded model-load latency from 3,817.31 to
+4,464.56 ms with a 3,968.90 ms median. Generation throughput ranged from
+74.24 to 93.55 tokens per second with a 93.33 median. Every case also passed
+wiki graph and RAG execution, exact machine grounding, citation closure,
+memory immutability, committed transaction verification, selected-model
+binding, and user-visible side-view binding.
+
+The retained local report is
+`C:\tmp\atom-harness-live-cert-20260730-210409-7837501\atom_language_model_certification.json`.
+Its SHA-256 is
+`48a23b7c9e3e18ea3cdfb87f912e4a7c73141977e895ea71824a19ed8bd3cbdd`.
+The report path is machine-local evidence and is not committed. Its summary
+and hash are recorded in `atom-language-model.json`. A later source change
+still requires a fresh live rerun before a release claim.
 
 ## 11. Safe extension points
 
@@ -575,11 +735,13 @@ Before merging or publishing a change:
   runtime-wired;
 - confirm no Rust crate exceeds 4,000 Rust source lines;
 - inspect the staged diff for secrets and generated artifacts;
-- run Python lint, format, compilation, policy, and all three integration
+- run Python lint, format, compilation, policy, and all declared integration
   suites;
 - run Rust format, Clippy with warnings denied, and all workspace tests;
 - parse the PowerShell launcher and run its privacy-blocked end-to-end path;
 - run a real configured provider when provider/runtime behavior changed;
+- verify the model byte count and SHA-256 before provider admission;
+- record load latency separately from generation throughput;
 - inspect the real side view, not only the JSON;
 - verify memory immutability and every hash binding;
 - update architecture and developer notes when a boundary changes; and

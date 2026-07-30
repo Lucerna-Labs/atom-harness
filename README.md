@@ -15,12 +15,29 @@ unless the operator opts in for the current process. The side view binds the
 real answer to evidence, provider routes, timings, privacy state, and the run
 transaction.
 
+The selected local language membrane is the official
+`Qwen/Qwen3-4B-Instruct-2507` model in the ggml-org Q8_0 GGUF conversion.
+The exact 4,280,403,520-byte artifact is admitted only when its SHA-256 matches
+`ae916ede1c010a26955ee8ae2e908bf8815a3f135ec860439ab924701c69d5f1`.
+The certified local transport is the non-interactive `llama-completion`
+executable with a file-backed `qwen-chatml-manual-v1` prompt, a 32,768-token
+admission window, reasoning off, temperature zero, and seed one.
+This 4B dense model is intentionally smaller than an agentic general-purpose
+model because Atom retains evidence, memory, graph RAG, authority, and
+abstention. The model supplies language only. See `atom-language-model.json`
+for the machine-readable contract and certified evidence. Rerun the live
+certification before promoting any new model, backend, prompt transport, or
+authority-boundary revision.
+
 The causal-live runtime remains the evidence and learning kernel. The language
 model has no Atom DB write path, cannot promote its own output into evidence,
 and cannot override `insufficient_evidence`. See
 `ATOM_LANGUAGE_HARNESS.md` for the runnable path and trust boundaries. See
 `DEVELOPER_NOTES.md` for the full architecture, module map, provider contract,
 verification procedure, publication boundary, and developer handoff.
+Every answerable response must also reproduce Atom's primary claim in an
+enum-constrained grounding object. The side view displays that claim separately
+from the model's prose.
 
 The former 227M student / SmolLM2-1.7B teacher distillation pipeline is retired.
 Its fixed multi-billion-token schedule reproduced the conventional

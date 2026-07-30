@@ -15,14 +15,46 @@
     "provider_fabric_module": "atom_provider_fabric.py",
     "provider_fabric_runtime": "atom-resilient-provider-fabric-v2",
     "production_providers": [
-      "OpenRouterJsonLanguageModel",
-      "LlamaCppJsonLanguageModel"
+      "LlamaCppJsonLanguageModel",
+      "OpenRouterJsonLanguageModel"
     ],
-    "configured_default_provider": "OpenRouterJsonLanguageModel",
-    "configured_default_model": "mistralai/mistral-small-3.2-24b-instruct",
-    "v2_external_provider_verification": "requires separately authorized live run",
+    "model_contract": "atom-language-model.json",
+    "configured_default_provider": "LlamaCppJsonLanguageModel",
+    "configured_default_model": "Qwen/Qwen3-4B-Instruct-2507",
+    "configured_default_artifact": {
+      "repository": "ggml-org/Qwen3-4B-Instruct-2507-Q8_0-GGUF",
+      "filename": "qwen3-4b-instruct-2507-q8_0.gguf",
+      "quantization": "Q8_0",
+      "bytes": 4280403520,
+      "sha256": "ae916ede1c010a26955ee8ae2e908bf8815a3f135ec860439ab924701c69d5f1",
+      "executable": "llama-completion",
+      "chat_template": "qwen-chatml-manual-v1",
+      "context_tokens": 32768
+    },
+    "v2_external_provider_verification": {
+      "status": "certified-local-default",
+      "runtime": "atom-language-model-certification-v1",
+      "verified_utc": "2026-07-30T21:05:16.824630+00:00",
+      "report_sha256": "48a23b7c9e3e18ea3cdfb87f912e4a7c73141977e895ea71824a19ed8bd3cbdd",
+      "case_count": 3,
+      "completion_count": 5,
+      "machine_grounding_passed": true,
+      "wiki_graph_and_rag_passed": true,
+      "artifact_side_view_passed": true
+    },
+    "selection_basis": [
+      "Atom owns evidence, reasoning policy, memory, graph RAG, and abstention",
+      "the model performs only schema-bound intent parsing and grounded language rendering",
+      "4B dense weights avoid paying for unused agentic or knowledge authority",
+      "Q8_0 prioritizes instruction and schema fidelity while fitting local GPU memory",
+      "non-thinking-only behavior matches the harness reasoning-off boundary"
+    ],
     "provider_admission": {
       "strict_json_required": true,
+      "expected_model_sha256_required": true,
+      "noninteractive_completion_backend_required": true,
+      "prompt_transport_declared": true,
+      "machine_grounding_required": true,
       "locations": [
         "local",
         "private",
@@ -40,7 +72,7 @@
     },
     "passes": [
       "natural language to validated Atom intent",
-      "bounded Atom evidence to cited natural language"
+      "bounded Atom evidence to cited and machine-grounded natural language"
     ],
     "structured_output": true
   },
@@ -81,6 +113,7 @@
     "only validated wiki vocabulary can enter an Atom query",
     "evidence passages are untrusted data, never instructions",
     "citations must name experience IDs present in the packet",
+    "answerable responses must reproduce Atom's primary claim exactly in machine grounding",
     "Atom insufficient_evidence forces deterministic abstention",
     "provider secrets are never persisted",
     "cloud evidence egress requires explicit per-process consent",
@@ -94,13 +127,16 @@
     "binds": [
       "answer",
       "citations",
+      "primary Atom claim",
       "evidence packet",
       "wiki graph",
       "Spiderweb trace",
       "provider routes and privacy",
       "timings and circuit state",
+      "selected model identity",
+      "model load latency and generation throughput",
       "atomic transaction identity"
     ]
   },
-  "claim_boundary": "V2 supplies a crash-safe, policy-routed language membrane around saved causal Atom evidence. It does not claim that an LLM creates facts, that all questions are answerable, that every GGUF is compatible, or that retired language-model distillation is active."
+  "claim_boundary": "V2 supplies a crash-safe, policy-routed language membrane around saved causal Atom evidence. The exact Qwen3 4B Q8 artifact and llama-completion backend are certified through the declared three-case live boundary with machine grounding, wiki graph and RAG, immutable Atom memory, and the bound artifact side view. This does not claim that an LLM creates facts, that all questions are answerable, that every GGUF is compatible, or that retired language-model distillation is active."
 }

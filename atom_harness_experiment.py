@@ -31,6 +31,11 @@ from atom_harness_side_view import (
     ATOM_HARNESS_SIDE_VIEW_RUNTIME,
     render_atom_harness_artifact,
 )
+from atom_language_model_contract import (
+    default_official_model_path,
+    resolve_chat_template,
+    resolve_model_integrity,
+)
 from atom_llm_provider import (
     LlamaCppJsonLanguageModel,
     OpenRouterJsonLanguageModel,
@@ -122,13 +127,24 @@ def _checks(answer: Mapping[str, Any]) -> dict[str, bool]:
             set(response["citations"]) <= allowed
             and (not response["answerable"] or bool(response["citations"]))
         ),
+        "response_grounding_matches_primary_claim": (
+            (
+                response["answerable"]
+                and response["grounding"] == packet["primary_claim"]
+            )
+            or (not response["answerable"] and response["grounding"] is None)
+        ),
         "graph_snapshot_is_bound_end_to_end": (
             packet["graph_knowledge_hash"]
             == answer["knowledge"]["graph_knowledge_hash"]
         ),
         "insufficient_evidence_forces_abstention": (
             not packet["insufficient_evidence"]
-            or (response["answerable"] is False and response["citations"] == [])
+            or (
+                response["answerable"] is False
+                and response["citations"] == []
+                and response["grounding"] is None
+            )
         ),
         "llm_cannot_write_atom_memory": (
             answer["memory"]["unchanged"] is True
@@ -366,9 +382,7 @@ def _build_provider_fabric(
         or arguments.provider
         or os.environ.get("ATOM_LLM_PROVIDERS")
         or os.environ.get("ATOM_LLM_PROVIDER")
-        or (
-            "llama-cpp,openrouter" if arguments.model_path is not None else "openrouter"
-        )
+        or "llama-cpp"
     )
     try:
         names = _provider_chain(raw_chain)
@@ -377,12 +391,22 @@ def _build_provider_fabric(
     providers: list[JsonLanguageModel] = []
     for name in names:
         if name == "openrouter":
-            providers.append(
-                OpenRouterJsonLanguageModel(
-                    arguments.llm_model,
-                    timeout_seconds=arguments.provider_timeout_seconds,
+            if arguments.llm_model:
+                providers.append(
+                    OpenRouterJsonLanguageModel(
+                        arguments.llm_model,
+                        timeout_seconds=arguments.provider_timeout_seconds,
+                    )
                 )
-            )
+            else:
+                providers.append(
+                    UnavailableJsonLanguageModel(
+                        "openrouter",
+                        model="unconfigured-cloud-model",
+                        location=ProviderLocation.CLOUD,
+                        reason="--llm-model or ATOM_LLM_MODEL is absent",
+                    )
+                )
         elif arguments.model_path is None:
             providers.append(
                 UnavailableJsonLanguageModel(
@@ -394,10 +418,22 @@ def _build_provider_fabric(
             )
         else:
             try:
+                expected_sha256, expected_bytes = resolve_model_integrity(
+                    arguments.model_path,
+                    expected_sha256=arguments.model_sha256,
+                    expected_bytes=arguments.model_bytes,
+                )
+                chat_template = resolve_chat_template(
+                    arguments.model_path,
+                    chat_template=arguments.chat_template,
+                )
                 providers.append(
                     LlamaCppJsonLanguageModel(
                         arguments.model_path,
-                        executable=arguments.llama_cli,
+                        executable=arguments.llama_completion,
+                        expected_model_sha256=expected_sha256,
+                        expected_model_bytes=expected_bytes,
+                        chat_template=chat_template,
                         context_length=arguments.context_length,
                         gpu_layers=arguments.gpu_layers,
                         timeout_seconds=arguments.provider_timeout_seconds,
@@ -450,24 +486,36 @@ def main() -> None:
         default=(
             Path(os.environ["ATOM_LLM_MODEL_PATH"])
             if os.environ.get("ATOM_LLM_MODEL_PATH")
-            else None
+            else default_official_model_path()
         ),
     )
     parser.add_argument(
-        "--llama-cli",
-        default=os.environ.get("ATOM_LLAMA_CLI", "llama-cli"),
+        "--model-sha256",
+        default=os.environ.get("ATOM_LLM_MODEL_SHA256"),
     )
-    parser.add_argument("--context-length", type=int, default=8192)
+    parser.add_argument("--model-bytes", type=int)
+    parser.add_argument(
+        "--chat-template",
+        default=os.environ.get("ATOM_LLM_CHAT_TEMPLATE"),
+    )
+    parser.add_argument(
+        "--llama-completion",
+        "--llama-cli",
+        dest="llama_completion",
+        default=(
+            os.environ.get("ATOM_LLAMA_COMPLETION")
+            or os.environ.get("ATOM_LLAMA_CLI")
+            or "llama-completion"
+        ),
+    )
+    parser.add_argument("--context-length", type=int, default=32_768)
     parser.add_argument(
         "--gpu-layers",
         default=os.environ.get("ATOM_LLM_GPU_LAYERS", "auto"),
     )
     parser.add_argument(
         "--llm-model",
-        default=os.environ.get(
-            "ATOM_LLM_MODEL",
-            "mistralai/mistral-small-3.2-24b-instruct",
-        ),
+        default=os.environ.get("ATOM_LLM_MODEL", ""),
     )
     parser.add_argument("--forge", type=Path, default=DEFAULT_FORGE)
     parser.add_argument(

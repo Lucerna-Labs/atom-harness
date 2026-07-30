@@ -98,6 +98,18 @@ def _intent_for(record) -> dict[str, Any]:
     }
 
 
+def _grounding_for(record) -> dict[str, Any]:
+    return {
+        "source_experience_id": record.experience_id,
+        "kind": _one(record, "kind"),
+        "status": _one(record, "status"),
+        "domain": _one(record, "domain"),
+        "cause": _one(record, "cause"),
+        "effect": _one(record, "effect"),
+        "direction": _one(record, "direction"),
+    }
+
+
 def _response_for(record) -> dict[str, Any]:
     return {
         "schema": 1,
@@ -111,6 +123,7 @@ def _response_for(record) -> dict[str, Any]:
         ),
         "citations": [record.experience_id],
         "limitations": "This describes the retrieved structural experience only.",
+        "grounding": _grounding_for(record),
     }
 
 
@@ -299,7 +312,17 @@ class AtomLanguageHarnessV2IntegrationTests(unittest.TestCase):
         self.assertEqual(rendered, self.side_view)
         self.assertIn(ATOM_HARNESS_SIDE_VIEW_RUNTIME, rendered)
         self.assertIn("Provider fabric", rendered)
+        self.assertIn("Language performance", rendered)
+        self.assertIn("Primary Atom claim", rendered)
+        self.assertIn("v2-integration-provider", rendered)
         self.assertIn(self.target.experience_id, rendered)
+        self.assertEqual(
+            self.artifact["response"]["grounding"],
+            self.artifact["evidence_packet"]["primary_claim"],
+        )
+        self.assertEqual(len(self.artifact["completions"]), 2)
+        for completion in self.artifact["completions"]:
+            self.assertEqual(completion["performance"], {})
 
     def test_provider_admission_and_routes_are_hash_bound(self) -> None:
         self.assertEqual(len(self.artifact["provider_routes"]), 2)
@@ -512,6 +535,32 @@ class AtomLanguageHarnessV2IntegrationTests(unittest.TestCase):
         )
         self.assertEqual(
             artifact["provider_routes"][1]["attempts"][-1]["failure_kind"],
+            "boundary",
+        )
+        self.assertEqual(_sha256(self.store_path), before)
+
+    def test_response_grounding_cannot_override_atoms_primary_claim(self) -> None:
+        malformed_response = dict(self.response)
+        malformed_response["grounding"] = {
+            **self.response["grounding"],
+            "direction": (
+                "+1" if self.response["grounding"]["direction"] != "+1" else "-1"
+            ),
+        }
+        provider = ScriptedJsonLanguageModel(
+            [self.intent, malformed_response],
+            model="grounding-mismatch-provider",
+        )
+        before = _sha256(self.store_path)
+        artifact = AtomLanguageHarness(
+            knowledge=self._knowledge(),
+            language_model=provider,
+        ).answer("Do not override Atom's selected claim.")
+        self.assertTrue(artifact["degraded"])
+        self.assertFalse(artifact["response"]["answerable"])
+        self.assertIsNone(artifact["response"]["grounding"])
+        self.assertEqual(
+            artifact["provider_routes"][-1]["attempts"][-1]["failure_kind"],
             "boundary",
         )
         self.assertEqual(_sha256(self.store_path), before)

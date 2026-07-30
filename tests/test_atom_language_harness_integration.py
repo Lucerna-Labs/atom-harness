@@ -70,6 +70,18 @@ def _intent_for(record) -> dict:
     }
 
 
+def _grounding_for(record) -> dict:
+    return {
+        "source_experience_id": record.experience_id,
+        "kind": _one(record, "kind"),
+        "status": _one(record, "status"),
+        "domain": _one(record, "domain"),
+        "cause": _one(record, "cause"),
+        "effect": _one(record, "effect"),
+        "direction": _one(record, "direction"),
+    }
+
+
 class AtomLanguageHarnessIntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -103,6 +115,7 @@ class AtomLanguageHarnessIntegrationTests(unittest.TestCase):
             ),
             "citations": [cls.target.experience_id],
             "limitations": ("This describes the retrieved structural experience only."),
+            "grounding": _grounding_for(cls.target),
         }
         cls.provider = ScriptedJsonLanguageModel([cls.intent, cls.response])
         cls.artifact = run_atom_language_harness(
@@ -145,6 +158,11 @@ class AtomLanguageHarnessIntegrationTests(unittest.TestCase):
         packet = self.artifact["evidence_packet"]
         self.assertTrue(packet["answerable"])
         self.assertFalse(packet["insufficient_evidence"])
+        self.assertEqual(packet["primary_claim"], _grounding_for(self.target))
+        self.assertEqual(
+            self.artifact["response"]["grounding"],
+            packet["primary_claim"],
+        )
         self.assertIn(
             self.target.experience_id,
             {item["experience_id"] for item in packet["passages"]},
@@ -211,6 +229,7 @@ class AtomLanguageHarnessIntegrationTests(unittest.TestCase):
         self.assertIn(ATOM_HARNESS_SIDE_VIEW_RUNTIME, rendered)
         self.assertIn(self.target.experience_id, rendered)
         self.assertIn(self.artifact["response"]["answer"], rendered)
+        self.assertIn("Primary Atom claim", rendered)
         self.assertIn("Bound evidence &middot; side view", rendered)
         self.assertIn("Provider fabric", rendered)
         self.assertIn(self.artifact["transaction"]["transaction_id"], rendered)

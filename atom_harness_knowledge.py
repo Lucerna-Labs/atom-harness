@@ -154,6 +154,7 @@ class HarnessKnowledge:
             raise RuntimeError("graph RAG mutated the runtime wiki graph")
 
         passages: list[dict[str, Any]] = []
+        primary_claim: dict[str, str] | None = None
         for context in contexts[:8]:
             identity = str(context["experience_id"])
             record = self.graph.records[identity]
@@ -179,6 +180,16 @@ class HarnessKnowledge:
                 f"{_one(values, 'cause')} -> {_one(values, 'effect')} "
                 f"(direction {_one(values, 'direction')})."
             )
+            if primary_claim is None:
+                primary_claim = {
+                    "source_experience_id": identity,
+                    "kind": _one(values, "kind"),
+                    "status": _one(values, "status"),
+                    "domain": _one(values, "domain"),
+                    "cause": _one(values, "cause"),
+                    "effect": _one(values, "effect"),
+                    "direction": _one(values, "direction"),
+                }
             passages.append(
                 {
                     "experience_id": identity,
@@ -210,6 +221,7 @@ class HarnessKnowledge:
             "source_model_hash": self.corpus.model_hash,
             "query_sha256": hashlib.sha256(query_wire.encode("utf-8")).hexdigest(),
             "untrusted_data_notice": UNTRUSTED_EVIDENCE_NOTICE,
+            "primary_claim": primary_claim,
             "passages": passages,
             "store_sha256_before": before,
             "store_sha256_after": after,

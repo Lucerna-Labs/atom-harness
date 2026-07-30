@@ -51,25 +51,30 @@ jobs:
 
       - name: Check Python format and lint
         run: |
-          python -m ruff format --check atom_llm_protocol.py atom_llm_provider.py atom_provider_fabric.py atom_run_transaction.py atom_harness_knowledge.py atom_harness_runtime.py atom_harness_experiment.py atom_harness_side_view.py tests/test_atom_language_harness_integration.py tests/test_atom_language_harness_v2_integration.py tests/test_atom_provider_protocol_v2.py tests/test_atom_causal_live_integration.py scripts/verify_atom_harness_v2.py
-          python -m ruff check atom_llm_protocol.py atom_llm_provider.py atom_provider_fabric.py atom_run_transaction.py atom_harness_knowledge.py atom_harness_runtime.py atom_harness_experiment.py atom_harness_side_view.py tests/test_atom_language_harness_integration.py tests/test_atom_language_harness_v2_integration.py tests/test_atom_provider_protocol_v2.py tests/test_atom_causal_live_integration.py scripts/verify_atom_harness_v2.py
+          python -m ruff format --check atom_language_model_contract.py atom_llm_protocol.py atom_llm_provider.py atom_provider_fabric.py atom_run_transaction.py atom_harness_knowledge.py atom_harness_runtime.py atom_harness_experiment.py atom_harness_side_view.py tests/test_atom_language_harness_integration.py tests/test_atom_language_harness_v2_integration.py tests/test_atom_provider_protocol_v2.py tests/test_atom_causal_live_integration.py scripts/certify_atom_language_model.py scripts/verify_atom_harness_v2.py
+          python -m ruff check atom_language_model_contract.py atom_llm_protocol.py atom_llm_provider.py atom_provider_fabric.py atom_run_transaction.py atom_harness_knowledge.py atom_harness_runtime.py atom_harness_experiment.py atom_harness_side_view.py tests/test_atom_language_harness_integration.py tests/test_atom_language_harness_v2_integration.py tests/test_atom_provider_protocol_v2.py tests/test_atom_causal_live_integration.py scripts/certify_atom_language_model.py scripts/verify_atom_harness_v2.py
 
       - name: Compile Python entrypoints
-        run: python -m py_compile atom_llm_protocol.py atom_llm_provider.py atom_provider_fabric.py atom_run_transaction.py atom_harness_knowledge.py atom_harness_runtime.py atom_harness_experiment.py atom_harness_side_view.py scripts/verify_atom_harness_v2.py
+        run: python -m py_compile atom_language_model_contract.py atom_llm_protocol.py atom_llm_provider.py atom_provider_fabric.py atom_run_transaction.py atom_harness_knowledge.py atom_harness_runtime.py atom_harness_experiment.py atom_harness_side_view.py scripts/certify_atom_language_model.py scripts/verify_atom_harness_v2.py
 
-      - name: Parse PowerShell launcher
+      - name: Parse PowerShell entrypoints
         shell: pwsh
         run: |
-          $tokens = $null
-          $errors = $null
-          [void][System.Management.Automation.Language.Parser]::ParseFile(
-            (Resolve-Path ./run-atom-harness.ps1),
-            [ref]$tokens,
-            [ref]$errors
-          )
-          if ($errors.Count -ne 0) {
-            $errors | Format-List | Out-String | Write-Error
-            exit 1
+          foreach ($entrypoint in @(
+            './run-atom-harness.ps1',
+            './install-atom-language-model.ps1'
+          )) {
+            $tokens = $null
+            $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path $entrypoint),
+              [ref]$tokens,
+              [ref]$errors
+            )
+            if ($errors.Count -ne 0) {
+              $errors | Format-List | Out-String | Write-Error
+              exit 1
+            }
           }
 
       - name: Enforce repository policy

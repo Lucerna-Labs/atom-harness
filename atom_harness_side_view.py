@@ -138,6 +138,12 @@ def _validate_binding(
         raise ValueError("side view refuses a citation outside the evidence packet")
     if response["answerable"] and not response["citations"]:
         raise ValueError("side view refuses an uncited answer")
+    if response["answerable"] and response.get("grounding") != artifact[
+        "evidence_packet"
+    ].get("primary_claim"):
+        raise ValueError("side view refuses an answer detached from Atom's claim")
+    if not response["answerable"] and response.get("grounding") is not None:
+        raise ValueError("side view refuses grounding on an abstention")
     if artifact["evidence_packet"]["insufficient_evidence"] and response["answerable"]:
         raise ValueError("side view refuses an answer over insufficient evidence")
 
@@ -211,6 +217,48 @@ def _provider_route_card(route: Mapping[str, Any]) -> str:
 """
 
 
+def _performance_card(completion: Mapping[str, Any]) -> str:
+    performance = completion.get("performance")
+    if not isinstance(performance, Mapping) or not performance:
+        detail = "Backend performance metrics unavailable."
+    else:
+        load = performance.get("load_ms")
+        throughput = performance.get("generation_tokens_per_second")
+        tokens = performance.get("generated_tokens")
+        parts = [
+            f"load {_escape(load)} ms" if load is not None else "load unavailable",
+            (
+                f"generation {_escape(throughput)} tok/s"
+                if throughput is not None
+                else "generation throughput unavailable"
+            ),
+        ]
+        if tokens is not None:
+            parts.append(f"{_escape(tokens)} generated tokens")
+        detail = " &middot; ".join(parts)
+    return f"""
+<article class="route performance">
+  <div class="route-top">
+    <strong>{_escape(completion["stage"])}</strong>
+    <span>{_escape(completion["model"])}</span>
+  </div>
+  <p>{detail}</p>
+  <small>Total provider call: {_escape(completion["elapsed_ms"])} ms</small>
+</article>
+"""
+
+
+def _selected_model_label(artifact: Mapping[str, Any]) -> str:
+    selected = {
+        str(route["selected_provider"]["model"])
+        for route in artifact["provider_routes"]
+        if isinstance(route.get("selected_provider"), Mapping)
+    }
+    if selected:
+        return ", ".join(sorted(selected))
+    return str(artifact["language_model"]["model"])
+
+
 def render_atom_harness_artifact(
     artifact: Mapping[str, Any],
     workflow: Mapping[str, Any],
@@ -236,6 +284,23 @@ def render_atom_harness_artifact(
     )
     if not citations:
         citations = "<li>No evidence citations emitted.</li>"
+    grounding = response.get("grounding")
+    if isinstance(grounding, Mapping):
+        grounding_view = (
+            '<section class="authority-claim">'
+            "<strong>Primary Atom claim</strong>"
+            f"<p>{_escape(grounding['status'])} {_escape(grounding['kind'])}: "
+            f"{_escape(grounding['cause'])} &rarr; {_escape(grounding['effect'])} "
+            f"(direction {_escape(grounding['direction'])}) in "
+            f"{_escape(grounding['domain'])}.</p>"
+            f"<code>{_escape(grounding['source_experience_id'])}</code>"
+            "</section>"
+        )
+    else:
+        grounding_view = (
+            '<section class="authority-claim"><strong>Primary Atom claim</strong>'
+            "<p>No claim was licensed.</p></section>"
+        )
     passages = "".join(_passage_card(item) for item in packet["passages"])
     if not passages:
         passages = (
@@ -254,9 +319,13 @@ def render_atom_harness_artifact(
     model = artifact["language_model"]
     policy = model["policy"]
     timings = artifact["timings"]
+    selected_model = _selected_model_label(artifact)
     routes = "".join(_provider_route_card(item) for item in artifact["provider_routes"])
     if not routes:
         routes = '<div class="empty">No provider route was recorded.</div>'
+    performance = "".join(_performance_card(item) for item in artifact["completions"])
+    if not performance:
+        performance = '<div class="empty">No language completion was performed.</div>'
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -336,6 +405,15 @@ aside {{ background: #101210; }}
 .answer.abstained {{ border-left-color: var(--amber); }}
 .answer.degraded {{ border-left-color: #ff7d7d; }}
 .answer small {{ display: block; color: var(--muted); margin-top: 16px; }}
+.authority-claim {{
+  margin: 16px 0 24px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  background: rgba(70, 226, 195, 0.06);
+}}
+.authority-claim strong {{ color: var(--cyan); }}
+.authority-claim p {{ margin: 8px 0; }}
+.authority-claim code {{ overflow-wrap: anywhere; }}
 .meta-grid {{
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -426,11 +504,12 @@ ul {{ padding-left: 20px; }}
       {_escape(response["answer"])}
       <small>{_escape(response["limitations"])}</small>
     </section>
+    {grounding_view}
     <h3>Citations</h3>
     <ul>{citations}</ul>
     <div class="meta-grid">
       <div class="meta"><span>Model</span>
-        <strong>{_escape(model["model"])}</strong></div>
+        <strong>{_escape(selected_model)}</strong></div>
       <div class="meta"><span>Outcome</span>
         <strong>{_escape(artifact["outcome"])}</strong></div>
       <div class="meta"><span>Privacy locations</span>
@@ -463,6 +542,8 @@ ul {{ padding-left: 20px; }}
     }</code> formed from observed flow.</small></p>
     <h3>Provider fabric</h3>
     {routes}
+    <h3>Language performance</h3>
+    {performance}
   </main>
   <aside>
     <p class="eyebrow">Bound evidence &middot; side view</p>

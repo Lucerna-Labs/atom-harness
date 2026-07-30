@@ -23,6 +23,7 @@ REQUIRED_FILES = (
     "ai-run-transaction.json",
     "ai-runtime-knowledge.json",
     "ai-runtime-registry.json",
+    "atom-language-model.json",
     "atom-language-harness-architecture.json",
     "atom_harness_experiment.py",
     "atom_harness_knowledge.py",
@@ -30,9 +31,12 @@ REQUIRED_FILES = (
     "atom_harness_side_view.py",
     "atom_llm_protocol.py",
     "atom_llm_provider.py",
+    "atom_language_model_contract.py",
     "atom_provider_fabric.py",
     "atom_run_transaction.py",
+    "install-atom-language-model.ps1",
     "rust-toolchain.toml",
+    "scripts/certify_atom_language_model.py",
     "tests/test_atom_language_harness_v2_integration.py",
     "tests/test_atom_provider_protocol_v2.py",
 )
@@ -163,6 +167,7 @@ def _check_runtime_declarations() -> dict[str, str]:
     provider = _load_json("ai-provider-fabric.json")
     transaction = _load_json("ai-run-transaction.json")
     architecture = _load_json("atom-language-harness-architecture.json")
+    language_model = _load_json("atom-language-model.json")
 
     if registry.get("active_runtime") != "language-harness-v2":
         raise PolicyFailure("language-harness-v2 is not the active runtime")
@@ -172,12 +177,23 @@ def _check_runtime_declarations() -> dict[str, str]:
     expected_test = "tests/test_atom_language_harness_v2_integration.py"
     declarations = (knowledge, side_view, provider, transaction)
     for declaration in declarations:
+        if declaration.get("project_kind") != "ai-harness":
+            raise PolicyFailure("runtime declaration project kind is invalid")
         if declaration.get("runtime_entrypoint") != "atom_harness_experiment.py":
             raise PolicyFailure("runtime entrypoint declarations disagree")
         if declaration.get("integration_test") != expected_test:
             raise PolicyFailure("V2 integration-test declarations disagree")
     if runtime.get("integration_test") != expected_test:
         raise PolicyFailure("registry V2 integration test disagrees")
+    if runtime.get("language_model_contract") != "atom-language-model.json":
+        raise PolicyFailure("registry language-model contract is absent")
+    if (
+        runtime.get("language_model_certification")
+        != "scripts/certify_atom_language_model.py"
+    ):
+        raise PolicyFailure("registry language-model certification is absent")
+    if language_model.get("runtime") != "atom-language-model-contract-v1":
+        raise PolicyFailure("official language-model runtime is invalid")
 
     wiki = knowledge.get("wiki_graph")
     rag = knowledge.get("rag")
@@ -200,12 +216,24 @@ def _check_runtime_declarations() -> dict[str, str]:
         "user_visible",
         "bound_to_real_artifact_output",
     )
+    _require_true(
+        side,
+        "selected_model_identity_visible",
+        "model_load_latency_visible",
+        "generation_throughput_visible",
+        "primary_atom_claim_visible",
+    )
     if side.get("placement") != "side":
         raise PolicyFailure("artifact view is not declared at the side")
     _require_true(
         fabric,
         "ordered_fallback",
         "strict_json_required",
+        "model_integrity_required",
+        "noninteractive_completion_backend_required",
+        "prompt_transport_declared",
+        "machine_grounding_required",
+        "default_local_provider",
         "bounded_retry_backoff",
         "explicit_provider_locations",
         "cloud_requires_explicit_consent",
@@ -228,6 +256,54 @@ def _check_runtime_declarations() -> dict[str, str]:
     if run_transaction.get("overwrite_allowed") is not False:
         raise PolicyFailure("run transactions must refuse overwrite")
 
+    artifact = language_model.get("artifact")
+    policy = language_model.get("runtime_policy")
+    if not isinstance(artifact, dict) or not isinstance(policy, dict):
+        raise PolicyFailure("official language-model contract is incomplete")
+    if language_model.get("default_provider") != "llama-cpp":
+        raise PolicyFailure("official language-model provider is not local")
+    if language_model.get("role") != "language-only-membrane":
+        raise PolicyFailure("official language-model role is invalid")
+    if language_model.get("adoption_status") != "certified-local-default":
+        raise PolicyFailure("official language-model adoption is not certified")
+    if artifact.get("filename") != "qwen3-4b-instruct-2507-q8_0.gguf":
+        raise PolicyFailure("official GGUF filename is invalid")
+    if artifact.get("bytes") != 4_280_403_520:
+        raise PolicyFailure("official GGUF byte count is invalid")
+    if not re.fullmatch(r"[0-9a-f]{64}", str(artifact.get("sha256", ""))):
+        raise PolicyFailure("official GGUF SHA-256 is invalid")
+    if policy.get("harness_context_tokens") != 32_768:
+        raise PolicyFailure("official harness context is invalid")
+    if policy.get("chat_template") != "qwen-chatml-manual-v1":
+        raise PolicyFailure("official chat template is invalid")
+    if policy.get("executable") != "llama-completion":
+        raise PolicyFailure("official llama.cpp executable is invalid")
+    _require_true(
+        policy,
+        "model_integrity_required",
+        "local_is_default",
+        "cloud_requires_explicit_provider_and_consent",
+    )
+    latest_evidence = language_model.get("certification", {}).get("latest_evidence")
+    if not isinstance(latest_evidence, dict):
+        raise PolicyFailure("official live-model certification is absent")
+    _require_true(
+        latest_evidence,
+        "all_cases_passed",
+        "machine_grounding_passed",
+        "wiki_graph_and_rag_passed",
+        "artifact_side_view_passed",
+    )
+    if latest_evidence.get("case_count") != 3:
+        raise PolicyFailure("official live-model case count is invalid")
+    if latest_evidence.get("completion_count") != 5:
+        raise PolicyFailure("official live-model completion count is invalid")
+    if not re.fullmatch(
+        r"[0-9a-f]{64}",
+        str(latest_evidence.get("report_sha256", "")),
+    ):
+        raise PolicyFailure("official live-model report hash is invalid")
+
     architecture_text = json.dumps(architecture, sort_keys=True)
     for marker in (
         "atom-language-harness-v2",
@@ -236,12 +312,18 @@ def _check_runtime_declarations() -> dict[str, str]:
         "atom-language-harness-wiki-v2",
         "atom-language-harness-graph-rag-v2",
         "atom-language-harness-side-view-v2",
+        "Qwen/Qwen3-4B-Instruct-2507",
+        "qwen3-4b-instruct-2507-q8_0.gguf",
+        "llama-completion",
+        "atom-language-model-certification-v1",
+        str(artifact["sha256"]),
     ):
         if marker not in architecture_text:
             raise PolicyFailure(f"architecture is missing runtime marker: {marker}")
     return {
         "active_runtime": str(registry["active_runtime"]),
         "integration_test": expected_test,
+        "official_language_model": str(language_model["base_model"]["model_id"]),
     }
 
 
@@ -267,6 +349,9 @@ def _check_ci_contract() -> dict[str, str]:
         "-D warnings",
         "cargo test",
         "Language.Parser",
+        "atom_language_model_contract.py",
+        "certify_atom_language_model.py",
+        "install-atom-language-model.ps1",
         "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
         "persist-credentials: false",
         "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",

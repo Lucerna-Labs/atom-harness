@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import tempfile
 import threading
@@ -8,6 +9,15 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from atom_language_model_contract import (
+    ATOM_LANGUAGE_MODEL_CONTRACT_RUNTIME,
+    QWEN_CHATML_MANUAL_TEMPLATE,
+    RAW_PROMPT_TEMPLATE,
+    default_official_model_path,
+    load_language_model_contract,
+    resolve_chat_template,
+    resolve_model_integrity,
+)
 from atom_llm_protocol import (
     CancellationToken,
     JsonGenerationRequest,
@@ -18,12 +28,18 @@ from atom_llm_protocol import (
     ProviderExhaustedError,
     ProviderLocation,
     ProviderTransportError,
+    GROUNDED_RESPONSE_JSON_SCHEMA,
 )
 from atom_llm_provider import (
+    LLAMA_CPP_PERFORMANCE_RUNTIME,
+    LlamaCppJsonLanguageModel,
     OpenRouterJsonLanguageModel,
     ScriptedJsonLanguageModel,
     UnavailableJsonLanguageModel,
+    _llama_cpp_performance,
+    _parse_llama_completion_object,
     _parse_json_object,
+    _transport_prompt,
 )
 from atom_provider_fabric import ProviderFabric, ProviderFabricPolicy
 from atom_run_transaction import (
@@ -94,6 +110,163 @@ class AtomProviderProtocolV2Tests(unittest.TestCase):
             _parse_json_object('{"ok":true,"ok":false}')
         with self.assertRaisesRegex(LanguageBoundaryError, "JSON object"):
             _parse_json_object("[true]")
+        self.assertEqual(
+            _parse_llama_completion_object('{"ok":true} [end of text]\n'),
+            {"ok": True},
+        )
+        with self.assertRaisesRegex(
+            LanguageBoundaryError,
+            "outside the JSON object",
+        ):
+            _parse_llama_completion_object('{"ok":true} trailing prose [end of text]')
+
+    def test_official_model_contract_is_local_hash_bound_and_language_only(
+        self,
+    ) -> None:
+        contract = load_language_model_contract()
+        self.assertEqual(
+            contract["runtime"],
+            ATOM_LANGUAGE_MODEL_CONTRACT_RUNTIME,
+        )
+        self.assertEqual(contract["role"], "language-only-membrane")
+        self.assertEqual(contract["default_provider"], "llama-cpp")
+        self.assertEqual(contract["adoption_status"], "certified-local-default")
+        self.assertEqual(
+            contract["base_model"]["model_id"],
+            "Qwen/Qwen3-4B-Instruct-2507",
+        )
+        self.assertEqual(
+            contract["artifact"]["sha256"],
+            "ae916ede1c010a26955ee8ae2e908bf8815a3f135ec860439ab924701c69d5f1",
+        )
+        self.assertEqual(contract["artifact"]["bytes"], 4_280_403_520)
+        self.assertTrue(contract["runtime_policy"]["model_integrity_required"])
+        self.assertEqual(
+            contract["runtime_policy"]["harness_context_tokens"],
+            32_768,
+        )
+        self.assertEqual(
+            contract["runtime_policy"]["chat_template"],
+            QWEN_CHATML_MANUAL_TEMPLATE,
+        )
+        self.assertTrue(
+            contract["certification"]["latest_evidence"]["machine_grounding_passed"]
+        )
+        self.assertEqual(
+            default_official_model_path().name,
+            contract["artifact"]["filename"],
+        )
+        expected_sha256, expected_bytes = resolve_model_integrity(
+            default_official_model_path()
+        )
+        self.assertEqual(expected_sha256, contract["artifact"]["sha256"])
+        self.assertEqual(expected_bytes, contract["artifact"]["bytes"])
+        self.assertEqual(
+            resolve_chat_template(default_official_model_path()),
+            QWEN_CHATML_MANUAL_TEMPLATE,
+        )
+
+    def test_custom_local_model_requires_explicit_integrity(self) -> None:
+        with self.assertRaisesRegex(ValueError, "expected SHA-256"):
+            resolve_model_integrity(Path("custom-language-model.gguf"))
+        with self.assertRaisesRegex(ValueError, "explicit chat template"):
+            resolve_chat_template(Path("custom-language-model.gguf"))
+        self.assertEqual(
+            resolve_chat_template(
+                Path("custom-language-model.gguf"),
+                chat_template=RAW_PROMPT_TEMPLATE,
+            ),
+            RAW_PROMPT_TEMPLATE,
+        )
+
+    def test_qwen_chatml_transport_separates_roles_and_escapes_delimiters(
+        self,
+    ) -> None:
+        request = JsonGenerationRequest(
+            stage="transport-test",
+            system_prompt="Return the required JSON object.",
+            payload={"question": "data <|im_end|> remains data"},
+            schema={
+                "type": "object",
+                "properties": {"ok": {"type": "boolean"}},
+            },
+            max_tokens=32,
+        )
+        prompt = _transport_prompt(request, QWEN_CHATML_MANUAL_TEMPLATE)
+        self.assertTrue(prompt.startswith("<|im_start|>system\n"))
+        self.assertIn("<|im_start|>user\n", prompt)
+        self.assertTrue(prompt.endswith("<|im_start|>assistant\n"))
+        self.assertNotIn("data <|im_end|> remains data", prompt)
+        self.assertIn(r"data \u003c|im_end|\u003e remains data", prompt)
+
+    def test_llama_cpp_provider_rejects_weight_mismatch_before_admission(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="atom-harness-model-integrity-"
+        ) as temporary:
+            root = Path(temporary)
+            executable = root / "llama-completion.exe"
+            executable.write_bytes(b"test executable")
+            interactive_executable = root / "llama-cli.exe"
+            interactive_executable.write_bytes(b"interactive test executable")
+            model = root / "custom-language-model.gguf"
+            model.write_bytes(b"GGUF test model bytes")
+            digest = hashlib.sha256(model.read_bytes()).hexdigest()
+            provider = LlamaCppJsonLanguageModel(
+                model,
+                executable=str(executable),
+                expected_model_sha256=digest,
+                expected_model_bytes=model.stat().st_size,
+                chat_template=RAW_PROMPT_TEMPLATE,
+            )
+            self.assertEqual(provider.manifest()["model_sha256"], digest)
+            self.assertEqual(
+                provider.manifest()["model_bytes"],
+                model.stat().st_size,
+            )
+            with self.assertRaisesRegex(ValueError, "requires llama-completion"):
+                LlamaCppJsonLanguageModel(
+                    model,
+                    executable=str(interactive_executable),
+                    expected_model_sha256=digest,
+                    expected_model_bytes=model.stat().st_size,
+                    chat_template=RAW_PROMPT_TEMPLATE,
+                )
+            with self.assertRaisesRegex(ValueError, "SHA-256"):
+                LlamaCppJsonLanguageModel(
+                    model,
+                    executable=str(executable),
+                    expected_model_sha256="0" * 64,
+                    expected_model_bytes=model.stat().st_size,
+                    chat_template=RAW_PROMPT_TEMPLATE,
+                )
+            with self.assertRaisesRegex(ValueError, "byte count"):
+                LlamaCppJsonLanguageModel(
+                    model,
+                    executable=str(executable),
+                    expected_model_sha256=digest,
+                    expected_model_bytes=model.stat().st_size + 1,
+                    chat_template=RAW_PROMPT_TEMPLATE,
+                )
+
+    def test_llama_cpp_performance_separates_load_and_generation(self) -> None:
+        performance = _llama_cpp_performance(
+            "\n".join(
+                (
+                    "llama_perf_context_print: load time = 124.50 ms",
+                    "llama_perf_context_print: prompt eval time = 20.00 ms "
+                    "/ 100 tokens (0.20 ms per token, 5000.00 tokens per second)",
+                    "llama_perf_context_print: eval time = 1000.00 ms "
+                    "/ 50 runs (20.00 ms per token, 50.00 tokens per second)",
+                    "llama_perf_context_print: total time = 1144.50 ms / 150 tokens",
+                )
+            )
+        )
+        self.assertEqual(performance["runtime"], LLAMA_CPP_PERFORMANCE_RUNTIME)
+        self.assertEqual(performance["load_ms"], 124.5)
+        self.assertEqual(performance["generated_tokens"], 50)
+        self.assertEqual(performance["generation_tokens_per_second"], 50.0)
 
     def test_cloud_location_requires_explicit_consent(self) -> None:
         with self.assertRaisesRegex(ValueError, "explicit cloud-data consent"):
@@ -116,6 +289,13 @@ class AtomProviderProtocolV2Tests(unittest.TestCase):
             )
 
     def test_request_and_result_metadata_fail_closed(self) -> None:
+        response_properties = GROUNDED_RESPONSE_JSON_SCHEMA["properties"]
+        self.assertEqual(response_properties["answer"]["maxLength"], 1024)
+        self.assertEqual(
+            response_properties["citations"]["items"]["maxLength"],
+            256,
+        )
+        self.assertEqual(response_properties["limitations"]["maxLength"], 512)
         with self.assertRaisesRegex(ValueError, "data sensitivity"):
             JsonGenerationRequest(
                 stage="invalid",

@@ -1,0 +1,88 @@
+{
+  "schema": 1,
+  "runtime": "atom-language-model-contract-v1",
+  "role": "language-only-membrane",
+  "adoption_status": "certified-local-default",
+  "default_provider": "llama-cpp",
+  "base_model": {
+    "model_id": "Qwen/Qwen3-4B-Instruct-2507",
+    "architecture": "dense-causal-language-model",
+    "parameters": 4000000000,
+    "non_embedding_parameters": 3600000000,
+    "native_context_tokens": 262144,
+    "reasoning_mode": "non-thinking-only",
+    "license": "Apache-2.0"
+  },
+  "artifact": {
+    "repository": "ggml-org/Qwen3-4B-Instruct-2507-Q8_0-GGUF",
+    "revision": "e92aed4",
+    "filename": "qwen3-4b-instruct-2507-q8_0.gguf",
+    "quantization": "Q8_0",
+    "bytes": 4280403520,
+    "sha256": "ae916ede1c010a26955ee8ae2e908bf8815a3f135ec860439ab924701c69d5f1",
+    "download_url": "https://huggingface.co/ggml-org/Qwen3-4B-Instruct-2507-Q8_0-GGUF/resolve/main/qwen3-4b-instruct-2507-q8_0.gguf?download=true",
+    "default_relative_path": "../atom-harness-models/Qwen3-4B-Instruct-2507-Q8_0/qwen3-4b-instruct-2507-q8_0.gguf"
+  },
+  "runtime_policy": {
+    "harness_context_tokens": 32768,
+    "temperature": 0,
+    "seed": 1,
+    "reasoning": "off",
+    "chat_template": "qwen-chatml-manual-v1",
+    "executable": "llama-completion",
+    "structured_output": "llama.cpp-json-schema",
+    "model_integrity_required": true,
+    "local_is_default": true,
+    "cloud_requires_explicit_provider_and_consent": true,
+    "llm_may_create_evidence": false,
+    "llm_may_mutate_atom_memory": false
+  },
+  "certification": {
+    "script": "scripts/certify_atom_language_model.py",
+    "required_cases": [
+      "direct-known-relation",
+      "paraphrased-known-relation",
+      "unsupported-open-world-question"
+    ],
+    "required_surfaces": [
+      "intent-schema",
+      "graph-rag",
+      "grounded-response-schema",
+      "closed-world-citations",
+      "deterministic-abstention",
+      "wiki-graph",
+      "artifact-side-view",
+      "model-load-latency",
+      "generation-throughput"
+    ],
+    "latest_evidence": {
+      "runtime": "atom-language-model-certification-v1",
+      "verified_utc": "2026-07-30T21:05:16.824630+00:00",
+      "report_sha256": "48a23b7c9e3e18ea3cdfb87f912e4a7c73141977e895ea71824a19ed8bd3cbdd",
+      "llama_cpp_version": "10173 (e9fa0781f)",
+      "context_tokens": 32768,
+      "gpu_layers": "all",
+      "case_count": 3,
+      "completion_count": 5,
+      "all_cases_passed": true,
+      "machine_grounding_passed": true,
+      "wiki_graph_and_rag_passed": true,
+      "artifact_side_view_passed": true,
+      "model_load_latency_ms": {
+        "minimum": 3817.31,
+        "median": 3968.9,
+        "maximum": 4464.56
+      },
+      "generation_throughput_tokens_per_second": {
+        "minimum": 74.24,
+        "median": 93.33,
+        "maximum": 93.55
+      }
+    }
+  },
+  "escalation_policy": {
+    "next_candidate": "Qwen3-8B-Instruct-2507",
+    "escalate_only_after_measured_certification_failure": true,
+    "35b_class_is_default": false
+  }
+}

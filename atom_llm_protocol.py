@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import threading
+from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Mapping, Protocol, Sequence
@@ -21,6 +22,15 @@ ATOM_LANGUAGE_INTENT_RUNTIME = "atom-language-intent-v2"
 ATOM_GROUNDED_RESPONSE_RUNTIME = "atom-grounded-response-v2"
 ATOM_LANGUAGE_MODEL_PROTOCOL = "atom-json-language-model-v2"
 ATOM_ABSTENTION = "I do not have enough Atom evidence to answer that."
+GROUNDING_FIELDS = (
+    "source_experience_id",
+    "kind",
+    "status",
+    "domain",
+    "cause",
+    "effect",
+    "direction",
+)
 
 QUERY_ROLES = frozenset(
     {
@@ -93,6 +103,7 @@ GROUNDED_RESPONSE_JSON_SCHEMA: dict[str, Any] = {
         "answer",
         "citations",
         "limitations",
+        "grounding",
     ],
     "properties": {
         "schema": {"type": "integer", "enum": [1]},
@@ -104,7 +115,7 @@ GROUNDED_RESPONSE_JSON_SCHEMA: dict[str, Any] = {
         "answer": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 4096,
+            "maxLength": 1024,
         },
         "citations": {
             "type": "array",
@@ -112,12 +123,25 @@ GROUNDED_RESPONSE_JSON_SCHEMA: dict[str, Any] = {
             "items": {
                 "type": "string",
                 "minLength": 1,
-                "maxLength": 512,
+                "maxLength": 256,
             },
         },
         "limitations": {
             "type": "string",
-            "maxLength": 1024,
+            "maxLength": 512,
+        },
+        "grounding": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": list(GROUNDING_FIELDS),
+            "properties": {
+                field: {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256,
+                }
+                for field in GROUNDING_FIELDS
+            },
         },
     },
 }
@@ -388,6 +412,7 @@ class JsonGenerationResult:
     elapsed_ms: int
     raw_sha256: str
     route: Mapping[str, Any] = field(default_factory=dict)
+    performance: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -421,6 +446,11 @@ class JsonGenerationResult:
             self,
             "route",
             _json_mapping(self.route, "language result route"),
+        )
+        object.__setattr__(
+            self,
+            "performance",
+            _json_mapping(self.performance, "language result performance"),
         )
 
 
@@ -614,6 +644,7 @@ def validate_grounded_response(
         "answer",
         "citations",
         "limitations",
+        "grounding",
     }
     if not isinstance(payload, Mapping) or set(payload) != expected:
         raise LanguageBoundaryError("grounded response fields are invalid")
@@ -626,19 +657,19 @@ def validate_grounded_response(
     answer = _strict_text(
         "grounded answer",
         payload["answer"],
-        maximum=4096,
+        maximum=1024,
     )
     limitations = _strict_text(
         "grounded limitations",
         payload["limitations"],
-        maximum=1024,
+        maximum=512,
         allow_empty=True,
     )
     raw_citations = payload["citations"]
     if not isinstance(raw_citations, list) or len(raw_citations) > 12:
         raise LanguageBoundaryError("grounded citations are invalid")
     citations = [
-        _strict_text("grounded citation", item, maximum=512) for item in raw_citations
+        _strict_text("grounded citation", item, maximum=256) for item in raw_citations
     ]
     if len(citations) != len(set(citations)):
         raise LanguageBoundaryError("grounded citations are duplicated")
@@ -654,6 +685,7 @@ def validate_grounded_response(
     packet_answerable = evidence_packet.get("answerable") is True
     packet_insufficient = evidence_packet.get("insufficient_evidence") is True
     claims_answerable = payload["answerable"] is True
+    normalized_grounding: dict[str, str] | None = None
 
     if packet_insufficient or not packet_answerable:
         if claims_answerable or citations:
@@ -669,9 +701,47 @@ def validate_grounded_response(
                 "grounded response cites evidence outside the packet: "
                 + ", ".join(sorted(unknown))
             )
+        primary_claim = evidence_packet.get("primary_claim")
+        grounding = payload["grounding"]
+        if (
+            not isinstance(primary_claim, Mapping)
+            or set(primary_claim) != set(GROUNDING_FIELDS)
+            or not isinstance(grounding, Mapping)
+            or set(grounding) != set(GROUNDING_FIELDS)
+        ):
+            raise LanguageBoundaryError("grounded primary claim is invalid")
+        normalized_grounding = {
+            field: _strict_text(
+                f"grounded claim {field}",
+                grounding[field],
+                maximum=256,
+            )
+            for field in GROUNDING_FIELDS
+        }
+        expected_grounding = {
+            field: _strict_text(
+                f"evidence claim {field}",
+                primary_claim[field],
+                maximum=256,
+            )
+            for field in GROUNDING_FIELDS
+        }
+        if normalized_grounding != expected_grounding:
+            raise LanguageBoundaryError(
+                "grounded response does not match Atom's primary claim"
+            )
+        if expected_grounding["source_experience_id"] not in citations:
+            raise LanguageBoundaryError(
+                "grounded response omits its primary Atom citation"
+            )
+        folded_answer = answer.casefold()
+        for field in ("domain", "cause", "effect", "direction"):
+            if expected_grounding[field].casefold() not in folded_answer:
+                raise LanguageBoundaryError(
+                    f"grounded answer omits primary claim {field}"
+                )
     elif citations:
         raise LanguageBoundaryError("abstaining response must not carry citations")
-
     return {
         "schema": 1,
         "runtime": ATOM_GROUNDED_RESPONSE_RUNTIME,
@@ -679,6 +749,7 @@ def validate_grounded_response(
         "answer": answer,
         "citations": citations,
         "limitations": limitations,
+        "grounding": normalized_grounding,
     }
 
 
@@ -697,4 +768,27 @@ def deterministic_abstention(reason: str) -> dict[str, Any]:
         "answer": ATOM_ABSTENTION,
         "citations": [],
         "limitations": limitation,
+        "grounding": None,
     }
+
+
+def grounded_response_schema(
+    evidence_packet: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Bind structured generation to Atom's selected primary claim."""
+
+    primary_claim = evidence_packet.get("primary_claim")
+    if not isinstance(primary_claim, Mapping) or set(primary_claim) != set(
+        GROUNDING_FIELDS
+    ):
+        raise LanguageBoundaryError("evidence packet primary claim is invalid")
+    schema = deepcopy(GROUNDED_RESPONSE_JSON_SCHEMA)
+    properties = schema["properties"]["grounding"]["properties"]
+    for claim_field in GROUNDING_FIELDS:
+        value = _strict_text(
+            f"evidence claim {claim_field}",
+            primary_claim[claim_field],
+            maximum=256,
+        )
+        properties[claim_field]["enum"] = [value]
+    return schema
