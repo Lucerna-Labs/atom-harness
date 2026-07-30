@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import os
+import signal
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
@@ -33,31 +34,58 @@ from atom_harness_side_view import (
 from atom_llm_provider import (
     LlamaCppJsonLanguageModel,
     OpenRouterJsonLanguageModel,
+    UnavailableJsonLanguageModel,
 )
-from atom_llm_protocol import JsonLanguageModel
+from atom_llm_protocol import (
+    ATOM_ABSTENTION,
+    ATOM_LANGUAGE_MODEL_PROTOCOL,
+    CancellationToken,
+    JsonLanguageModel,
+    ProviderCancelledError,
+    ProviderLocation,
+)
+from atom_provider_fabric import (
+    ATOM_PROVIDER_FABRIC_RUNTIME,
+    ATOM_PROVIDER_ROUTE_RUNTIME,
+    ProviderFabric,
+    ProviderFabricPolicy,
+)
+from atom_run_transaction import (
+    ATOM_RUN_TRANSACTION_RUNTIME,
+    RunTransaction,
+    RunTransactionError,
+    recover_transactions,
+    verify_committed_run,
+)
 
 
-ATOM_HARNESS_EXPERIMENT_RUNTIME = "atom-language-harness-experiment-v1"
-ATOM_HARNESS_WORKFLOW_RUNTIME = "atom-language-harness-workflow-v1"
-
-
-def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
-    Path(path).write_text(
-        json.dumps(
-            payload,
-            indent=2,
-            sort_keys=True,
-            ensure_ascii=False,
-            allow_nan=False,
-        )
-        + "\n",
-        encoding="utf-8",
-        newline="\n",
-    )
+ATOM_HARNESS_EXPERIMENT_RUNTIME = "atom-language-harness-experiment-v2"
+ATOM_HARNESS_WORKFLOW_RUNTIME = "atom-language-harness-workflow-v2"
 
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def _provider_state_hashes_are_valid(payload: Mapping[str, Any]) -> bool:
+    identity_core = {
+        "schema": payload["schema"],
+        "runtime": payload.get("runtime", ATOM_PROVIDER_FABRIC_RUNTIME),
+        "protocol": payload["protocol"],
+        "ordered": payload["ordered"],
+        "policy": payload["policy"],
+        "providers": [
+            {key: value for key, value in provider.items() if key != "circuit"}
+            for provider in payload["providers"]
+        ],
+    }
+    state_core = {
+        **identity_core,
+        "providers": payload["providers"],
+    }
+    return payload["preload_hash"] == canonical_hash(identity_core) and payload[
+        "state_hash"
+    ] == canonical_hash(state_core)
 
 
 def _checks(answer: Mapping[str, Any]) -> dict[str, bool]:
@@ -66,9 +94,17 @@ def _checks(answer: Mapping[str, Any]) -> dict[str, bool]:
     trace = answer["spiderweb_trace"]
     allowed = {item["experience_id"] for item in packet["passages"]}
     layer_names = [item["layer"] for item in trace["layers"]]
+    provider_routes = answer["provider_routes"]
+    provider_policy = answer["provider_preload"]["policy"]
+    allowed_locations = set(provider_policy["allowed_locations"])
+    completion_routes = {
+        item["stage"]: item for item in provider_routes if item["completed"]
+    }
     return {
         "language_model_is_replaceable_json_membrane": (
-            answer["language_model"]["protocol"] == "atom-json-language-model-v1"
+            answer["language_model"]["protocol"] == ATOM_LANGUAGE_MODEL_PROTOCOL
+            and answer["language_model"]["provider_runtime"]
+            == ATOM_PROVIDER_FABRIC_RUNTIME
         ),
         "wiki_graph_and_rag_are_runtime_wired": (
             answer["knowledge"]["wiki_runtime"] == ATOM_HARNESS_WIKI_RUNTIME
@@ -85,6 +121,10 @@ def _checks(answer: Mapping[str, Any]) -> dict[str, bool]:
         "response_citations_are_packet_local": (
             set(response["citations"]) <= allowed
             and (not response["answerable"] or bool(response["citations"]))
+        ),
+        "graph_snapshot_is_bound_end_to_end": (
+            packet["graph_knowledge_hash"]
+            == answer["knowledge"]["graph_knowledge_hash"]
         ),
         "insufficient_evidence_forces_abstention": (
             not packet["insufficient_evidence"]
@@ -103,10 +143,75 @@ def _checks(answer: Mapping[str, Any]) -> dict[str, bool]:
             and bool(trace["off_ramps"])
             and bool(trace["vibrations"])
         ),
+        "provider_routes_are_hash_bound": (
+            bool(provider_routes)
+            and all(
+                route["runtime"] == ATOM_PROVIDER_ROUTE_RUNTIME
+                and route["data_sensitivity"] == "private-atom-evidence"
+                and route["route_hash"]
+                == canonical_hash(
+                    {key: route[key] for key in sorted(route) if key != "route_hash"}
+                )
+                for route in provider_routes
+            )
+        ),
+        "provider_selection_obeys_location_policy": all(
+            route["selected_provider"] is None
+            or (
+                route["selected_provider"]["location"] in allowed_locations
+                and (
+                    route["selected_provider"]["location"] != "cloud"
+                    or provider_policy["allow_cloud_data"] is True
+                )
+            )
+            for route in provider_routes
+        ),
+        "provider_manifests_are_declared_secret_free": (
+            answer["language_model"]["secrets_persisted"] is False
+            and all(
+                row["manifest"]["secrets_persisted"] is False
+                for row in answer["provider_preload"]["providers"]
+            )
+        ),
+        "completion_identity_matches_selected_provider": (
+            len(answer["completions"]) == len(completion_routes)
+            and all(
+                completion["stage"] in completion_routes
+                and completion["route_hash"]
+                == completion_routes[completion["stage"]]["route_hash"]
+                and completion["provider"]
+                == completion_routes[completion["stage"]]["selected_provider"][
+                    "provider_id"
+                ]
+                and completion["model"]
+                == completion_routes[completion["stage"]]["selected_provider"]["model"]
+                for completion in answer["completions"]
+            )
+        ),
+        "provider_failure_is_fail_closed": (
+            not answer["degraded"]
+            or (
+                answer["response"]["answerable"] is False
+                and answer["response"]["answer"] == ATOM_ABSTENTION
+                and answer["response"]["citations"] == []
+            )
+        ),
+        "privacy_policy_is_preloaded": (
+            answer["provider_preload"]["policy"]["allow_cloud_data"]
+            is answer["language_model"]["policy"]["allow_cloud_data"]
+            and answer["provider_preload"]["preload_hash"]
+            == answer["language_model"]["preload_hash"]
+            and _provider_state_hashes_are_valid(answer["provider_preload"])
+            and _provider_state_hashes_are_valid(answer["language_model"])
+        ),
         "wiki_vocabulary_is_preloaded": (
             trace["preload"]["performed_before_intent"] is True
             and trace["preload"]["vocabulary_hash"]
             == answer["knowledge"]["vocabulary_hash"]
+        ),
+        "spiderweb_trace_binds_real_provider_routes": (
+            trace["provider_routes"] == provider_routes
+            and trace["timings"] == answer["timings"]
         ),
     }
 
@@ -119,116 +224,226 @@ def run_atom_language_harness(
     forge_path: Path = DEFAULT_FORGE,
     evidence_path: Path = DEFAULT_EVIDENCE,
     model_path: Path = DEFAULT_MODEL,
+    cancellation: CancellationToken | None = None,
 ) -> dict[str, Any]:
-    """Bootstrap Atom knowledge, answer once, and render the bound side view."""
+    """Publish one complete, verified harness run as an atomic bundle."""
 
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    artifact_path = output_dir / "atom_harness_artifact.json"
-    if artifact_path.exists():
-        raise FileExistsError("Atom harness refuses to overwrite an existing artifact")
-    knowledge = bootstrap_harness_knowledge(
-        output_dir / "runtime",
-        forge_path=Path(forge_path),
-        evidence_path=Path(evidence_path),
-        model_path=Path(model_path),
-    )
-    answer = AtomLanguageHarness(
-        knowledge=knowledge,
-        language_model=language_model,
-    ).answer(question)
-    checks = _checks(answer)
-    artifact_core: dict[str, Any] = {
-        **answer,
-        "experiment_runtime": ATOM_HARNESS_EXPERIMENT_RUNTIME,
-        "passed": all(checks.values()),
-        "checks": checks,
-        "side_view_contract": {
-            "runtime": ATOM_HARNESS_SIDE_VIEW_RUNTIME,
-            "artifact_binding_marker": "render_atom_harness_artifact",
-            "placement": "side",
-            "user_visible": True,
-            "bound_to_real_output": True,
-        },
-    }
-    artifact = {
-        **artifact_core,
-        "artifact_hash": canonical_hash(artifact_core),
-    }
-    workflow_core = {
-        "schema": 1,
-        "runtime": ATOM_HARNESS_WORKFLOW_RUNTIME,
-        "harness_runtime": ATOM_LANGUAGE_HARNESS_RUNTIME,
-        "artifact_hash": artifact["artifact_hash"],
-        "evidence_packet_hash": artifact["evidence_packet"]["packet_hash"],
-        "knowledge_hash": artifact["knowledge"]["knowledge_hash"],
-        "graph_knowledge_hash": knowledge.graph_manifest["knowledge_hash"],
-        "store_sha256": artifact["memory"]["store_sha256_after"],
-        "binary_sha256": _sha256(RELEASE_BINARY),
-        "model_manifest_hash": canonical_hash(artifact["language_model"]),
-        "wiki_runtime": ATOM_HARNESS_WIKI_RUNTIME,
-        "rag_runtime": ATOM_HARNESS_RAG_RUNTIME,
-        "side_view_runtime": ATOM_HARNESS_SIDE_VIEW_RUNTIME,
-    }
-    workflow = {
-        **workflow_core,
-        "workflow_hash": canonical_hash(workflow_core),
-    }
-    side_view = render_atom_harness_artifact(
-        artifact,
-        workflow,
-        knowledge.graph_manifest,
-    )
+    final_dir = Path(output_dir).resolve()
+    recovery_events = recover_transactions(final_dir.parent)
+    token = cancellation or CancellationToken()
+    with RunTransaction(final_dir) as transaction:
+        token.raise_if_cancelled()
+        knowledge = bootstrap_harness_knowledge(
+            transaction.staging_dir / "runtime",
+            forge_path=Path(forge_path),
+            evidence_path=Path(evidence_path),
+            model_path=Path(model_path),
+        )
+        answer = AtomLanguageHarness(
+            knowledge=knowledge,
+            language_model=language_model,
+        ).answer(question, cancellation=token)
+        checks = _checks(answer)
+        artifact_core: dict[str, Any] = {
+            **answer,
+            "experiment_runtime": ATOM_HARNESS_EXPERIMENT_RUNTIME,
+            "passed": all(checks.values()),
+            "checks": checks,
+            "transaction": {
+                "runtime": ATOM_RUN_TRANSACTION_RUNTIME,
+                "transaction_id": transaction.transaction_id,
+                "atomic_publication": True,
+                "overwrite_allowed": False,
+                "recovery_event_count": len(recovery_events),
+                "recovery_actions": sorted(
+                    {
+                        str(item["action"])
+                        for item in recovery_events
+                        if "action" in item
+                    }
+                ),
+            },
+            "side_view_contract": {
+                "runtime": ATOM_HARNESS_SIDE_VIEW_RUNTIME,
+                "artifact_binding_marker": "render_atom_harness_artifact",
+                "placement": "side",
+                "user_visible": True,
+                "bound_to_real_output": True,
+            },
+        }
+        artifact = {
+            **artifact_core,
+            "artifact_hash": canonical_hash(artifact_core),
+        }
+        workflow_core = {
+            "schema": 1,
+            "runtime": ATOM_HARNESS_WORKFLOW_RUNTIME,
+            "harness_runtime": ATOM_LANGUAGE_HARNESS_RUNTIME,
+            "transaction_runtime": ATOM_RUN_TRANSACTION_RUNTIME,
+            "transaction_id": transaction.transaction_id,
+            "artifact_hash": artifact["artifact_hash"],
+            "evidence_packet_hash": artifact["evidence_packet"]["packet_hash"],
+            "provider_route_hashes": [
+                item["route_hash"] for item in artifact["provider_routes"]
+            ],
+            "knowledge_hash": artifact["knowledge"]["knowledge_hash"],
+            "graph_knowledge_hash": knowledge.graph_manifest["knowledge_hash"],
+            "store_sha256": artifact["memory"]["store_sha256_after"],
+            "binary_sha256": _sha256(RELEASE_BINARY),
+            "model_manifest_hash": canonical_hash(artifact["language_model"]),
+            "wiki_runtime": ATOM_HARNESS_WIKI_RUNTIME,
+            "rag_runtime": ATOM_HARNESS_RAG_RUNTIME,
+            "side_view_runtime": ATOM_HARNESS_SIDE_VIEW_RUNTIME,
+        }
+        workflow = {
+            **workflow_core,
+            "workflow_hash": canonical_hash(workflow_core),
+        }
+        side_view = render_atom_harness_artifact(
+            artifact,
+            workflow,
+            knowledge.graph_manifest,
+        )
 
-    _write_json(artifact_path, artifact)
-    _write_json(
-        output_dir / "atom_harness_workflow.json",
-        workflow,
-    )
-    _write_json(
-        output_dir / "atom_harness_knowledge.json",
-        knowledge.manifest(),
-    )
-    _write_json(
-        output_dir / "atom_harness_wiki_graph.json",
-        knowledge.graph_manifest,
-    )
-    _write_json(
-        output_dir / "atom_harness_evidence_packet.json",
-        artifact["evidence_packet"],
-    )
-    (output_dir / "atom_harness_side_view.html").write_text(
-        side_view,
-        encoding="utf-8",
-        newline="\n",
-    )
-    if not artifact["passed"]:
-        failed = [name for name, passed in checks.items() if not passed]
-        raise RuntimeError("Atom harness checks failed: " + ", ".join(failed))
+        transaction.write_json("atom_harness_artifact.json", artifact)
+        transaction.write_json("atom_harness_workflow.json", workflow)
+        transaction.write_json(
+            "atom_harness_knowledge.json",
+            knowledge.manifest(),
+        )
+        transaction.write_json(
+            "atom_harness_wiki_graph.json",
+            knowledge.graph_manifest,
+        )
+        transaction.write_json(
+            "atom_harness_evidence_packet.json",
+            artifact["evidence_packet"],
+        )
+        transaction.write_text("atom_harness_side_view.html", side_view)
+        if not artifact["passed"]:
+            failed = [name for name, passed in checks.items() if not passed]
+            raise RuntimeError("Atom harness checks failed: " + ", ".join(failed))
+        token.raise_if_cancelled()
+        transaction.seal(
+            required_files=(
+                "atom_harness_artifact.json",
+                "atom_harness_workflow.json",
+                "atom_harness_knowledge.json",
+                "atom_harness_wiki_graph.json",
+                "atom_harness_evidence_packet.json",
+                "atom_harness_side_view.html",
+                "runtime/atom_harness_knowledge.atomdb",
+            )
+        )
+        transaction.commit()
+    verify_committed_run(final_dir)
     return artifact
 
 
 def _default_output_dir() -> Path:
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-%f")
     return Path("atom_harness_outputs") / f"run-{stamp}"
+
+
+def _provider_chain(raw: str) -> tuple[str, ...]:
+    names = tuple(item.strip().lower() for item in str(raw).split(",") if item.strip())
+    if not names:
+        raise ValueError("provider chain is empty")
+    if len(names) != len(set(names)):
+        raise ValueError("provider chain contains duplicates")
+    unknown = sorted(set(names) - {"llama-cpp", "openrouter"})
+    if unknown:
+        raise ValueError("unknown providers: " + ", ".join(unknown))
+    return names
+
+
+def _build_provider_fabric(
+    arguments: argparse.Namespace,
+    parser: argparse.ArgumentParser,
+) -> ProviderFabric:
+    raw_chain = (
+        arguments.providers
+        or arguments.provider
+        or os.environ.get("ATOM_LLM_PROVIDERS")
+        or os.environ.get("ATOM_LLM_PROVIDER")
+        or (
+            "llama-cpp,openrouter" if arguments.model_path is not None else "openrouter"
+        )
+    )
+    try:
+        names = _provider_chain(raw_chain)
+    except ValueError as error:
+        parser.error(str(error))
+    providers: list[JsonLanguageModel] = []
+    for name in names:
+        if name == "openrouter":
+            providers.append(
+                OpenRouterJsonLanguageModel(
+                    arguments.llm_model,
+                    timeout_seconds=arguments.provider_timeout_seconds,
+                )
+            )
+        elif arguments.model_path is None:
+            providers.append(
+                UnavailableJsonLanguageModel(
+                    "llama-cpp",
+                    model="unconfigured-gguf",
+                    location=ProviderLocation.LOCAL,
+                    reason="--model-path or ATOM_LLM_MODEL_PATH is absent",
+                )
+            )
+        else:
+            try:
+                providers.append(
+                    LlamaCppJsonLanguageModel(
+                        arguments.model_path,
+                        executable=arguments.llama_cli,
+                        context_length=arguments.context_length,
+                        gpu_layers=arguments.gpu_layers,
+                        timeout_seconds=arguments.provider_timeout_seconds,
+                    )
+                )
+            except ValueError as error:
+                providers.append(
+                    UnavailableJsonLanguageModel(
+                        "llama-cpp",
+                        model=Path(arguments.model_path).name,
+                        location=ProviderLocation.LOCAL,
+                        reason=(
+                            "local model configuration failed validation "
+                            f"({type(error).__name__})"
+                        ),
+                    )
+                )
+    locations = {ProviderLocation.LOCAL, ProviderLocation.PRIVATE}
+    if arguments.allow_cloud:
+        locations.add(ProviderLocation.CLOUD)
+    return ProviderFabric(
+        providers,
+        policy=ProviderFabricPolicy(
+            allowed_locations=frozenset(locations),
+            allow_cloud_data=arguments.allow_cloud,
+            max_retries_per_provider=arguments.max_provider_retries,
+            retry_backoff_seconds=arguments.retry_backoff_seconds,
+            circuit_failure_threshold=arguments.circuit_failure_threshold,
+            circuit_cooldown_seconds=arguments.circuit_cooldown_seconds,
+            max_concurrency=arguments.max_concurrency,
+            acquire_timeout_seconds=arguments.acquire_timeout_seconds,
+        ),
+    )
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Run Atom-owned causal evidence through a local LLM language membrane."
+            "Run Atom-owned causal evidence through a policy-routed "
+            "LLM language membrane."
         )
     )
     parser.add_argument("--question", required=True)
     parser.add_argument("--output-dir", type=Path)
-    parser.add_argument(
-        "--provider",
-        choices=("llama-cpp", "openrouter"),
-        default=os.environ.get(
-            "ATOM_LLM_PROVIDER",
-            ("openrouter" if os.environ.get("OPENROUTER_API_KEY") else "llama-cpp"),
-        ),
-    )
+    parser.add_argument("--providers")
+    parser.add_argument("--provider", choices=("llama-cpp", "openrouter"))
     parser.add_argument(
         "--model-path",
         type=Path,
@@ -261,27 +476,48 @@ def main() -> None:
         default=DEFAULT_EVIDENCE,
     )
     parser.add_argument("--model", type=Path, default=DEFAULT_MODEL)
-    arguments = parser.parse_args()
-    if arguments.provider == "llama-cpp" and arguments.model_path is None:
-        parser.error("--model-path or ATOM_LLM_MODEL_PATH is required")
-    output_dir = arguments.output_dir or _default_output_dir()
-    if arguments.provider == "openrouter":
-        provider = OpenRouterJsonLanguageModel(arguments.llm_model)
-    else:
-        provider = LlamaCppJsonLanguageModel(
-            arguments.model_path,
-            executable=arguments.llama_cli,
-            context_length=arguments.context_length,
-            gpu_layers=arguments.gpu_layers,
-        )
-    artifact = run_atom_language_harness(
-        output_dir,
-        question=arguments.question,
-        language_model=provider,
-        forge_path=arguments.forge,
-        evidence_path=arguments.evidence,
-        model_path=arguments.model,
+    parser.add_argument(
+        "--allow-cloud",
+        action="store_true",
+        default=os.environ.get("ATOM_ALLOW_CLOUD_DATA") == "1",
+        help="Explicitly permit private Atom request data to reach cloud providers.",
     )
+    parser.add_argument("--max-provider-retries", type=int, default=1)
+    parser.add_argument("--retry-backoff-seconds", type=float, default=0.25)
+    parser.add_argument("--circuit-failure-threshold", type=int, default=1)
+    parser.add_argument("--circuit-cooldown-seconds", type=float, default=60.0)
+    parser.add_argument("--max-concurrency", type=int, default=2)
+    parser.add_argument("--acquire-timeout-seconds", type=float, default=30.0)
+    parser.add_argument("--provider-timeout-seconds", type=int, default=240)
+    arguments = parser.parse_args()
+    output_dir = arguments.output_dir or _default_output_dir()
+    try:
+        fabric = _build_provider_fabric(arguments, parser)
+    except ValueError as error:
+        parser.error(str(error))
+    cancellation = CancellationToken()
+
+    def cancel_request(signum, frame) -> None:
+        del frame
+        cancellation.cancel(f"received process signal {signum}")
+
+    signal.signal(signal.SIGINT, cancel_request)
+    if hasattr(signal, "SIGTERM"):
+        signal.signal(signal.SIGTERM, cancel_request)
+    try:
+        artifact = run_atom_language_harness(
+            output_dir,
+            question=arguments.question,
+            language_model=fabric,
+            forge_path=arguments.forge,
+            evidence_path=arguments.evidence,
+            model_path=arguments.model,
+            cancellation=cancellation,
+        )
+    except ProviderCancelledError as error:
+        parser.exit(130, f"Atom harness cancelled: {error}\n")
+    except (FileExistsError, RunTransactionError) as error:
+        parser.exit(2, f"Atom harness transaction refused: {error}\n")
     print(
         json.dumps(
             {
@@ -289,6 +525,17 @@ def main() -> None:
                 "answerable": artifact["response"]["answerable"],
                 "answer": artifact["response"]["answer"],
                 "citations": artifact["response"]["citations"],
+                "outcome": artifact["outcome"],
+                "degraded": artifact["degraded"],
+                "provider_routes": [
+                    {
+                        "stage": item["stage"],
+                        "disposition": item["disposition"],
+                        "selected_provider": item["selected_provider"],
+                    }
+                    for item in artifact["provider_routes"]
+                ],
+                "transaction_id": artifact["transaction"]["transaction_id"],
                 "output_dir": str(output_dir.resolve()),
                 "side_view": str(
                     (output_dir / "atom_harness_side_view.html").resolve()

@@ -1,5 +1,96 @@
 # Atom Harness Developer Notes
 
+## V2 engineering record
+
+V2 keeps the V1 product identity and hardens the operational shell around it.
+Atom still decides meaning, retrieval, citations, and abstention. No provider
+can write Atom DB, invent evidence, weaken a schema, or override
+`insufficient_evidence`.
+
+The V2 changes are:
+
+- `atom_llm_protocol.py` defines provider locations, capability manifests,
+  cancellation, data sensitivity, typed provider failures, and route-bearing
+  results.
+- `atom_provider_fabric.py` preloads capabilities before question data moves,
+  admits only policy-compatible providers, routes an ordered chain, retries
+  only typed retryable failures with bounded exponential backoff, opens
+  circuits, bounds concurrent calls, and emits Spiderweb vibrations for retry,
+  fallback, privacy blocking, circuits, and backpressure.
+- `atom_llm_provider.py` enforces exactly one JSON object, rejects duplicate
+  keys and surrounding prose, maps backend failures to typed errors, and never
+  persists API keys, raw backend errors, prompts, model paths, or temporary
+  files in provider manifests.
+- `atom_run_transaction.py` takes an exact-target lock, stages the whole
+  bundle, atomically writes each file, seals a SHA-256 file manifest, publishes
+  with one directory rename, refuses overwrite, and recovers or quarantines
+  dead-process state.
+- `atom_harness_runtime.py` treats the provider fabric as an executable part of
+  the Spiderweb. Provider outcomes alter routing and vibrations; they are not
+  trace decoration. Exhaustion degrades to a fixed Atom abstention while
+  cancellation aborts the transaction.
+- `atom_harness_side_view.py` renders the real artifact beside evidence and
+  exposes route attempts, selected provider, privacy policy, failure classes,
+  timings, degraded status, and transaction identity.
+- `scripts/verify_atom_harness_v2.py` enforces runtime declarations, wiki/RAG
+  and side-view wiring, provider and transaction controls, Git artifact safety,
+  credential-shaped text checks, the 100 MiB Git file ceiling, and the 4,000
+  Rust source-line ceiling for every Cargo package.
+- `.github/workflows/atom-harness-v2-ci.yml` runs the policy, Python format,
+  lint, compile, focused integration gates, the full Python regression suite,
+  PowerShell parsing, Rust format, Clippy with warnings denied, Rust tests, and
+  a privacy-blocked launcher run on Windows. The historical Svelte validator is
+  restored from its lockfile first. Official GitHub actions are pinned to exact
+  commit identities.
+
+The active runtime name is `language-harness-v2`. The V1 integration suite is
+retained as a regression boundary. The V2 suite adds adversarial provider,
+privacy, concurrency, cancellation, corruption, locking, and crash-recovery
+coverage.
+
+### Provider route state
+
+Every provider is classified as `local`, `private`, or `cloud`. The policy
+defaults to local and private locations. Merely having
+`OPENROUTER_API_KEY` in the environment does not authorize egress.
+`-AllowCloud` or `ATOM_ALLOW_CLOUD_DATA=1` is required before a cloud provider
+can receive a question or evidence packet.
+
+A provider attempt can complete, fail, be blocked, be skipped by an open
+circuit, or be cancelled. Only typed transport, capacity, and timeout failures
+are retryable. Retry delay grows exponentially from the configured bounded
+base and remains cancellation-aware. Schema and boundary failures can move to
+the next admitted provider, but never through a relaxed contract. All
+persisted errors are represented by type, failure class, retryability, elapsed
+time, and a SHA-256 identity. Raw backend text is not retained.
+
+The route hash covers every attempt and vibration. The workflow binds both
+intent and response route hashes to the final artifact. This makes fallback
+behavior auditable without treating the provider as semantic authority.
+
+### Run transaction state
+
+The transaction moves through `preparing`, `sealed`, and `committed` states.
+The public output directory does not exist until all required files, including
+the runtime Atom store and side view, have been written and validated. The
+committed transaction manifest binds each file path, byte count, and SHA-256
+hash. `verify_committed_run` detects deletion, insertion, truncation, and
+content tampering.
+
+An exact output target can have only one owner. Existing output directories are
+never overwritten. On startup, a dead-process committed stage is published
+only after full manifest verification. Incomplete, invalid, or corrupt stages
+are moved under `.atom-harness-v2/recovery` for inspection. Cancellation and
+runtime exceptions do not publish partial runs. Relative-path, symbolic-link,
+junction, and control-directory escape attempts fail closed.
+
+### Release evidence rule
+
+Verification claims are revision-specific. After the latest source or
+documentation edit, rerun every relevant check and the privacy-blocked launcher
+path. A prior cloud or local-model result is useful history, but it is not
+fresh V2 evidence and never authorizes a new cloud transfer.
+
 ## 1. Product identity
 
 Atom Harness is a bounded AI orchestration runtime around Atom's causal
@@ -15,7 +106,7 @@ harness returns a deterministic abstention. The retired generative-English
 distillation work remains available for audit, but it is not an active runtime
 or training path.
 
-The active runtime is declared as `language-harness` in
+The active runtime is declared as `language-harness-v2` in
 `ai-runtime-registry.json`. The machine-readable architecture contract is
 `atom-language-harness-architecture.json`.
 
@@ -71,6 +162,12 @@ Every runtime change must preserve these boundaries:
 - **Provider secrets are ephemeral.** Keys come from process environment and
   must never appear in provider manifests, artifacts, logs, prompts, or side
   views.
+- **Cloud is explicit.** Cloud providers are blocked before request data is
+  sent unless the current process has explicit cloud-data consent.
+- **Provider failure is typed.** Retry, fallback, circuits, cancellation, and
+  backpressure are policy-controlled and cannot weaken a schema.
+- **Publication is atomic.** A run becomes visible only after its full file
+  manifest passes integrity checks; existing outputs are never overwritten.
 - **Artifacts are hash-bound.** The artifact, packet, Spiderweb trace, graph,
   workflow, and rendered side view must all refer to the same run.
 - **The side view is a real runtime surface.** It renders the produced answer
@@ -78,9 +175,8 @@ Every runtime change must preserve these boundaries:
 - **The Spiderweb remains layered.** Do not flatten the runtime into a generic
   queue, actor system, or ordinary pub/sub pipeline.
 
-These constraints are enforced in code and in
-`tests/test_atom_language_harness_integration.py`. Documentation alone is not
-evidence that they still hold.
+These constraints are enforced in code and in both harness integration suites.
+Documentation alone is not evidence that they still hold.
 
 ## 4. Source map
 
@@ -91,6 +187,8 @@ evidence that they still hold.
 | `atom_harness_knowledge.py` | Wiki graph construction, vocabulary preload, graph-first RAG, bounded evidence packets |
 | `atom_llm_protocol.py` | Provider-neutral request/result protocol, strict intent and response schemas, boundary validation |
 | `atom_llm_provider.py` | OpenRouter and llama.cpp production adapters plus deterministic test adapter |
+| `atom_provider_fabric.py` | Capability admission, privacy, ordered fallback, typed retry, circuits, concurrency, cancellation, and vibrations |
+| `atom_run_transaction.py` | Exact-target locks, staged writes, manifests, atomic publication, integrity checks, and recovery |
 | `atom_harness_side_view.py` | Hash validation and two-column user-visible artifact/evidence rendering |
 | `atom_causal_experience.py` | Loading and interpreting the committed causal evidence corpus |
 | `atom_causal_memory.py` | Python bridge to the dependency-free Rust Atom memory binary |
@@ -98,9 +196,14 @@ evidence that they still hold.
 | `run-atom-harness.ps1` | Windows launcher with Python/NumPy discovery and provider selection |
 | `ai-runtime-knowledge.json` | Required runtime wiki and RAG declaration |
 | `ai-artifact-side-view.json` | Required user-visible side-view declaration |
+| `ai-provider-fabric.json` | Required provider admission and resilience declaration |
+| `ai-run-transaction.json` | Required atomic run-publication declaration |
 | `atom-language-harness-architecture.json` | Machine-readable identity, trust, provider, bus, and claim boundary |
 | `tests/test_atom_language_harness_integration.py` | Full harness contract and adversarial boundary tests |
+| `tests/test_atom_language_harness_v2_integration.py` | V2 resilience, privacy, concurrency, cancellation, transaction, wiki/RAG, and side-view integration |
+| `tests/test_atom_provider_protocol_v2.py` | Strict transport parsing, secret redaction, privacy admission, internal-error hashing, and transaction path safety |
 | `tests/test_atom_causal_live_integration.py` | Preserved causal learning and evidence-kernel contract |
+| `scripts/verify_atom_harness_v2.py` | Repository, declaration, secret, artifact, and crate-size release policy |
 
 Historical research modules remain in the repository because the harness is
 rooted in the causal Atom work. Their presence does not make each historical
@@ -165,10 +268,12 @@ I do not have enough Atom evidence to answer that.
 ### 5.6 Artifact and side-view binding
 
 After response validation, the runtime checks that the Atom store hash is
-unchanged. The experiment then writes the packet, graph, artifact, workflow,
-and HTML side view. Canonical hashes bind those files. The renderer validates
-the bindings before producing HTML, so stale or mixed-run inputs fail instead
-of creating a plausible-looking view.
+unchanged. The experiment writes the packet, graph, artifact, workflow, HTML
+side view, and runtime store inside a transaction stage. Canonical hashes bind
+the semantic files. The renderer validates those bindings before producing
+HTML. The transaction then seals byte counts and SHA-256 hashes for the entire
+bundle before one atomic publication. Stale, mixed-run, partial, or corrupt
+inputs fail instead of creating a plausible-looking public run.
 
 ## 6. Spiderweb Bus contract
 
@@ -203,17 +308,35 @@ When extending the flow:
 
 `JsonLanguageModel` is the only interface the runtime needs. A provider accepts
 a `JsonGenerationRequest` and returns a `JsonGenerationResult`. The result
-contains parsed JSON plus a non-secret completion manifest.
+contains parsed JSON plus a non-secret completion manifest. Production runtime
+code calls providers through `ProviderFabric`, not directly.
+
+Every provider must expose a capability manifest before request data is routed.
+The manifest declares provider identity, model identity, location, strict JSON
+support, context and output limits, cancellation support, cost tier, and
+whether the adapter is test-only. Admission estimates the complete request
+against both context and output limits before a provider call. Request,
+response, route, and manifest byte sizes are bounded. Admission is fail-closed.
 
 ### OpenRouter
 
 `OpenRouterJsonLanguageModel` reads `OPENROUTER_API_KEY` from the process
 environment, sends a schema-constrained chat completion, uses temperature zero,
-and requires provider parameter support. The default verified model is:
+and requires provider parameter support. It is classified as cloud and cannot
+receive Atom data without explicit cloud consent. The configured default model
+is:
 
 ```text
 mistralai/mistral-small-3.2-24b-instruct
 ```
+
+The standard-library OpenRouter adapter reports
+`supports_cancellation = false` because an in-flight synchronous HTTP request
+cannot be preempted reliably. The fabric checks cancellation before and after
+the call, and the adapter enforces a timeout and bounded response size. The
+local llama.cpp adapter can terminate its child process and reports true
+cancellation support. Do not claim that every admitted provider is preemptible;
+the aggregate capability and side view expose the real state.
 
 The key itself must never be copied into a config file. `.env.example` contains
 names and non-secret defaults only.
@@ -245,23 +368,28 @@ compatibility.
    supports it.
 3. Parse exactly one JSON object and reject duplicate keys.
 4. Keep credentials outside request payloads and manifests.
-5. Give the provider no Atom DB or generic tool access.
-6. Wire explicit provider selection in `atom_harness_experiment.py` and the
-   launcher.
-7. Add deterministic boundary tests and one real-provider smoke test.
-8. Update the architecture contract and these notes.
+5. Classify the provider location and report honest capability limits.
+6. Map transport, capacity, timeout, cancellation, and internal errors to typed
+   provider failures.
+7. Give the provider no Atom DB or generic tool access.
+8. Add it to the ordered provider-chain parser and explicit policy admission.
+9. Add deterministic boundary, fallback, privacy, and cancellation tests.
+10. Update the architecture contract and these notes.
 
 ## 8. Generated run artifacts
 
-Each run writes an ignored directory under `atom_harness_outputs/`:
+Each successful run atomically publishes an ignored directory under
+`atom_harness_outputs/`:
 
 | Artifact | Meaning |
 | --- | --- |
-| `atom_harness_artifact.json` | Validated question, intent, answer, citations, memory hashes, provider manifests, checks |
+| `atom_harness_artifact.json` | Validated question, intent, answer, citations, routes, timings, memory hashes, provider manifests, checks |
 | `atom_harness_evidence_packet.json` | Exact bounded evidence supplied to the rendering pass |
 | `atom_harness_wiki_graph.json` | Runtime wiki graph used by retrieval |
-| `atom_harness_workflow.json` | Cross-file hashes and source/store bindings |
-| `atom_harness_side_view.html` | User-visible answer beside graph and evidence details |
+| `atom_harness_workflow.json` | Cross-file, provider-route, transaction, and source/store bindings |
+| `atom_harness_transaction.json` | Committed state plus byte and SHA-256 manifest for every run file |
+| `atom_harness_side_view.html` | User-visible answer beside graph, evidence, route, privacy, timing, and transaction details |
+| `runtime/atom_harness_knowledge.atomdb` | Run-local Atom knowledge store, read-only during language execution |
 
 Do not commit these generated directories. A useful report should identify the
 output directory and verification results, not add runtime state to Git.
@@ -271,14 +399,22 @@ output directory and verification results, not add runtime state to Git.
 Prerequisites:
 
 - Windows PowerShell;
-- Python 3.11 or newer with NumPy;
-- a current Rust toolchain capable of edition 2024;
-- either an OpenRouter key or a compatible `llama-cli` plus GGUF.
+- Python 3.13 with the versions pinned by `requirements-dev.txt` for release
+  verification;
+- Rust 1.96.0 with Clippy and rustfmt, pinned by `rust-toolchain.toml`;
+- either an explicitly authorized OpenRouter process or a compatible
+  `llama-cli` plus GGUF.
 
 Install the Python runtime dependency:
 
 ```powershell
 python -m pip install -r requirements-harness.txt
+```
+
+For the exact CI and release-verification environment:
+
+```powershell
+py -3.13 -m pip install -r requirements-dev.txt
 ```
 
 Run with OpenRouter:
@@ -287,6 +423,7 @@ Run with OpenRouter:
 $env:OPENROUTER_API_KEY = '<secret from your secret manager>'
 .\run-atom-harness.ps1 `
   -Provider openrouter `
+  -AllowCloud `
   -Question 'In the language domain, what is the direction from trust to belief?'
 ```
 
@@ -299,8 +436,19 @@ Run with llama.cpp:
   -Question 'In the language domain, what is the direction from trust to belief?'
 ```
 
+Run an ordered local-to-cloud chain only when cloud transfer is intended:
+
+```powershell
+.\run-atom-harness.ps1 `
+  -ProviderChain 'llama-cpp,openrouter' `
+  -ModelPath 'C:\models\compatible-model.gguf' `
+  -AllowCloud `
+  -Question 'In the language domain, what is the direction from trust to belief?'
+```
+
 Use `-OutputDir` when a stable evidence location is needed. Without it, the
-Python entrypoint creates a timestamped output directory.
+Python entrypoint creates a timestamped output directory. The target must not
+already exist.
 
 ## 10. Verification
 
@@ -309,21 +457,33 @@ Run all relevant checks after the latest change, not before it.
 Python formatting, linting, and integration:
 
 ```powershell
-python -m ruff check `
-  atom_llm_protocol.py atom_llm_provider.py atom_harness_knowledge.py `
-  atom_harness_runtime.py atom_harness_side_view.py atom_harness_experiment.py `
+ruff check `
+  atom_llm_protocol.py atom_llm_provider.py atom_provider_fabric.py `
+  atom_run_transaction.py atom_harness_knowledge.py atom_harness_runtime.py `
+  atom_harness_side_view.py atom_harness_experiment.py `
   tests/test_atom_language_harness_integration.py `
+  tests/test_atom_language_harness_v2_integration.py `
+  tests/test_atom_provider_protocol_v2.py `
   tests/test_atom_causal_live_integration.py
 
-python -m ruff format --check `
-  atom_llm_protocol.py atom_llm_provider.py atom_harness_knowledge.py `
-  atom_harness_runtime.py atom_harness_side_view.py atom_harness_experiment.py `
+ruff format --check `
+  atom_llm_protocol.py atom_llm_provider.py atom_provider_fabric.py `
+  atom_run_transaction.py atom_harness_knowledge.py atom_harness_runtime.py `
+  atom_harness_side_view.py atom_harness_experiment.py `
   tests/test_atom_language_harness_integration.py `
+  tests/test_atom_language_harness_v2_integration.py `
+  tests/test_atom_provider_protocol_v2.py `
   tests/test_atom_causal_live_integration.py
 
-python -m unittest `
-  tests.test_atom_language_harness_integration `
-  tests.test_atom_causal_live_integration -v
+py -3.13 scripts/verify_atom_harness_v2.py
+py -3.13 -m unittest discover -s tests `
+  -p 'test_atom_language_harness_v2_integration.py' -v
+py -3.13 -m unittest discover -s tests `
+  -p 'test_atom_provider_protocol_v2.py' -v
+py -3.13 -m unittest discover -s tests `
+  -p 'test_atom_language_harness_integration.py' -v
+py -3.13 -m unittest discover -s tests `
+  -p 'test_atom_causal_live_integration.py' -v
 ```
 
 Rust workspace:
@@ -336,24 +496,27 @@ cargo test --workspace --all-targets
 Pop-Location
 ```
 
-Then run one real provider request. Verify all of the following in the retained
-output:
+Then run the privacy-blocked launcher path, which proves no cloud call occurs,
+and a real provider request only when its data transfer has been authorized.
+Verify all of the following in the retained output:
 
 - `passed` and `answerable` have the expected values;
 - citations are members of the evidence packet;
 - store hashes before and after are identical;
 - artifact, packet, graph, trace, and workflow hashes match;
 - the side view is bound to that exact artifact;
+- provider route hashes, location policy, and transaction identity match;
+- every committed file matches the transaction manifest;
 - provider secrets do not occur in generated files; and
 - `git status --short` remains empty.
 
-The real-provider baseline on 2026-07-29 used
+The pre-V2 real-provider baseline on 2026-07-29 used
 `mistralai/mistral-small-3.2-24b-instruct` through OpenRouter. Its two-pass
 request produced five packet-valid citations and a hash-bound side view without
 changing Atom memory. That ignored local output is evidence for that exact
-revision, not a substitute for a fresh run.
+revision, not a substitute for a fresh V2 run.
 
-During the 2026-07-30 publication verification, all 20 active Python integration
+During the pre-V2 2026-07-30 publication verification, all 20 active Python integration
 tests and all 43 Rust tests passed after the documentation change, together
 with formatting, lint, compilation, contract, and launcher checks. A repeat
 cloud request was intentionally not sent because publishing the repository did
@@ -402,12 +565,16 @@ the renderer pass.
 
 Before merging or publishing a change:
 
-- confirm `language-harness` is still the declared active runtime;
+- confirm `language-harness-v2` is still the declared active runtime;
 - confirm wiki graph, graph RAG, and side view remain runtime-wired;
+- confirm provider admission, privacy, and run transaction declarations remain
+  runtime-wired;
 - confirm no Rust crate exceeds 4,000 Rust source lines;
 - inspect the staged diff for secrets and generated artifacts;
-- run Python lint, format, compilation, and both integration suites;
+- run Python lint, format, compilation, policy, and all three integration
+  suites;
 - run Rust format, Clippy with warnings denied, and all workspace tests;
+- parse the PowerShell launcher and run its privacy-blocked end-to-end path;
 - run a real configured provider when provider/runtime behavior changed;
 - inspect the real side view, not only the JSON;
 - verify memory immutability and every hash binding;

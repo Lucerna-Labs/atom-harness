@@ -7,16 +7,19 @@ memory, choose tools, or relax an abstention decision.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Mapping, Protocol, Sequence
+import json
+import threading
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Callable, Mapping, Protocol, Sequence
 
 from atom_causal_experience import build_experience_query
 from atom_causal_world_schema import canonical_hash
 
 
-ATOM_LANGUAGE_INTENT_RUNTIME = "atom-language-intent-v1"
-ATOM_GROUNDED_RESPONSE_RUNTIME = "atom-grounded-response-v1"
-ATOM_LANGUAGE_MODEL_PROTOCOL = "atom-json-language-model-v1"
+ATOM_LANGUAGE_INTENT_RUNTIME = "atom-language-intent-v2"
+ATOM_GROUNDED_RESPONSE_RUNTIME = "atom-grounded-response-v2"
+ATOM_LANGUAGE_MODEL_PROTOCOL = "atom-json-language-model-v2"
 ATOM_ABSTENTION = "I do not have enough Atom evidence to answer that."
 
 QUERY_ROLES = frozenset(
@@ -124,6 +127,200 @@ class LanguageBoundaryError(ValueError):
     """Raised when language-model output crosses an Atom trust boundary."""
 
 
+class ProviderLocation(str, Enum):
+    """Explicit data-boundary location used by the privacy gate."""
+
+    LOCAL = "local"
+    PRIVATE = "private"
+    CLOUD = "cloud"
+
+
+@dataclass(frozen=True)
+class ProviderCapabilities:
+    """Admission facts declared by one provider adapter."""
+
+    provider_id: str
+    model: str
+    location: ProviderLocation
+    strict_json_schema: bool
+    max_context_tokens: int
+    max_output_tokens: int
+    supports_cancellation: bool
+    cost_tier: str
+    test_only: bool = False
+
+    def __post_init__(self) -> None:
+        for field_name in ("provider_id", "model", "cost_tier"):
+            value = getattr(self, field_name)
+            if (
+                not isinstance(value, str)
+                or not value.strip()
+                or "\x00" in value
+                or len(value) > 512
+            ):
+                raise ValueError(f"provider capability {field_name} is invalid")
+            object.__setattr__(self, field_name, value.strip())
+        object.__setattr__(self, "location", ProviderLocation(self.location))
+        for field_name in ("strict_json_schema", "supports_cancellation", "test_only"):
+            if not isinstance(getattr(self, field_name), bool):
+                raise ValueError(f"provider capability {field_name} must be boolean")
+        for field_name in ("max_context_tokens", "max_output_tokens"):
+            value = getattr(self, field_name)
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, int)
+                or not 0 <= value <= 10_000_000
+            ):
+                raise ValueError(f"provider capability {field_name} is invalid")
+        if self.max_output_tokens > self.max_context_tokens:
+            raise ValueError("provider output capability exceeds its context limit")
+
+    def manifest(self) -> dict[str, Any]:
+        return {
+            "provider_id": self.provider_id,
+            "model": self.model,
+            "location": self.location.value,
+            "strict_json_schema": self.strict_json_schema,
+            "max_context_tokens": self.max_context_tokens,
+            "max_output_tokens": self.max_output_tokens,
+            "supports_cancellation": self.supports_cancellation,
+            "cost_tier": self.cost_tier,
+            "test_only": self.test_only,
+        }
+
+
+class ProviderError(RuntimeError):
+    """Typed provider failure safe to expose in routing evidence."""
+
+    failure_kind = "provider"
+    retryable = False
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        route: Mapping[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.route = dict(route or {})
+
+
+class ProviderAdmissionError(ProviderError):
+    failure_kind = "admission"
+
+
+class ProviderPrivacyError(ProviderError):
+    failure_kind = "privacy"
+
+
+class ProviderTransportError(ProviderError):
+    failure_kind = "transport"
+    retryable = True
+
+
+class ProviderTimeoutError(ProviderError):
+    failure_kind = "timeout"
+    retryable = True
+
+
+class ProviderCapacityError(ProviderError):
+    failure_kind = "capacity"
+    retryable = True
+
+
+class ProviderCancelledError(ProviderError):
+    failure_kind = "cancelled"
+
+
+class ProviderInternalError(ProviderError):
+    failure_kind = "internal"
+
+
+class ProviderExhaustedError(ProviderError):
+    failure_kind = "exhausted"
+
+
+class CancellationToken:
+    """Thread-safe cooperative cancellation shared across the full request."""
+
+    def __init__(self) -> None:
+        self._event = threading.Event()
+        self._reason = "request cancelled"
+        self._lock = threading.Lock()
+
+    def cancel(self, reason: str = "request cancelled") -> None:
+        normalized = str(reason).strip() or "request cancelled"
+        with self._lock:
+            self._reason = normalized[:512]
+            self._event.set()
+
+    @property
+    def cancelled(self) -> bool:
+        return self._event.is_set()
+
+    @property
+    def reason(self) -> str:
+        with self._lock:
+            return self._reason
+
+    def raise_if_cancelled(self) -> None:
+        if self.cancelled:
+            raise ProviderCancelledError(self.reason)
+
+    def wait(self, timeout_seconds: float) -> None:
+        if timeout_seconds < 0:
+            raise ValueError("cancellation wait must not be negative")
+        if self._event.wait(timeout_seconds):
+            raise ProviderCancelledError(self.reason)
+
+
+def _validate_json_shape(value: Any, *, depth: int = 0) -> None:
+    if depth > 64:
+        raise ValueError("JSON data exceeds the maximum nesting depth")
+    if isinstance(value, Mapping):
+        if any(not isinstance(key, str) for key in value):
+            raise ValueError("JSON object keys must be strings")
+        for item in value.values():
+            _validate_json_shape(item, depth=depth + 1)
+        return
+    if isinstance(value, (list, tuple)):
+        for item in value:
+            _validate_json_shape(item, depth=depth + 1)
+        return
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return
+    raise ValueError("JSON data contains an unsupported value")
+
+
+def _json_mapping(
+    value: Any,
+    label: str,
+    *,
+    maximum_bytes: int = 4 * 1024 * 1024,
+) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise ValueError(f"{label} must be a JSON object")
+    try:
+        _validate_json_shape(value)
+    except (RecursionError, ValueError) as error:
+        raise ValueError(f"{label} has an invalid JSON shape") from error
+    try:
+        encoded = json.dumps(
+            value,
+            ensure_ascii=False,
+            allow_nan=False,
+            separators=(",", ":"),
+        )
+        normalized = json.loads(encoded)
+    except (RecursionError, TypeError, ValueError, json.JSONDecodeError) as error:
+        raise ValueError(f"{label} must contain finite JSON data") from error
+    if len(encoded.encode("utf-8")) > maximum_bytes:
+        raise ValueError(f"{label} exceeds the safe byte limit")
+    if not isinstance(normalized, dict):
+        raise ValueError(f"{label} must be a JSON object")
+    return normalized
+
+
 @dataclass(frozen=True)
 class JsonGenerationRequest:
     """One constrained JSON request sent across the language membrane."""
@@ -133,6 +330,52 @@ class JsonGenerationRequest:
     payload: Mapping[str, Any]
     schema: Mapping[str, Any]
     max_tokens: int
+    validator: Callable[[Mapping[str, Any]], Mapping[str, Any]] | None = field(
+        default=None, repr=False, compare=False
+    )
+    data_sensitivity: str = "private-atom-evidence"
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.stage, str)
+            or not self.stage.strip()
+            or "\x00" in self.stage
+            or len(self.stage) > 128
+        ):
+            raise ValueError("language request stage is invalid")
+        object.__setattr__(self, "stage", self.stage.strip())
+        if (
+            not isinstance(self.system_prompt, str)
+            or not self.system_prompt.strip()
+            or "\x00" in self.system_prompt
+            or len(self.system_prompt) > 32_768
+        ):
+            raise ValueError("language request system prompt is invalid")
+        object.__setattr__(self, "system_prompt", self.system_prompt.strip())
+        object.__setattr__(
+            self,
+            "payload",
+            _json_mapping(self.payload, "language request payload"),
+        )
+        object.__setattr__(
+            self,
+            "schema",
+            _json_mapping(
+                self.schema,
+                "language request schema",
+                maximum_bytes=1024 * 1024,
+            ),
+        )
+        if (
+            isinstance(self.max_tokens, bool)
+            or not isinstance(self.max_tokens, int)
+            or not 1 <= self.max_tokens <= 65_536
+        ):
+            raise ValueError("language request token limit is invalid")
+        if self.validator is not None and not callable(self.validator):
+            raise ValueError("language request validator is not callable")
+        if self.data_sensitivity != "private-atom-evidence":
+            raise ValueError("language request data sensitivity is invalid")
 
 
 @dataclass(frozen=True)
@@ -144,6 +387,41 @@ class JsonGenerationResult:
     model: str
     elapsed_ms: int
     raw_sha256: str
+    route: Mapping[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "payload",
+            _json_mapping(self.payload, "language result payload"),
+        )
+        for field_name in ("provider", "model"):
+            value = getattr(self, field_name)
+            if (
+                not isinstance(value, str)
+                or not value.strip()
+                or "\x00" in value
+                or len(value) > 512
+            ):
+                raise ValueError(f"language result {field_name} is invalid")
+            object.__setattr__(self, field_name, value.strip())
+        if (
+            isinstance(self.elapsed_ms, bool)
+            or not isinstance(self.elapsed_ms, int)
+            or self.elapsed_ms < 0
+        ):
+            raise ValueError("language result elapsed time is invalid")
+        if (
+            not isinstance(self.raw_sha256, str)
+            or len(self.raw_sha256) != 64
+            or any(character not in "0123456789abcdef" for character in self.raw_sha256)
+        ):
+            raise ValueError("language result raw hash is invalid")
+        object.__setattr__(
+            self,
+            "route",
+            _json_mapping(self.route, "language result route"),
+        )
 
 
 class JsonLanguageModel(Protocol):
@@ -152,8 +430,13 @@ class JsonLanguageModel(Protocol):
     def generate_json(
         self,
         request: JsonGenerationRequest,
+        *,
+        cancellation: CancellationToken | None = None,
     ) -> JsonGenerationResult:
         """Return one JSON object constrained by ``request.schema``."""
+
+    def capabilities(self) -> ProviderCapabilities:
+        """Return explicit admission and privacy capabilities."""
 
     def manifest(self) -> Mapping[str, Any]:
         """Return non-secret provider identity and capability metadata."""
@@ -192,12 +475,12 @@ def validate_intent(
     }
     if not isinstance(payload, Mapping) or set(payload) != expected:
         raise LanguageBoundaryError("language intent fields are invalid")
-    if payload["schema"] != 1:
+    if type(payload["schema"]) is not int or payload["schema"] != 1:
         raise LanguageBoundaryError("language intent schema is invalid")
     if payload["runtime"] != ATOM_LANGUAGE_INTENT_RUNTIME:
         raise LanguageBoundaryError("language intent runtime is invalid")
     action = payload["action"]
-    if action not in {"retrieve", "abstain"}:
+    if not isinstance(action, str) or action not in {"retrieve", "abstain"}:
         raise LanguageBoundaryError("language intent action is invalid")
     question = _strict_text(
         "language intent question",
@@ -334,7 +617,7 @@ def validate_grounded_response(
     }
     if not isinstance(payload, Mapping) or set(payload) != expected:
         raise LanguageBoundaryError("grounded response fields are invalid")
-    if payload["schema"] != 1:
+    if type(payload["schema"]) is not int or payload["schema"] != 1:
         raise LanguageBoundaryError("grounded response schema is invalid")
     if payload["runtime"] != ATOM_GROUNDED_RESPONSE_RUNTIME:
         raise LanguageBoundaryError("grounded response runtime is invalid")

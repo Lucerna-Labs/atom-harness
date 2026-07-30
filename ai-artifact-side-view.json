@@ -11,5 +11,5 @@
     "artifact_binding_marker": "render_atom_harness_artifact",
     "bound_to_real_artifact_output": true
   },
-  "integration_test": "tests/test_atom_language_harness_integration.py"
+  "integration_test": "tests/test_atom_language_harness_v2_integration.py"
 }

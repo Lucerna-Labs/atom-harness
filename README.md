@@ -2,10 +2,18 @@
 
 ## Active direction
 
-The active product is now a local language harness around the causal Atom
-runtime. Atom owns facts, causal memory, the runtime wiki graph, graph RAG,
-tool-routing policy, and abstention. A replaceable local LLM supplies natural
-language intent parsing and evidence-grounded answer rendering only.
+The active product is Atom Language Harness V2 around the causal Atom runtime.
+Atom owns facts, causal memory, the runtime wiki graph, graph RAG, tool-routing
+policy, and abstention. A replaceable LLM supplies natural-language intent
+parsing and evidence-grounded answer rendering only.
+
+V2 admits local, private, and explicitly consented cloud providers through an
+ordered Spiderweb provider fabric. It adds typed retry and fallback, circuits,
+bounded concurrency, cancellation, privacy-block and backpressure vibrations,
+and atomic crash-recoverable run publication. Cloud evidence egress is blocked
+unless the operator opts in for the current process. The side view binds the
+real answer to evidence, provider routes, timings, privacy state, and the run
+transaction.
 
 The causal-live runtime remains the evidence and learning kernel. The language
 model has no Atom DB write path, cannot promote its own output into evidence,

@@ -37,6 +37,7 @@ outputs/
 cognitive_outputs/
 universe_core_outputs/
 **/*_outputs/
+**/.atom-harness-v2/
 backups/
 tmp/
 local-results/

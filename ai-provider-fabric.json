@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "project_kind": "ai-harness",
+  "runtime_entrypoint": "atom_harness_experiment.py",
+  "provider_fabric": {
+    "enabled": true,
+    "module_path": "atom_provider_fabric.py",
+    "runtime_marker": "ATOM_PROVIDER_FABRIC_RUNTIME",
+    "ordered_fallback": true,
+    "strict_json_required": true,
+    "bounded_retry_backoff": true,
+    "explicit_provider_locations": true,
+    "cloud_requires_explicit_consent": true,
+    "circuit_breakers": true,
+    "bounded_concurrency": true,
+    "cancellation": true,
+    "provider_cancellation_capability_exposed": true,
+    "all_providers_must_be_preemptible": false,
+    "backpressure_vibrations": true
+  },
+  "integration_test": "tests/test_atom_language_harness_v2_integration.py"
+}

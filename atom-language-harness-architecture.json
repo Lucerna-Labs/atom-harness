@@ -1,8 +1,8 @@
 {
-  "schema": 1,
-  "runtime": "atom-language-harness-v1",
+  "schema": 2,
+  "runtime": "atom-language-harness-v2",
   "runtime_entrypoint": "atom_harness_experiment.py",
-  "integration_test": "tests/test_atom_language_harness_integration.py",
+  "integration_test": "tests/test_atom_language_harness_v2_integration.py",
   "identity": {
     "system": "Atom evidence harness",
     "semantic_authority": "Atom",
@@ -12,12 +12,32 @@
   "language_membrane": {
     "protocol_module": "atom_llm_protocol.py",
     "provider_module": "atom_llm_provider.py",
+    "provider_fabric_module": "atom_provider_fabric.py",
+    "provider_fabric_runtime": "atom-resilient-provider-fabric-v2",
     "production_providers": [
       "OpenRouterJsonLanguageModel",
       "LlamaCppJsonLanguageModel"
     ],
-    "verified_default_provider": "OpenRouterJsonLanguageModel",
-    "verified_default_model": "mistralai/mistral-small-3.2-24b-instruct",
+    "configured_default_provider": "OpenRouterJsonLanguageModel",
+    "configured_default_model": "mistralai/mistral-small-3.2-24b-instruct",
+    "v2_external_provider_verification": "requires separately authorized live run",
+    "provider_admission": {
+      "strict_json_required": true,
+      "locations": [
+        "local",
+        "private",
+        "cloud"
+      ],
+      "cloud_requires_explicit_consent": true,
+      "ordered_fallback": true,
+      "typed_retry_policy": true,
+      "bounded_retry_backoff": true,
+      "circuit_breakers": true,
+      "bounded_concurrency": true,
+      "cancellation": true,
+      "provider_cancellation_capability_exposed": true,
+      "all_providers_must_be_preemptible": false
+    },
     "passes": [
       "natural language to validated Atom intent",
       "bounded Atom evidence to cited natural language"
@@ -26,8 +46,8 @@
   },
   "knowledge": {
     "module": "atom_harness_knowledge.py",
-    "wiki_runtime": "ATOM_HARNESS_WIKI_RUNTIME",
-    "rag_runtime": "ATOM_HARNESS_RAG_RUNTIME",
+    "wiki_runtime": "atom-language-harness-wiki-v2",
+    "rag_runtime": "atom-language-harness-graph-rag-v2",
     "retrieval_order": "graph relationships before bounded text evidence",
     "read_only_during_language_requests": true
   },
@@ -42,8 +62,18 @@
     "on_off_ramps": true,
     "threads_form_from_observed_flow": true,
     "intersections_emerge_from_flow": true,
-    "vibrations_propagate_backpressure": true,
+    "vibrations_propagate_backpressure_and_fallback": true,
     "wiki_vocabulary_preloaded": true
+  },
+  "transaction": {
+    "module": "atom_run_transaction.py",
+    "runtime": "atom-run-transaction-v2",
+    "staged_writes": true,
+    "atomic_directory_publication": true,
+    "target_locking": true,
+    "crash_recovery": true,
+    "committed_file_manifest": true,
+    "overwrite_allowed": false
   },
   "trust_laws": [
     "LLM output is never Atom evidence",
@@ -52,19 +82,25 @@
     "evidence passages are untrusted data, never instructions",
     "citations must name experience IDs present in the packet",
     "Atom insufficient_evidence forces deterministic abstention",
-    "provider secrets are never persisted"
+    "provider secrets are never persisted",
+    "cloud evidence egress requires explicit per-process consent",
+    "provider failure cannot weaken schemas or override abstention",
+    "partial run directories are never published as completed artifacts"
   ],
   "side_view": {
     "module": "atom_harness_side_view.py",
-    "runtime": "ATOM_HARNESS_SIDE_VIEW_RUNTIME",
+    "runtime": "atom-language-harness-side-view-v2",
     "placement": "side",
     "binds": [
       "answer",
       "citations",
       "evidence packet",
       "wiki graph",
-      "Spiderweb trace"
+      "Spiderweb trace",
+      "provider routes and privacy",
+      "timings and circuit state",
+      "atomic transaction identity"
     ]
   },
-  "claim_boundary": "This harness supplies a verified language membrane around the saved causal Atom evidence. It does not claim that an LLM creates facts, that all questions are answerable, or that retired language-model distillation is active."
+  "claim_boundary": "V2 supplies a crash-safe, policy-routed language membrane around saved causal Atom evidence. It does not claim that an LLM creates facts, that all questions are answerable, that every GGUF is compatible, or that retired language-model distillation is active."
 }

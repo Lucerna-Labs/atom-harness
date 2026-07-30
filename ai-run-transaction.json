@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "project_kind": "ai-harness",
+  "runtime_entrypoint": "atom_harness_experiment.py",
+  "run_transaction": {
+    "enabled": true,
+    "module_path": "atom_run_transaction.py",
+    "runtime_marker": "ATOM_RUN_TRANSACTION_RUNTIME",
+    "staged_writes": true,
+    "atomic_directory_publication": true,
+    "target_locking": true,
+    "crash_recovery": true,
+    "committed_file_manifest": true,
+    "overwrite_allowed": false
+  },
+  "integration_test": "tests/test_atom_language_harness_v2_integration.py"
+}

@@ -18,15 +18,26 @@ from typing import Any, Mapping, Sequence
 
 from atom_llm_protocol import (
     ATOM_LANGUAGE_MODEL_PROTOCOL,
+    CancellationToken,
     JsonGenerationRequest,
     JsonGenerationResult,
     LanguageBoundaryError,
+    ProviderAdmissionError,
+    ProviderCapabilities,
+    ProviderCancelledError,
+    ProviderCapacityError,
+    ProviderLocation,
+    ProviderTimeoutError,
+    ProviderTransportError,
 )
 
 
-LLAMA_CPP_PROVIDER_RUNTIME = "atom-llama-cpp-json-provider-v1"
-OPENROUTER_PROVIDER_RUNTIME = "atom-openrouter-json-provider-v1"
-SCRIPTED_PROVIDER_RUNTIME = "atom-scripted-json-provider-v1"
+LLAMA_CPP_PROVIDER_RUNTIME = "atom-llama-cpp-json-provider-v2"
+OPENROUTER_PROVIDER_RUNTIME = "atom-openrouter-json-provider-v2"
+SCRIPTED_PROVIDER_RUNTIME = "atom-scripted-json-provider-v2"
+UNAVAILABLE_PROVIDER_RUNTIME = "atom-unavailable-json-provider-v2"
+MAX_OPENROUTER_RESPONSE_BYTES = 4 * 1024 * 1024
+MAX_PROVIDER_ERROR_BYTES = 256 * 1024
 
 _ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
@@ -53,28 +64,24 @@ def _reject_duplicates(
 
 
 def _parse_json_object(raw: str) -> dict[str, Any]:
-    """Extract one JSON object from a provider transport response."""
+    """Parse exactly one JSON object from a provider transport response."""
 
     if not isinstance(raw, str) or not raw.strip():
         raise LanguageBoundaryError("language model returned empty output")
     cleaned = _ANSI_ESCAPE.sub("", raw).strip()
     decoder = json.JSONDecoder(object_pairs_hook=_reject_duplicates)
     try:
-        payload = decoder.decode(cleaned)
-    except json.JSONDecodeError:
-        payload = None
-        for index, character in enumerate(cleaned):
-            if character != "{":
-                continue
-            try:
-                candidate, _ = decoder.raw_decode(cleaned[index:])
-            except json.JSONDecodeError:
-                continue
-            if isinstance(candidate, dict):
-                payload = candidate
-                break
+        payload, consumed = decoder.raw_decode(cleaned)
+    except json.JSONDecodeError as error:
+        raise LanguageBoundaryError(
+            "language model did not return one JSON object"
+        ) from error
     if not isinstance(payload, dict):
         raise LanguageBoundaryError("language model did not return a JSON object")
+    if cleaned[consumed:].strip():
+        raise LanguageBoundaryError(
+            "language model returned text outside the JSON object"
+        )
     return payload
 
 
@@ -98,6 +105,13 @@ def _file_sha256(path: Path) -> str:
         for block in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def _read_limited(stream, *, limit: int, label: str) -> bytes:
+    data = stream.read(limit + 1)
+    if len(data) > limit:
+        raise LanguageBoundaryError(f"{label} exceeds the safe byte limit")
+    return data
 
 
 class LlamaCppJsonLanguageModel:
@@ -137,9 +151,13 @@ class LlamaCppJsonLanguageModel:
     def generate_json(
         self,
         request: JsonGenerationRequest,
+        *,
+        cancellation: CancellationToken | None = None,
     ) -> JsonGenerationResult:
         if not 1 <= request.max_tokens <= 4096:
             raise ValueError("language request token limit is invalid")
+        token = cancellation or CancellationToken()
+        token.raise_if_cancelled()
         with tempfile.TemporaryDirectory(prefix="atom-harness-llm-") as temporary:
             prompt_path = Path(temporary) / "prompt.txt"
             schema_path = Path(temporary) / "schema.json"
@@ -185,30 +203,87 @@ class LlamaCppJsonLanguageModel:
             ]
             started = time.perf_counter()
             try:
-                completed = subprocess.run(
+                process = subprocess.Popen(
                     command,
-                    check=False,
-                    capture_output=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
                     text=True,
                     encoding="utf-8",
                     errors="strict",
-                    timeout=self.timeout_seconds,
                 )
-            except subprocess.TimeoutExpired as error:
-                raise RuntimeError(
-                    f"llama.cpp timed out during {request.stage}"
+            except OSError as error:
+                raise ProviderTransportError(
+                    f"llama.cpp could not start during {request.stage}"
                 ) from error
+            deadline = time.monotonic() + self.timeout_seconds
+            try:
+                while True:
+                    token.raise_if_cancelled()
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise ProviderTimeoutError(
+                            f"llama.cpp timed out during {request.stage}"
+                        )
+                    try:
+                        stdout, stderr = process.communicate(
+                            timeout=min(0.05, remaining)
+                        )
+                        break
+                    except subprocess.TimeoutExpired:
+                        continue
+            except (ProviderCancelledError, ProviderTimeoutError):
+                process.terminate()
+                try:
+                    process.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait(timeout=2)
+                raise
         elapsed_ms = round((time.perf_counter() - started) * 1000)
-        if completed.returncode != 0:
-            detail = completed.stderr.strip() or completed.stdout.strip()
-            raise RuntimeError(f"llama.cpp failed during {request.stage}: {detail}")
-        payload = _parse_json_object(completed.stdout)
+        if process.returncode != 0:
+            detail = stderr.strip() or stdout.strip()
+            lowered = detail.lower()
+            if "out of memory" in lowered or "failed to allocate" in lowered:
+                raise ProviderCapacityError(
+                    f"llama.cpp capacity failure during {request.stage}: {detail[:1000]}"
+                )
+            if any(
+                marker in lowered
+                for marker in (
+                    "failed to load model",
+                    "invalid argument",
+                    "invalid ggml type",
+                    "unknown argument",
+                    "unknown model architecture",
+                )
+            ):
+                raise ProviderAdmissionError(
+                    f"llama.cpp rejected its configuration during "
+                    f"{request.stage}: {detail[:1000]}"
+                )
+            raise ProviderTransportError(
+                f"llama.cpp failed during {request.stage}: {detail[:1000]}"
+            )
+        token.raise_if_cancelled()
+        payload = _parse_json_object(stdout)
         return JsonGenerationResult(
             payload=payload,
             provider=LLAMA_CPP_PROVIDER_RUNTIME,
             model=self.model_path.name,
             elapsed_ms=elapsed_ms,
-            raw_sha256=hashlib.sha256(completed.stdout.encode("utf-8")).hexdigest(),
+            raw_sha256=hashlib.sha256(stdout.encode("utf-8")).hexdigest(),
+        )
+
+    def capabilities(self) -> ProviderCapabilities:
+        return ProviderCapabilities(
+            provider_id=LLAMA_CPP_PROVIDER_RUNTIME,
+            model=self.model_path.name,
+            location=ProviderLocation.LOCAL,
+            strict_json_schema=True,
+            max_context_tokens=self.context_length,
+            max_output_tokens=4096,
+            supports_cancellation=True,
+            cost_tier="local-compute",
         )
 
     def manifest(self) -> Mapping[str, Any]:
@@ -224,6 +299,8 @@ class LlamaCppJsonLanguageModel:
             "structured_output": "llama.cpp-json-schema",
             "context_length": self.context_length,
             "gpu_layers": self.gpu_layers,
+            "capabilities": self.capabilities().manifest(),
+            "available": True,
             "secrets_persisted": False,
         }
 
@@ -257,10 +334,16 @@ class OpenRouterJsonLanguageModel:
     def generate_json(
         self,
         request: JsonGenerationRequest,
+        *,
+        cancellation: CancellationToken | None = None,
     ) -> JsonGenerationResult:
+        token = cancellation or CancellationToken()
+        token.raise_if_cancelled()
         api_key = os.environ.get(self.api_key_env, "")
         if not api_key:
-            raise RuntimeError(f"OpenRouter credential is absent: {self.api_key_env}")
+            raise ProviderAdmissionError(
+                f"OpenRouter credential is absent: {self.api_key_env}"
+            )
         body = {
             "model": self.model,
             "messages": [
@@ -307,18 +390,38 @@ class OpenRouterJsonLanguageModel:
                 http_request,
                 timeout=self.timeout_seconds,
             ) as response:
-                raw = response.read().decode("utf-8", errors="strict")
+                raw = _read_limited(
+                    response,
+                    limit=MAX_OPENROUTER_RESPONSE_BYTES,
+                    label="OpenRouter response",
+                ).decode("utf-8", errors="strict")
         except urllib.error.HTTPError as error:
-            detail = error.read().decode("utf-8", errors="replace")
-            raise RuntimeError(
+            detail = _read_limited(
+                error,
+                limit=MAX_PROVIDER_ERROR_BYTES,
+                label="OpenRouter error response",
+            ).decode("utf-8", errors="replace")
+            message = (
                 f"OpenRouter rejected {request.stage}: "
                 f"HTTP {error.code}: {detail[:1000]}"
-            ) from error
+            )
+            if error.code == 429:
+                raise ProviderCapacityError(message) from error
+            if error.code == 408:
+                raise ProviderTimeoutError(message) from error
+            if error.code in {500, 502, 503, 504}:
+                raise ProviderTransportError(message) from error
+            raise ProviderAdmissionError(message) from error
         except urllib.error.URLError as error:
-            raise RuntimeError(
+            raise ProviderTransportError(
                 f"OpenRouter failed during {request.stage}: {error.reason}"
             ) from error
+        except TimeoutError as error:
+            raise ProviderTimeoutError(
+                f"OpenRouter timed out during {request.stage}"
+            ) from error
         elapsed_ms = round((time.perf_counter() - started) * 1000)
+        token.raise_if_cancelled()
         envelope = _parse_json_object(raw)
         try:
             content = envelope["choices"][0]["message"]["content"]
@@ -337,6 +440,18 @@ class OpenRouterJsonLanguageModel:
             raw_sha256=hashlib.sha256(content.encode("utf-8")).hexdigest(),
         )
 
+    def capabilities(self) -> ProviderCapabilities:
+        return ProviderCapabilities(
+            provider_id=OPENROUTER_PROVIDER_RUNTIME,
+            model=self.model,
+            location=ProviderLocation.CLOUD,
+            strict_json_schema=True,
+            max_context_tokens=131_072,
+            max_output_tokens=4096,
+            supports_cancellation=False,
+            cost_tier="metered-cloud",
+        )
+
     def manifest(self) -> Mapping[str, Any]:
         return {
             "schema": 1,
@@ -348,6 +463,8 @@ class OpenRouterJsonLanguageModel:
             "api_key_present": bool(os.environ.get(self.api_key_env)),
             "structured_output": "openrouter-json-schema",
             "require_parameters": True,
+            "capabilities": self.capabilities().manifest(),
+            "available": bool(os.environ.get(self.api_key_env)),
             "secrets_persisted": False,
         }
 
@@ -357,22 +474,35 @@ class ScriptedJsonLanguageModel:
 
     def __init__(
         self,
-        outputs: Sequence[Mapping[str, Any]],
+        outputs: Sequence[Mapping[str, Any] | BaseException],
         *,
         model: str = "scripted-integration-model",
+        location: ProviderLocation = ProviderLocation.LOCAL,
     ) -> None:
-        self.outputs = deque(dict(item) for item in outputs)
+        self.outputs = deque(
+            item if isinstance(item, BaseException) else dict(item) for item in outputs
+        )
         self.model = model
+        self.location = ProviderLocation(location)
         self.requests: list[JsonGenerationRequest] = []
 
     def generate_json(
         self,
         request: JsonGenerationRequest,
+        *,
+        cancellation: CancellationToken | None = None,
     ) -> JsonGenerationResult:
+        token = cancellation or CancellationToken()
+        token.raise_if_cancelled()
         self.requests.append(request)
         if not self.outputs:
-            raise RuntimeError("scripted language model has no remaining output")
-        payload = self.outputs.popleft()
+            raise ProviderAdmissionError(
+                "scripted language model has no remaining output"
+            )
+        output = self.outputs.popleft()
+        if isinstance(output, BaseException):
+            raise output
+        payload = output
         raw = _canonical_json(payload)
         return JsonGenerationResult(
             payload=payload,
@@ -380,6 +510,19 @@ class ScriptedJsonLanguageModel:
             model=self.model,
             elapsed_ms=0,
             raw_sha256=hashlib.sha256(raw.encode("utf-8")).hexdigest(),
+        )
+
+    def capabilities(self) -> ProviderCapabilities:
+        return ProviderCapabilities(
+            provider_id=SCRIPTED_PROVIDER_RUNTIME,
+            model=self.model,
+            location=self.location,
+            strict_json_schema=True,
+            max_context_tokens=131_072,
+            max_output_tokens=4096,
+            supports_cancellation=True,
+            cost_tier="test-fixture",
+            test_only=True,
         )
 
     def manifest(self) -> Mapping[str, Any]:
@@ -390,5 +533,65 @@ class ScriptedJsonLanguageModel:
             "model": self.model,
             "structured_output": "prevalidated-test-fixture",
             "test_only": True,
+            "capabilities": self.capabilities().manifest(),
+            "available": True,
+            "secrets_persisted": False,
+        }
+
+
+class UnavailableJsonLanguageModel:
+    """Admit a configured-but-unavailable provider as a typed failure."""
+
+    def __init__(
+        self,
+        provider_name: str,
+        *,
+        model: str,
+        location: ProviderLocation,
+        reason: str,
+    ) -> None:
+        self.provider_name = str(provider_name).strip() or "unavailable-provider"
+        self.model = str(model).strip() or "unavailable-model"
+        self.location = ProviderLocation(location)
+        self.reason = str(reason).strip() or "provider is unavailable"
+
+    def generate_json(
+        self,
+        request: JsonGenerationRequest,
+        *,
+        cancellation: CancellationToken | None = None,
+    ) -> JsonGenerationResult:
+        if cancellation is not None:
+            cancellation.raise_if_cancelled()
+        raise ProviderAdmissionError(
+            f"{self.provider_name} unavailable during {request.stage}: {self.reason}"
+        )
+
+    def capabilities(self) -> ProviderCapabilities:
+        return ProviderCapabilities(
+            provider_id=f"{UNAVAILABLE_PROVIDER_RUNTIME}:{self.provider_name}",
+            model=self.model,
+            location=self.location,
+            strict_json_schema=False,
+            max_context_tokens=0,
+            max_output_tokens=0,
+            supports_cancellation=True,
+            cost_tier="unavailable",
+        )
+
+    def manifest(self) -> Mapping[str, Any]:
+        reason_sha256 = hashlib.sha256(
+            self.reason.encode("utf-8", errors="replace")
+        ).hexdigest()
+        return {
+            "schema": 1,
+            "protocol": ATOM_LANGUAGE_MODEL_PROTOCOL,
+            "provider_runtime": UNAVAILABLE_PROVIDER_RUNTIME,
+            "provider_name": self.provider_name,
+            "model": self.model,
+            "reason_code": "provider-unavailable",
+            "reason_sha256": reason_sha256,
+            "capabilities": self.capabilities().manifest(),
+            "available": False,
             "secrets_persisted": False,
         }

@@ -1,6 +1,6 @@
 # Fork and Publication Boundary
 
-This checkout is the local Atom language-harness fork:
+This checkout is the local Atom Language Harness V2 fork:
 
 ```text
 C:\Projects\atom-harness
@@ -27,4 +27,5 @@ Primitive Forge artifacts required to bootstrap the runtime wiki, graph RAG,
 and Atom DB evidence store.
 
 See `DEVELOPER_NOTES.md` for the architecture, trust boundary, module map,
-provider contract, operation, verification, and handoff checklist.
+provider contract, transaction and recovery behavior, operation, verification,
+and handoff checklist. The active runtime is `language-harness-v2`.

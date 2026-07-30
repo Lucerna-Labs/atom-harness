@@ -14,9 +14,10 @@ from atom_harness_runtime import (
     ATOM_LANGUAGE_HARNESS_RUNTIME,
     ATOM_SPIDERWEB_TRACE_RUNTIME,
 )
+from atom_provider_fabric import ATOM_PROVIDER_FABRIC_RUNTIME
 
 
-ATOM_HARNESS_SIDE_VIEW_RUNTIME = "atom-language-harness-side-view-v1"
+ATOM_HARNESS_SIDE_VIEW_RUNTIME = "atom-language-harness-side-view-v2"
 
 
 def _validate_hash(
@@ -29,6 +30,28 @@ def _validate_hash(
     core = {key: payload[key] for key in sorted(payload) if key != field}
     if payload[field] != canonical_hash(core):
         raise ValueError(f"{label} hash mismatch")
+
+
+def _validate_provider_state(payload: Mapping[str, Any]) -> None:
+    identity_core = {
+        "schema": payload["schema"],
+        "runtime": payload.get("runtime", ATOM_PROVIDER_FABRIC_RUNTIME),
+        "protocol": payload["protocol"],
+        "ordered": payload["ordered"],
+        "policy": payload["policy"],
+        "providers": [
+            {key: value for key, value in provider.items() if key != "circuit"}
+            for provider in payload["providers"]
+        ],
+    }
+    state_core = {
+        **identity_core,
+        "providers": payload["providers"],
+    }
+    if payload["preload_hash"] != canonical_hash(identity_core):
+        raise ValueError("provider preload identity hash mismatch")
+    if payload["state_hash"] != canonical_hash(state_core):
+        raise ValueError("provider preload state hash mismatch")
 
 
 def _validate_binding(
@@ -57,8 +80,38 @@ def _validate_binding(
         raise ValueError("side view is detached from harness artifact")
     if workflow["evidence_packet_hash"] != artifact["evidence_packet"]["packet_hash"]:
         raise ValueError("side view is detached from evidence packet")
+    if workflow["transaction_id"] != artifact["transaction"]["transaction_id"]:
+        raise ValueError("side view is detached from run transaction")
+    if workflow["transaction_runtime"] != artifact["transaction"]["runtime"]:
+        raise ValueError("side view transaction runtime is invalid")
+    if (
+        artifact["transaction"]["atomic_publication"] is not True
+        or artifact["transaction"]["overwrite_allowed"] is not False
+    ):
+        raise ValueError("side view transaction contract is invalid")
+    if workflow["provider_route_hashes"] != [
+        item["route_hash"] for item in artifact["provider_routes"]
+    ]:
+        raise ValueError("side view is detached from provider routes")
+    for route in artifact["provider_routes"]:
+        _validate_hash(route, "route_hash", "provider route")
     if workflow["graph_knowledge_hash"] != graph["knowledge_hash"]:
         raise ValueError("side view is detached from wiki graph")
+    if workflow["knowledge_hash"] != artifact["knowledge"]["knowledge_hash"]:
+        raise ValueError("side view is detached from knowledge manifest")
+    if workflow["store_sha256"] != artifact["memory"]["store_sha256_after"]:
+        raise ValueError("side view is detached from Atom memory")
+    if artifact["memory"]["unchanged"] is not True:
+        raise ValueError("side view cannot render mutated Atom memory")
+    if workflow["model_manifest_hash"] != canonical_hash(artifact["language_model"]):
+        raise ValueError("side view is detached from provider fabric")
+    if (
+        artifact["provider_preload"]["preload_hash"]
+        != artifact["language_model"]["preload_hash"]
+    ):
+        raise ValueError("side view is detached from provider preload")
+    _validate_provider_state(artifact["provider_preload"])
+    _validate_provider_state(artifact["language_model"])
     if artifact["knowledge"]["graph_knowledge_hash"] != graph["knowledge_hash"]:
         raise ValueError("artifact is detached from wiki graph")
     if workflow["side_view_runtime"] != ATOM_HARNESS_SIDE_VIEW_RUNTIME:
@@ -67,10 +120,34 @@ def _validate_binding(
         raise ValueError("harness wiki runtime is invalid")
     if artifact["knowledge"]["rag_runtime"] != ATOM_HARNESS_RAG_RUNTIME:
         raise ValueError("harness RAG runtime is invalid")
+    if artifact["evidence_packet"]["graph_knowledge_hash"] != graph["knowledge_hash"]:
+        raise ValueError("evidence packet is detached from wiki graph")
+    request_id = artifact["request_id"]
+    if (
+        artifact["evidence_packet"]["request_id"] != request_id
+        or artifact["spiderweb_trace"]["request_id"] != request_id
+    ):
+        raise ValueError("side view combines different requests")
+    if artifact["passed"] is not True or not all(artifact["checks"].values()):
+        raise ValueError("side view refuses a failed harness artifact")
+    allowed_citations = {
+        item["experience_id"] for item in artifact["evidence_packet"]["passages"]
+    }
+    response = artifact["response"]
+    if not set(response["citations"]) <= allowed_citations:
+        raise ValueError("side view refuses a citation outside the evidence packet")
+    if response["answerable"] and not response["citations"]:
+        raise ValueError("side view refuses an uncited answer")
+    if artifact["evidence_packet"]["insufficient_evidence"] and response["answerable"]:
+        raise ValueError("side view refuses an answer over insufficient evidence")
 
 
 def _escape(value: Any) -> str:
     return html.escape(str(value), quote=True)
+
+
+def _yes_no(value: Any) -> str:
+    return "yes" if value is True else "no"
 
 
 def _passage_card(passage: Mapping[str, Any]) -> str:
@@ -86,8 +163,50 @@ def _passage_card(passage: Mapping[str, Any]) -> str:
   </div>
   <p>{_escape(passage["summary"])}</p>
   <div class="facts">{facts}</div>
-  <small>{len(passage["wiki_paths"])} graph paths ·
+  <small>{len(passage["wiki_paths"])} graph paths &middot;
   {_escape(passage["coverage_per_million"])} ppm coverage</small>
+</article>
+"""
+
+
+def _provider_route_card(route: Mapping[str, Any]) -> str:
+    selected = route.get("selected_provider")
+    selected_label = (
+        f"{selected['provider_id']} / {selected['model']}"
+        if isinstance(selected, Mapping)
+        else "none"
+    )
+    attempts = "".join(
+        (
+            '<li class="attempt">'
+            f"<strong>{_escape(item['provider_id'])}</strong>"
+            f"<span>{_escape(item['location'])} &middot; "
+            f"attempt {_escape(item['attempt'])} &middot; "
+            f"{_escape(item['outcome'])}"
+            + (
+                f" &middot; {_escape(item['failure_kind'])}"
+                if item.get("failure_kind")
+                else ""
+            )
+            + (
+                f" &middot; circuit {_escape(item['circuit_after']['state'])}"
+                if isinstance(item.get("circuit_after"), Mapping)
+                else ""
+            )
+            + "</span></li>"
+        )
+        for item in route["attempts"]
+    )
+    return f"""
+<article class="route">
+  <div class="route-top">
+    <strong>{_escape(route["stage"])}</strong>
+    <span>{_escape(route["disposition"])}</span>
+  </div>
+  <p>Selected: <code>{_escape(selected_label)}</code></p>
+  <ul>{attempts}</ul>
+  <small>{_escape(route["elapsed_ms"])} ms &middot;
+  <code>{_escape(route["route_hash"])}</code></small>
 </article>
 """
 
@@ -102,8 +221,16 @@ def render_atom_harness_artifact(
     _validate_binding(artifact, workflow, graph)
     response = artifact["response"]
     packet = artifact["evidence_packet"]
-    status_class = "answerable" if response["answerable"] else "abstained"
-    status_label = "Evidence-grounded" if response["answerable"] else "Abstained"
+    status_class = (
+        "answerable"
+        if response["answerable"]
+        else ("degraded" if artifact["degraded"] else "abstained")
+    )
+    status_label = (
+        "Evidence-grounded"
+        if response["answerable"]
+        else ("Degraded safely" if artifact["degraded"] else "Abstained")
+    )
     citations = "".join(
         f"<li><code>{_escape(item)}</code></li>" for item in response["citations"]
     )
@@ -125,12 +252,21 @@ def render_atom_harness_artifact(
         for item in artifact["spiderweb_trace"]["layers"]
     )
     model = artifact["language_model"]
+    policy = model["policy"]
+    timings = artifact["timings"]
+    routes = "".join(_provider_route_card(item) for item in artifact["provider_routes"])
+    if not routes:
+        routes = '<div class="empty">No provider route was recorded.</div>'
     return f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Atom Language Harness</title>
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy"
+  content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none';
+  form-action 'none'">
+<title>Atom Language Harness V2</title>
 <style>
 :root {{
   color-scheme: dark;
@@ -198,6 +334,7 @@ aside {{ background: #101210; }}
   line-height: 1.65;
 }}
 .answer.abstained {{ border-left-color: var(--amber); }}
+.answer.degraded {{ border-left-color: #ff7d7d; }}
 .answer small {{ display: block; color: var(--muted); margin-top: 16px; }}
 .meta-grid {{
   display: grid;
@@ -250,6 +387,22 @@ code {{
   border: 1px dashed var(--amber);
   color: var(--muted);
 }}
+.route {{
+  margin: 12px 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}}
+.route-top {{
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}}
+.route-top span {{ color: var(--cyan); }}
+.route ul {{ margin: 10px 0; }}
+.attempt {{ margin: 7px 0; }}
+.attempt strong, .attempt span {{ display: block; }}
+.attempt span {{ color: var(--muted); font-size: 12px; }}
 ul {{ padding-left: 20px; }}
 @media (max-width: 900px) {{
   .workspace {{ grid-template-columns: 1fr; }}
@@ -260,7 +413,7 @@ ul {{ padding-left: 20px; }}
 <body>
 <header>
   <div>
-    <h1>Atom Language Harness</h1>
+    <h1>Atom Language Harness V2</h1>
     <p>Atom owns evidence. The LLM supplies language.</p>
   </div>
   <div class="badge">{_escape(status_label)}</div>
@@ -278,21 +431,41 @@ ul {{ padding-left: 20px; }}
     <div class="meta-grid">
       <div class="meta"><span>Model</span>
         <strong>{_escape(model["model"])}</strong></div>
+      <div class="meta"><span>Outcome</span>
+        <strong>{_escape(artifact["outcome"])}</strong></div>
+      <div class="meta"><span>Privacy locations</span>
+        <strong>{_escape(", ".join(policy["allowed_locations"]))}</strong></div>
+      <div class="meta"><span>Cloud evidence allowed</span>
+        <strong>{_yes_no(policy["allow_cloud_data"])}</strong></div>
+      <div class="meta"><span>All admitted providers cancellable</span>
+        <strong>{_yes_no(model["capabilities"]["supports_cancellation"])}</strong></div>
       <div class="meta"><span>Atom snapshot</span>
         <strong>{_escape(packet["snapshot_sequence"])}</strong></div>
       <div class="meta"><span>Wiki nodes</span>
         <strong>{_escape(graph["node_count"])}</strong></div>
       <div class="meta"><span>Memory writes by LLM</span>
         <strong>none</strong></div>
+      <div class="meta"><span>Answer runtime</span>
+        <strong>{_escape(timings["total_ms"])} ms</strong></div>
+      <div class="meta"><span>Retrieval runtime</span>
+        <strong>{_escape(timings["retrieval_ms"])} ms</strong></div>
+      <div class="meta"><span>Atomic transaction</span>
+        <strong>{_escape(artifact["transaction"]["transaction_id"])}</strong></div>
+      <div class="meta"><span>Recovery events before run</span>
+        <strong>{
+        _escape(artifact["transaction"]["recovery_event_count"])
+    }</strong></div>
     </div>
     <h3>Spiderweb route</h3>
     <div class="layers">{layers}</div>
     <p><small>Thread <code>{
         _escape(artifact["spiderweb_trace"]["thread"]["thread_id"])
     }</code> formed from observed flow.</small></p>
+    <h3>Provider fabric</h3>
+    {routes}
   </main>
   <aside>
-    <p class="eyebrow">Bound evidence · side view</p>
+    <p class="eyebrow">Bound evidence &middot; side view</p>
     <h2>{len(packet["passages"])} retrieved passages</h2>
     <p>{_escape(packet["untrusted_data_notice"])}</p>
     {passages}

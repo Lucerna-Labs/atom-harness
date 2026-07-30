@@ -5,11 +5,45 @@ param(
     [ValidateSet('llama-cpp', 'openrouter')]
     [string]$Provider = $env:ATOM_LLM_PROVIDER,
 
+    [string]$ProviderChain = $env:ATOM_LLM_PROVIDERS,
+
     [string]$ModelPath = $env:ATOM_LLM_MODEL_PATH,
 
     [string]$LlmModel = $env:ATOM_LLM_MODEL,
 
     [string]$OutputDir,
+
+    [switch]$AllowCloud,
+
+    [ValidateRange(0, 3)]
+    [int]$MaxProviderRetries = 1,
+
+    [ValidateRange(0, 30)]
+    [double]$RetryBackoffSeconds = 0.25,
+
+    [ValidateRange(1, 10)]
+    [int]$CircuitFailureThreshold = 1,
+
+    [ValidateRange(0.1, 86400)]
+    [double]$CircuitCooldownSeconds = 60,
+
+    [ValidateRange(1, 64)]
+    [int]$MaxConcurrency = 2,
+
+    [ValidateRange(0.1, 3600)]
+    [double]$AcquireTimeoutSeconds = 30,
+
+    [ValidateRange(1, 3600)]
+    [int]$ProviderTimeoutSeconds = 240,
+
+    [ValidateRange(1024, 131072)]
+    [int]$ContextLength = 8192,
+
+    [string]$GpuLayers = $(if ($env:ATOM_LLM_GPU_LAYERS) {
+        $env:ATOM_LLM_GPU_LAYERS
+    } else {
+        'auto'
+    }),
 
     [string]$LlamaCli = $(if ($env:ATOM_LLAMA_CLI) {
         $env:ATOM_LLAMA_CLI
@@ -48,15 +82,19 @@ if (-not $pythonExecutable) {
 if (-not $pythonExecutable) {
     throw 'No Python environment with NumPy is available.'
 }
-if (-not $Provider) {
-    $Provider = if ($env:OPENROUTER_API_KEY) {
-        'openrouter'
-    } else {
+if (-not $ProviderChain) {
+    $ProviderChain = if ($Provider) {
+        $Provider
+    } elseif ($ModelPath -and $env:OPENROUTER_API_KEY) {
+        'llama-cpp,openrouter'
+    } elseif ($ModelPath) {
         'llama-cpp'
+    } else {
+        'openrouter'
     }
 }
-if ($Provider -eq 'llama-cpp' -and -not $ModelPath) {
-    throw 'Set ATOM_LLM_MODEL_PATH or pass -ModelPath.'
+if ($env:ATOM_ALLOW_CLOUD_DATA -eq '1') {
+    $AllowCloud = $true
 }
 if (-not $LlmModel) {
     $LlmModel = 'mistralai/mistral-small-3.2-24b-instruct'
@@ -65,10 +103,22 @@ if (-not $LlmModel) {
 $arguments = @(
     (Join-Path $projectRoot 'atom_harness_experiment.py'),
     '--question', $Question,
-    '--provider', $Provider,
+    '--providers', $ProviderChain,
     '--llm-model', $LlmModel,
-    '--llama-cli', $LlamaCli
+    '--llama-cli', $LlamaCli,
+    '--max-provider-retries', $MaxProviderRetries,
+    '--retry-backoff-seconds', $RetryBackoffSeconds,
+    '--circuit-failure-threshold', $CircuitFailureThreshold,
+    '--circuit-cooldown-seconds', $CircuitCooldownSeconds,
+    '--max-concurrency', $MaxConcurrency,
+    '--acquire-timeout-seconds', $AcquireTimeoutSeconds,
+    '--provider-timeout-seconds', $ProviderTimeoutSeconds,
+    '--context-length', $ContextLength,
+    '--gpu-layers', $GpuLayers
 )
+if ($AllowCloud) {
+    $arguments += '--allow-cloud'
+}
 if ($ModelPath) {
     $arguments += @('--model-path', $ModelPath)
 }

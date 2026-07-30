@@ -1,14 +1,16 @@
 {
   "schema_version": 1,
-  "active_runtime": "language-harness",
+  "active_runtime": "language-harness-v2",
   "runtimes": {
-    "language-harness": {
+    "language-harness-v2": {
       "runtime_entrypoint": "atom_harness_experiment.py",
       "wiki_runtime": "ATOM_HARNESS_WIKI_RUNTIME",
       "rag_runtime": "ATOM_HARNESS_RAG_RUNTIME",
       "side_view_runtime": "ATOM_HARNESS_SIDE_VIEW_RUNTIME",
       "artifact_binding_marker": "render_atom_harness_artifact",
-      "integration_test": "tests/test_atom_language_harness_integration.py"
+      "provider_fabric_runtime": "ATOM_PROVIDER_FABRIC_RUNTIME",
+      "transaction_runtime": "ATOM_RUN_TRANSACTION_RUNTIME",
+      "integration_test": "tests/test_atom_language_harness_v2_integration.py"
     },
     "causal-live": {
       "runtime_entrypoint": "atom_causal_live_experiment.py",

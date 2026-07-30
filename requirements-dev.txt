@@ -1,0 +1,3 @@
+-r requirements-harness.txt
+numpy==2.4.6
+ruff==0.13.0
