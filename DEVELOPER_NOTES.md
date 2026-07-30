@@ -417,6 +417,10 @@ For the exact CI and release-verification environment:
 py -3.13 -m pip install -r requirements-dev.txt
 ```
 
+The release set pins NumPy, Ruff, and PyTorch. PyTorch is required by the
+retained field and neural regression surfaces even though it is not on the
+Atom Language Harness V2 production path.
+
 Run with OpenRouter:
 
 ```powershell

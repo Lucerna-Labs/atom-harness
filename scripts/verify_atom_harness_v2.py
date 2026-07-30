@@ -294,7 +294,7 @@ def _check_ci_contract() -> dict[str, str]:
         raise PolicyFailure("Rust toolchain lacks clippy or rustfmt")
 
     requirements = (ROOT / "requirements-dev.txt").read_text(encoding="utf-8")
-    for requirement in ("numpy==2.4.6", "ruff==0.13.0"):
+    for requirement in ("numpy==2.4.6", "ruff==0.13.0", "torch==2.10.0"):
         if requirement not in requirements.splitlines():
             raise PolicyFailure(f"development dependency is not pinned: {requirement}")
     return {
@@ -303,6 +303,7 @@ def _check_ci_contract() -> dict[str, str]:
         "node_ci": "24",
         "ruff_ci": "0.13.0",
         "rust_ci": str(channel),
+        "torch_ci": "2.10.0",
     }
 
 
