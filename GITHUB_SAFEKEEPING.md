@@ -1,5 +1,11 @@
 # GitHub safekeeping snapshot
 
+> **Historical scope:** This record describes the upstream Atom LoRA
+> safekeeping snapshot. It does not define the active Atom Harness remote.
+> The standalone harness is published separately at
+> `https://github.com/Lucerna-Labs/atom-harness`; see `LOCAL_FORK.md` and
+> `DEVELOPER_NOTES.md`.
+
 The remote repository is a frozen source-only recovery snapshot of the former
 Atom generative-English distillation work and the Atom-native
 application-builder work from `C:\Projects\atom lora`.

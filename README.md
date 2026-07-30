@@ -10,7 +10,9 @@ language intent parsing and evidence-grounded answer rendering only.
 The causal-live runtime remains the evidence and learning kernel. The language
 model has no Atom DB write path, cannot promote its own output into evidence,
 and cannot override `insufficient_evidence`. See
-`ATOM_LANGUAGE_HARNESS.md` for the runnable path and trust boundaries.
+`ATOM_LANGUAGE_HARNESS.md` for the runnable path and trust boundaries. See
+`DEVELOPER_NOTES.md` for the full architecture, module map, provider contract,
+verification procedure, publication boundary, and developer handoff.
 
 The former 227M student / SmolLM2-1.7B teacher distillation pipeline is retired.
 Its fixed multi-billion-token schedule reproduced the conventional
