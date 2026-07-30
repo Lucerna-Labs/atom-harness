@@ -235,9 +235,7 @@ class AtomCausalLiveIntegrationTests(unittest.TestCase):
     def test_runtime_declarations_preserve_live_learning(self) -> None:
         registry = _read_json(PROJECT_ROOT / "ai-runtime-registry.json")
         knowledge_contract = _read_json(PROJECT_ROOT / "ai-runtime-knowledge.json")
-        side_view_contract = _read_json(
-            PROJECT_ROOT / "ai-artifact-side-view.json"
-        )
+        side_view_contract = _read_json(PROJECT_ROOT / "ai-artifact-side-view.json")
         self.assertEqual(registry["active_runtime"], "language-harness")
         self.assertNotIn("generative-english", registry["runtimes"])
         self.assertIn("language-harness", registry["runtimes"])
