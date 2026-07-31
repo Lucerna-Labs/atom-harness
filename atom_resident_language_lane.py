@@ -251,6 +251,7 @@ class ResidentLanguageLane:
                 "runtime": ATOM_RESIDENT_LANGUAGE_LANE_RUNTIME,
                 "state": self._state,
                 "alive": alive,
+                "process_id": process.pid if alive else None,
                 "process_generation": self._process_generation,
                 "model_load_count": self._model_load_count,
                 "restart_count": self._restart_count,
@@ -266,6 +267,30 @@ class ResidentLanguageLane:
                 "last_exit_code": self._last_exit_code,
                 "api_key_persisted": False,
             }
+
+    def preload(self) -> dict[str, Any]:
+        """Start and warm the permanent lane before user traffic arrives."""
+
+        cold_start_ms, vibrations = self._ensure_ready()
+        snapshot = self.snapshot()
+        core = {
+            "schema": 1,
+            "runtime": ATOM_RESIDENT_LANGUAGE_LANE_RUNTIME,
+            "operation": "resident-language-lane-preload",
+            "cold_start_ms": cold_start_ms,
+            "process_generation": snapshot["process_generation"],
+            "model_load_count": snapshot["model_load_count"],
+            "restart_count": snapshot["restart_count"],
+            "state": snapshot["state"],
+            "alive": snapshot["alive"],
+            "user_request_count": snapshot["request_count"],
+            "vibrations": vibrations,
+            "secrets_persisted": False,
+        }
+        return {
+            **core,
+            "preload_hash": hashlib.sha256(_canonical_json(core)).hexdigest(),
+        }
 
     def _command(self, port: int) -> list[str]:
         return [

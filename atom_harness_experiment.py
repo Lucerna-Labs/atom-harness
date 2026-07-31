@@ -21,6 +21,7 @@ from atom_causal_world_schema import canonical_hash
 from atom_harness_knowledge import (
     ATOM_HARNESS_RAG_RUNTIME,
     ATOM_HARNESS_WIKI_RUNTIME,
+    HarnessKnowledge,
     bootstrap_harness_knowledge,
 )
 from atom_harness_runtime import (
@@ -271,6 +272,7 @@ def run_atom_language_harness(
     evidence_path: Path = DEFAULT_EVIDENCE,
     model_path: Path = DEFAULT_MODEL,
     cancellation: CancellationToken | None = None,
+    knowledge: HarnessKnowledge | None = None,
 ) -> dict[str, Any]:
     """Publish one complete, verified harness run as an atomic bundle."""
 
@@ -279,14 +281,21 @@ def run_atom_language_harness(
     token = cancellation or CancellationToken()
     with RunTransaction(final_dir) as transaction:
         token.raise_if_cancelled()
-        knowledge = bootstrap_harness_knowledge(
-            transaction.staging_dir / "runtime",
-            forge_path=Path(forge_path),
-            evidence_path=Path(evidence_path),
-            model_path=Path(model_path),
-        )
+        if knowledge is None:
+            run_knowledge = bootstrap_harness_knowledge(
+                transaction.staging_dir / "runtime",
+                forge_path=Path(forge_path),
+                evidence_path=Path(evidence_path),
+                model_path=Path(model_path),
+            )
+        else:
+            run_knowledge = knowledge
+            transaction.snapshot_file(
+                "runtime/atom_harness_knowledge.atomdb",
+                run_knowledge.store_path,
+            )
         answer = AtomLanguageHarness(
-            knowledge=knowledge,
+            knowledge=run_knowledge,
             language_model=language_model,
         ).answer(question, cancellation=token)
         checks = _checks(answer)
@@ -333,7 +342,7 @@ def run_atom_language_harness(
                 item["route_hash"] for item in artifact["provider_routes"]
             ],
             "knowledge_hash": artifact["knowledge"]["knowledge_hash"],
-            "graph_knowledge_hash": knowledge.graph_manifest["knowledge_hash"],
+            "graph_knowledge_hash": run_knowledge.graph_manifest["knowledge_hash"],
             "store_sha256": artifact["memory"]["store_sha256_after"],
             "binary_sha256": _sha256(RELEASE_BINARY),
             "model_manifest_hash": canonical_hash(artifact["language_model"]),
@@ -348,18 +357,18 @@ def run_atom_language_harness(
         side_view = render_atom_harness_artifact(
             artifact,
             workflow,
-            knowledge.graph_manifest,
+            run_knowledge.graph_manifest,
         )
 
         transaction.write_json("atom_harness_artifact.json", artifact)
         transaction.write_json("atom_harness_workflow.json", workflow)
         transaction.write_json(
             "atom_harness_knowledge.json",
-            knowledge.manifest(),
+            run_knowledge.manifest(),
         )
         transaction.write_json(
             "atom_harness_wiki_graph.json",
-            knowledge.graph_manifest,
+            run_knowledge.graph_manifest,
         )
         transaction.write_json(
             "atom_harness_evidence_packet.json",

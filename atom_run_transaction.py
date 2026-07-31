@@ -436,6 +436,65 @@ class RunTransaction:
         _atomic_write(target, str(text).encode("utf-8"))
         return target
 
+    def copy_file(
+        self,
+        relative_path: str | Path,
+        source_path: Path,
+    ) -> Path:
+        """Copy a regular immutable input into the staged transaction safely."""
+
+        source = Path(source_path).resolve()
+        if not source.is_file() or source.is_symlink():
+            raise ValueError("transaction source must be a regular file")
+        target = self._target(relative_path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary = target.with_name(f".{target.name}.{uuid.uuid4().hex}.tmp")
+        try:
+            with source.open("rb") as reader, temporary.open("xb") as writer:
+                for block in iter(lambda: reader.read(1024 * 1024), b""):
+                    written = writer.write(block)
+                    if written != len(block):
+                        raise OSError("transaction file copy was incomplete")
+                writer.flush()
+                os.fsync(writer.fileno())
+            os.replace(temporary, target)
+            _fsync_directory(target.parent)
+        finally:
+            if temporary.exists():
+                temporary.unlink()
+        return target
+
+    def snapshot_file(
+        self,
+        relative_path: str | Path,
+        source_path: Path,
+    ) -> Path:
+        """Bind an immutable snapshot by hard link, with safe copy fallback."""
+
+        source = Path(source_path).resolve()
+        if not source.is_file() or source.is_symlink():
+            raise ValueError("transaction snapshot source must be a regular file")
+        target = self._target(relative_path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary = target.with_name(f".{target.name}.{uuid.uuid4().hex}.tmp")
+        try:
+            try:
+                os.link(source, temporary)
+            except OSError:
+                with source.open("rb") as reader, temporary.open("xb") as writer:
+                    for block in iter(lambda: reader.read(1024 * 1024), b""):
+                        written = writer.write(block)
+                        if written != len(block):
+                            raise OSError("transaction snapshot copy was incomplete")
+                    writer.flush()
+                    os.fsync(writer.fileno())
+            os.replace(temporary, target)
+            _fsync_directory(target.parent)
+        finally:
+            if temporary.exists():
+                temporary.unlink()
+        return target
+
     def _files(self) -> list[dict[str, Any]]:
         rows = []
         for path in sorted(self.staging_dir.rglob("*")):

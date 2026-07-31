@@ -18,6 +18,7 @@ RUST_SUFFIX = "." + "r" + "s"
 
 REQUIRED_FILES = (
     ".github/workflows/atom-harness-v3-ci.yml",
+    ".github/workflows/atom-harness-v4-ci.yml",
     "ai-artifact-side-view.json",
     "ai-provider-fabric.json",
     "ai-run-transaction.json",
@@ -25,8 +26,12 @@ REQUIRED_FILES = (
     "ai-runtime-registry.json",
     "atom-language-model.json",
     "atom-language-harness-architecture.json",
+    "ATOM_HARNESS_OPERATOR.md",
     "atom_harness_experiment.py",
     "atom_harness_knowledge.py",
+    "atom_harness_operator.py",
+    "atom_harness_operator_server.py",
+    "atom_harness_operator_ui.py",
     "atom_harness_runtime.py",
     "atom_harness_session.py",
     "atom_harness_session_cli.py",
@@ -39,12 +44,18 @@ REQUIRED_FILES = (
     "atom_run_transaction.py",
     "install-atom-language-model.ps1",
     "run-atom-harness-session.ps1",
+    "run-atom-harness-operator.ps1",
+    "START-ATOM-HARNESS-OPERATOR.cmd",
     "rust-toolchain.toml",
     "scripts/certify_atom_language_model.py",
     "scripts/certify_resident_language_lane.py",
+    "scripts/certify_atom_harness_operator.py",
     "scripts/verify_atom_harness_v3.py",
+    "scripts/verify_atom_harness_v4.py",
     "tests/test_atom_language_harness_v2_integration.py",
     "tests/test_atom_language_harness_v3_integration.py",
+    "tests/test_atom_language_harness_v4_integration.py",
+    "tests/test_atom_harness_operator.py",
     "tests/test_atom_provider_protocol_v2.py",
     "tests/test_atom_resident_language_lane.py",
 )
@@ -180,22 +191,25 @@ def _check_runtime_declarations() -> dict[str, str]:
     architecture = _load_json("atom-language-harness-architecture.json")
     language_model = _load_json("atom-language-model.json")
 
-    if registry.get("active_runtime") != "language-harness-v3":
-        raise PolicyFailure("language-harness-v3 is not the active runtime")
-    runtime = registry.get("runtimes", {}).get("language-harness-v3")
+    if registry.get("active_runtime") != "language-harness-v4":
+        raise PolicyFailure("language-harness-v4 is not the active runtime")
+    runtime = registry.get("runtimes", {}).get("language-harness-v4")
     if not isinstance(runtime, dict):
-        raise PolicyFailure("language-harness-v3 registry entry is absent")
-    expected_test = "tests/test_atom_language_harness_v3_integration.py"
+        raise PolicyFailure("language-harness-v4 registry entry is absent")
+    historical = registry.get("runtimes", {}).get("language-harness-v3")
+    if not isinstance(historical, dict):
+        raise PolicyFailure("historical language-harness-v3 entry is absent")
+    expected_test = "tests/test_atom_language_harness_v4_integration.py"
     declarations = (knowledge, side_view, provider, transaction)
     for declaration in declarations:
         if declaration.get("project_kind") != "ai-harness":
             raise PolicyFailure("runtime declaration project kind is invalid")
-        if declaration.get("runtime_entrypoint") != "atom_harness_experiment.py":
+        if declaration.get("runtime_entrypoint") != "atom_harness_operator_server.py":
             raise PolicyFailure("runtime entrypoint declarations disagree")
         if declaration.get("integration_test") != expected_test:
-            raise PolicyFailure("V3 integration-test declarations disagree")
+            raise PolicyFailure("V4 integration-test declarations disagree")
     if runtime.get("integration_test") != expected_test:
-        raise PolicyFailure("registry V3 integration test disagrees")
+        raise PolicyFailure("registry V4 integration test disagrees")
     if runtime.get("language_model_contract") != "atom-language-model.json":
         raise PolicyFailure("registry language-model contract is absent")
     if (
@@ -203,8 +217,8 @@ def _check_runtime_declarations() -> dict[str, str]:
         != "scripts/certify_resident_language_lane.py"
     ):
         raise PolicyFailure("registry language-model certification is absent")
-    if runtime.get("session_entrypoint") != "atom_harness_session_cli.py":
-        raise PolicyFailure("registry resident session entrypoint is absent")
+    if runtime.get("session_entrypoint") != "atom_harness_operator.py":
+        raise PolicyFailure("registry operator session entrypoint is absent")
     if runtime.get("resident_lane_runtime") != "ATOM_RESIDENT_LANGUAGE_LANE_RUNTIME":
         raise PolicyFailure("registry resident lane runtime is absent")
     if language_model.get("runtime") != "atom-language-model-contract-v1":
@@ -245,7 +259,7 @@ def _check_runtime_declarations() -> dict[str, str]:
     )
     if side.get("placement") != "side":
         raise PolicyFailure("artifact view is not declared at the side")
-    if side.get("module_path") != "atom_harness_side_view.py":
+    if side.get("module_path") != "atom_harness_operator_ui.py":
         raise PolicyFailure("artifact side-view module declaration is invalid")
     runtime_marker = side.get("runtime_marker")
     binding_marker = side.get("artifact_binding_marker")
@@ -253,8 +267,10 @@ def _check_runtime_declarations() -> dict[str, str]:
         raise PolicyFailure("artifact side-view runtime marker is invalid")
     if not isinstance(binding_marker, str) or len(binding_marker.strip()) < 3:
         raise PolicyFailure("artifact side-view binding marker is invalid")
-    entrypoint_text = (ROOT / "atom_harness_experiment.py").read_text(encoding="utf-8")
-    side_view_text = (ROOT / "atom_harness_side_view.py").read_text(encoding="utf-8")
+    entrypoint_text = (ROOT / "atom_harness_operator_server.py").read_text(
+        encoding="utf-8"
+    )
+    side_view_text = (ROOT / "atom_harness_operator_ui.py").read_text(encoding="utf-8")
     integration_text = (ROOT / expected_test).read_text(encoding="utf-8")
     if runtime_marker not in entrypoint_text:
         raise PolicyFailure("runtime entrypoint does not wire the side-view marker")
@@ -263,7 +279,7 @@ def _check_runtime_declarations() -> dict[str, str]:
     for marker in (runtime_marker, binding_marker):
         if marker not in integration_text:
             raise PolicyFailure(
-                f"V3 integration test does not exercise side-view marker {marker}"
+                f"V4 integration test does not exercise side-view marker {marker}"
             )
     _require_true(
         fabric,
@@ -290,6 +306,9 @@ def _check_runtime_declarations() -> dict[str, str]:
         "bounded_resident_queue",
         "supervised_crash_recovery",
         "one_model_load_per_process_generation",
+        "preloaded_before_operator_accepts_traffic",
+        "operator_restart_control",
+        "queue_state_user_visible",
     )
     if fabric.get("all_providers_must_be_preemptible") is not False:
         raise PolicyFailure("provider cancellation capability must remain honest")
@@ -300,6 +319,10 @@ def _check_runtime_declarations() -> dict[str, str]:
         "target_locking",
         "crash_recovery",
         "committed_file_manifest",
+        "durable_operator_journal",
+        "journal_hash_bound",
+        "journal_recovery_marks_interrupted_requests",
+        "operator_history_references_committed_artifacts",
     )
     if run_transaction.get("overwrite_allowed") is not False:
         raise PolicyFailure("run transactions must refuse overwrite")
@@ -385,6 +408,9 @@ def _check_runtime_declarations() -> dict[str, str]:
     architecture_text = json.dumps(architecture, sort_keys=True)
     for marker in (
         "atom-language-harness-v3",
+        "atom-language-harness-operator-v4",
+        "atom-harness-operator-loopback-server-v1",
+        "atom-language-harness-operator-ui-v4",
         "atom-resilient-provider-fabric-v3",
         "atom-run-transaction-v2",
         "atom-language-harness-wiki-v2",

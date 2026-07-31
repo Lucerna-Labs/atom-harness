@@ -1,4 +1,4 @@
-# Atom Language Harness V3
+# Atom Language Harness Operator V4
 
 The active product is a local AI harness. Atom remains the semantic authority:
 it owns causal evidence, the durable database, the runtime wiki graph, graph
@@ -21,7 +21,48 @@ The language path has two passes:
 
 LLM output never becomes evidence and has no write path to Atom DB. V3 keeps
 the policy-routed provider fabric and atomic run transaction, then adds a
-supervised resident language lane around that same authority boundary.
+supervised resident language lane around that same authority boundary. V4
+keeps that V3 execution core and adds the persistent interactive operator.
+
+Before the V4 server accepts traffic, it opens one immutable Atom catalog,
+constructs the wiki graph and graph RAG view, starts one local Qwen process,
+and warms the schema-constrained inference path. Each operator question then
+uses those resident resources but publishes a separate atomic V3 artifact
+bundle. Session history stores only bounded request state and references to
+committed artifacts. It never treats conversation as Atom evidence.
+
+## Interactive operator
+
+Start the Windows operator:
+
+```powershell
+.\run-atom-harness-operator.ps1
+```
+
+The launcher validates the active V4 registry and official local-model
+contract, locates Python and `llama-server`, verifies that the GGUF is present,
+and waits for preloading. The browser opens only when the operator is ready.
+`START-ATOM-HARNESS-OPERATOR.cmd` provides the same path for double-click use.
+
+The left pane contains conversation history, queue state, resident model
+state, load and restart counts, and controls. The right pane fetches the
+selected committed `atom_harness_side_view.html` with the in-memory access
+token and renders its same-origin route in a sandbox without script
+permission. An HttpOnly, SameSite session cookie is scoped only to artifact
+routes, so the token never appears in the artifact URL.
+
+Available controls are:
+
+1. Ask Atom, which enters the bounded typed queue.
+2. Cancel active, which propagates a cancellation token to the provider.
+3. Retry selected, which creates a new request bound to the failed,
+   interrupted, or cancelled parent.
+4. Restart model, which is available only while the operator is idle and
+   immediately warms the new process generation.
+5. Shut down, which stops admission, drains open work unless cancellation was
+   requested, closes the provider fabric, and seals the journal state.
+
+The older single-run and batch entrypoints remain available for compatibility.
 
 ## Run
 

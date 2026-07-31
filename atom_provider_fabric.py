@@ -393,6 +393,54 @@ class ProviderFabric:
             "state_hash": canonical_hash(state_core),
         }
 
+    def preload_runtime(self) -> dict[str, Any]:
+        """Warm admitted permanent lanes without routing question data."""
+
+        with self._lock:
+            if self._closed:
+                raise RuntimeError("provider fabric is closed")
+        providers: list[dict[str, Any]] = []
+        for key, capabilities, provider in zip(
+            self._provider_keys,
+            self._capabilities,
+            self.providers,
+            strict=True,
+        ):
+            admitted = (
+                capabilities.location in self.policy.allowed_locations
+                and (not capabilities.test_only or self.policy.allow_test_providers)
+                and capabilities.strict_json_schema
+            )
+            preload = getattr(provider, "preload", None)
+            if admitted and callable(preload):
+                evidence = dict(preload())
+                mode = "runtime-warmed"
+            elif admitted:
+                evidence = {"manifest": dict(provider.manifest())}
+                mode = "manifest-only"
+            else:
+                evidence = {}
+                mode = "policy-excluded"
+            providers.append(
+                {
+                    "provider_key": key,
+                    "provider_id": capabilities.provider_id,
+                    "model": capabilities.model,
+                    "location": capabilities.location.value,
+                    "admitted": admitted,
+                    "preload_mode": mode,
+                    "evidence": evidence,
+                }
+            )
+        core = {
+            "schema": 1,
+            "runtime": ATOM_PROVIDER_FABRIC_RUNTIME,
+            "operation": "provider-fabric-runtime-preload",
+            "providers": providers,
+            "secrets_persisted": False,
+        }
+        return {**core, "preload_hash": canonical_hash(core)}
+
     def manifest(self) -> Mapping[str, Any]:
         preload = self.preload_manifest()
         return {

@@ -314,3 +314,31 @@ def reopen_harness_knowledge(
         corpus=corpus,
         binary=Path(binary),
     )
+
+
+def load_or_bootstrap_harness_knowledge(
+    runtime_dir: Path,
+    *,
+    forge_path: Path,
+    evidence_path: Path,
+    model_path: Path,
+) -> HarnessKnowledge:
+    """Open one durable immutable catalog, creating it on first session start."""
+
+    runtime_dir = Path(runtime_dir)
+    store_path = runtime_dir / "atom_harness_knowledge.atomdb"
+    if store_path.is_file():
+        return reopen_harness_knowledge(
+            store_path,
+            evidence_path=Path(evidence_path),
+            model_path=Path(model_path),
+            binary=build_release_binary(),
+        )
+    if store_path.exists():
+        raise ValueError("Atom harness knowledge path is not a regular file")
+    return bootstrap_harness_knowledge(
+        runtime_dir,
+        forge_path=Path(forge_path),
+        evidence_path=Path(evidence_path),
+        model_path=Path(model_path),
+    )

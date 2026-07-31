@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "project_kind": "ai-harness",
-  "runtime_entrypoint": "atom_harness_experiment.py",
+  "runtime_entrypoint": "atom_harness_operator_server.py",
   "run_transaction": {
     "enabled": true,
     "module_path": "atom_run_transaction.py",
@@ -11,7 +11,11 @@
     "target_locking": true,
     "crash_recovery": true,
     "committed_file_manifest": true,
-    "overwrite_allowed": false
+    "overwrite_allowed": false,
+    "durable_operator_journal": true,
+    "journal_hash_bound": true,
+    "journal_recovery_marks_interrupted_requests": true,
+    "operator_history_references_committed_artifacts": true
   },
-  "integration_test": "tests/test_atom_language_harness_v3_integration.py"
+  "integration_test": "tests/test_atom_language_harness_v4_integration.py"
 }

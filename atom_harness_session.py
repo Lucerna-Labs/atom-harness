@@ -14,6 +14,10 @@ from atom_causal_experience_experiment import (
     DEFAULT_MODEL,
 )
 from atom_harness_experiment import run_atom_language_harness
+from atom_harness_knowledge import (
+    HarnessKnowledge,
+    load_or_bootstrap_harness_knowledge,
+)
 from atom_language_model_contract import (
     default_official_model_path,
     load_language_model_contract,
@@ -50,6 +54,8 @@ class AtomHarnessSession:
         self._completed_count = 0
         self._failed_count = 0
         self._closed = False
+        self._knowledge: HarnessKnowledge | None = None
+        self._runtime_preload: Mapping[str, Any] | None = None
 
     @classmethod
     def official_local(
@@ -143,6 +149,7 @@ class AtomHarnessSession:
         cancellation: CancellationToken | None = None,
     ) -> dict[str, Any]:
         target = self._claim_output_dir(question, output_dir)
+        knowledge = self.preload_knowledge()
         try:
             artifact = run_atom_language_harness(
                 target,
@@ -152,6 +159,7 @@ class AtomHarnessSession:
                 evidence_path=self.evidence_path,
                 model_path=self.model_path,
                 cancellation=cancellation,
+                knowledge=knowledge,
             )
         except BaseException:
             with self._lock:
@@ -161,6 +169,38 @@ class AtomHarnessSession:
             self._completed_count += 1
         return artifact
 
+    def preload_knowledge(self) -> HarnessKnowledge:
+        """Load one immutable wiki and graph RAG snapshot for the session."""
+
+        with self._lock:
+            if self._closed:
+                raise RuntimeError("Atom harness session is closed")
+            if self._knowledge is None:
+                self._knowledge = load_or_bootstrap_harness_knowledge(
+                    self.output_root / ".atom-operator-runtime" / "knowledge",
+                    forge_path=self.forge_path,
+                    evidence_path=self.evidence_path,
+                    model_path=self.model_path,
+                )
+            return self._knowledge
+
+    def preload_runtime(self) -> Mapping[str, Any]:
+        """Preload knowledge and the admitted resident language lane."""
+
+        knowledge = self.preload_knowledge()
+        providers = self.provider_fabric.preload_runtime()
+        core = {
+            "schema": 1,
+            "runtime": ATOM_HARNESS_SESSION_RUNTIME,
+            "operation": "session-runtime-preload",
+            "knowledge": knowledge.manifest(),
+            "providers": providers,
+            "secrets_persisted": False,
+        }
+        with self._lock:
+            self._runtime_preload = core
+        return core
+
     def manifest(self) -> Mapping[str, Any]:
         with self._lock:
             counts = {
@@ -169,6 +209,14 @@ class AtomHarnessSession:
                 "failed_count": self._failed_count,
                 "closed": self._closed,
             }
+            knowledge = (
+                self._knowledge.manifest() if self._knowledge is not None else None
+            )
+            runtime_preload = (
+                dict(self._runtime_preload)
+                if self._runtime_preload is not None
+                else None
+            )
         providers = []
         for provider in self.provider_fabric.providers:
             snapshot = getattr(provider, "lane_snapshot", None)
@@ -183,6 +231,8 @@ class AtomHarnessSession:
             "runtime": ATOM_HARNESS_SESSION_RUNTIME,
             "created_output_root": str(self.output_root),
             **counts,
+            "knowledge": knowledge,
+            "runtime_preload": runtime_preload,
             "providers": providers,
             "secrets_persisted": False,
         }

@@ -604,6 +604,31 @@ class LlamaCppResidentJsonLanguageModel:
     def lane_snapshot(self) -> Mapping[str, Any]:
         return self._lane.snapshot()
 
+    def preload(self) -> Mapping[str, Any]:
+        """Warm the resident model and schema path before accepting questions."""
+
+        lane = self._lane.preload()
+        core = {
+            "schema": 1,
+            "provider_runtime": LLAMA_CPP_RESIDENT_PROVIDER_RUNTIME,
+            "model": self.model_path.name,
+            "model_sha256": self._model_sha256,
+            "lane": dict(lane),
+            "secrets_persisted": False,
+        }
+        return {
+            **core,
+            "preload_hash": hashlib.sha256(
+                json.dumps(
+                    core,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    allow_nan=False,
+                ).encode("utf-8")
+            ).hexdigest(),
+        }
+
     def terminate_lane_for_recovery(
         self,
         reason: str = "operator recovery probe",

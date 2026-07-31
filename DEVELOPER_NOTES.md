@@ -1,5 +1,274 @@
 # Atom Harness Developer Notes
 
+## V4 interactive operator engineering record
+
+V4 is a persistent operator around the certified V3 harness. It does not
+replace the V3 evidence, provider, transaction, or artifact rules. The V4 host
+keeps session resources resident, accepts bounded interactive work, exposes
+operator controls, and delegates every question to the full V3 transaction
+path.
+
+### Product and authority boundary
+
+The active registry identity is `language-harness-v4`, with
+`atom_harness_operator_server.py` as its runtime entrypoint. The underlying
+answer runtime remains `atom-language-harness-v3`. Atom still owns the
+immutable database, wiki graph, graph-first RAG, primary claim, citation
+closure, machine grounding, and deterministic abstention. Qwen is still a
+language-only membrane. Conversation history is operational state, not
+evidence, and cannot mutate Atom DB.
+
+The operator is local-only. V4 constructs
+`AtomHarnessSession.official_local`, whose fabric policy admits only
+`ProviderLocation.LOCAL`. The server CLI has no cloud flag, fallback provider
+argument, or credential input.
+
+### Preload lifecycle
+
+`ResidentLanguageLane.preload()` starts `llama-server`, waits for health,
+executes the strict warmup schema, and returns hash-bound non-secret evidence
+without incrementing the user request count.
+`LlamaCppResidentJsonLanguageModel.preload()` binds that lane evidence to the
+admitted model identity. `ProviderFabric.preload_runtime()` invokes preload
+only for policy-admitted providers. Non-resident test providers retain an
+honest `manifest-only` preload mode.
+
+`AtomHarnessSession.preload_knowledge()` creates or reopens one durable
+immutable catalog below `.atom-operator-runtime/knowledge`. Reopen reconstructs
+and validates the graph against the current evidence and model files. A
+mismatch fails closed. `preload_runtime()` opens knowledge first, then warms
+the provider fabric. `AtomHarnessOperator.start()` stays in `preloading` and
+does not expose its on-ramp until that complete operation succeeds.
+
+The ordinary V3 session does not automatically warm the model in its
+constructor. This preserves the historical live certification semantics where
+the first user completion is the measured cold path. Operator V4 calls the new
+explicit preload operation before traffic.
+
+### Immutable catalog binding
+
+`run_atom_language_harness` accepts an optional preloaded `HarnessKnowledge`.
+When supplied, retrieval runs against that exact verified session object
+instead of constructing a new database. The per-request transaction still
+contains `runtime/atom_harness_knowledge.atomdb` and requires it before seal.
+
+`RunTransaction.snapshot_file()` first attempts a same-volume hard link to the
+immutable session database. This avoids physically copying roughly 57 MB for
+every operator request. If the filesystem refuses a hard link, the method
+falls back to a bounded streaming copy, flushes the file, fsyncs it, and
+atomically replaces the staged target. In both cases the transaction manifest
+calculates the complete SHA-256 and verification sees the same transaction
+path. No behavior depends on hard-link support.
+
+### Durable operator core
+
+`AtomHarnessOperator` owns one session, one bounded `queue.Queue`, one worker
+thread, cancellation tokens, and an atomic JSON journal. The default queue has
+eight waiting slots and one active worker. A request record contains a random
+operator request ID, bounded question, parent request ID, attempt number,
+state timestamps, output directory, a compact committed artifact reference,
+and a safe error envelope.
+
+Journal states are `queued`, `running`, `completed`, `cancelled`, `failed`, and
+`interrupted`. Every journal update is written to a unique temporary file,
+flushed, fsynced, and replaced. The complete canonical payload receives
+`journal_hash`. Startup rejects malformed, oversized, or hash-mismatched
+journals. Any prior `queued` or `running` record becomes `interrupted` on
+reopen, with a hashed recovery reason. It can be retried but is never silently
+resumed or marked complete.
+
+The journal is capped at 1,000 requests and retains at most 1,000 flow events.
+Only committed artifact references include answer text and citation IDs. Raw
+provider errors are reduced to type, safe kind, and a SHA-256 identity. The
+browser token, provider keys, prompts, and raw provider output are never
+persisted.
+
+The worker marks a request complete only after `session.answer()` returns and
+`verify_committed_run()` validates the published directory. The journal binds
+artifact hash, transaction ID, harness request ID, side-view path, answer,
+citations, limitations, knowledge hashes, total time, and provider route
+hashes. Failure or cancellation cannot publish a completed record.
+
+### Controls and recovery behavior
+
+Queued cancellation marks the record terminal immediately and lets the worker
+skip it. Active cancellation triggers the shared `CancellationToken`; the
+provider layer decides how to preempt its transport. The resident lane stops
+its child on active cancellation so private work cannot continue after the
+operator returns.
+
+Retry accepts only a failed, cancelled, or interrupted request and creates a
+new request with the old ID as `parent_request_id` and an incremented attempt.
+It never overwrites history or reuses an output directory.
+
+Resident restart requires a ready and idle operator. Admission pauses, every
+provider with `terminate_lane_for_recovery` is stopped, the full session
+preload path runs, and admission reopens only after warmup succeeds.
+
+Graceful shutdown stops new admission and places a sentinel after existing
+queue work. The default waits for open work. A caller may explicitly cancel
+pending work. Once the worker exits, the provider fabric closes and final
+journal state becomes `closed`.
+
+### Spiderweb operator flow
+
+The operator does not flatten the existing four-layer runtime. Its typed
+on-ramp is `OperatorQuestion` and its off-ramp is
+`CommittedAtomArtifact`. Submission creates an operator thread from observed
+flow. Promotion creates the resident knowledge-language intersection only
+when a worker begins that shared path. Queue depth emits vertical backpressure
+from L0 transport through L2 flow and L3 orchestration. Cancellation, restart
+recovery, resident restart, and artifact demotion also emit canonical
+hash-bound vertical events.
+
+This operator trace complements the per-artifact V3 Spiderweb trace. The V3
+artifact remains the authoritative fine-grained record of intent, retrieval,
+provider routes, and rendering.
+
+### Loopback API security
+
+`AtomOperatorHTTPServer` may bind only to `127.0.0.1`. Port zero is the default.
+The expected Host header is the exact loopback address and selected port.
+Operator status, control, and artifact routes require a 256-bit random token
+generated in server memory and delivered only to the local page in memory.
+The health route exposes only liveness and declared runtime identities. Every
+POST additionally requires the exact loopback Origin. CORS is absent.
+
+Request bodies must declare JSON, include a decimal content length, fit within
+16 KiB, and decode to an object. Control routes accept exact field sets.
+Errors return stable safe codes rather than exception text. Server logging is
+disabled. Responses disable caching, MIME sniffing, framing, referrers, and
+unneeded browser permissions.
+
+The root page receives the access token only as an in-memory JavaScript value.
+The startup JSON printed to the console never contains that token.
+
+### Two-pane artifact binding
+
+`atom_harness_operator_ui.py` declares
+`ATOM_HARNESS_OPERATOR_UI_RUNTIME` and the exact binding marker
+`render_operator_surface`. The declared V4 integration imports and executes
+that renderer.
+
+The left pane uses text nodes for questions, answers, state, metrics, and
+citations. It does not inject model strings with `innerHTML`. The right pane
+fetches the exact committed V3 side view through an authenticated request,
+then assigns its same-origin route to a script-disabled sandboxed iframe. The
+root response sets an HttpOnly, SameSite session cookie scoped only to
+`/api/artifacts/`; the ordinary JavaScript access token remains in memory.
+Artifact responses allow same-origin framing and every other response denies
+framing. The token does not appear in a query string, fragment, artifact file,
+iframe URL, or journal.
+
+The page has no third-party assets. A per-response nonce permits only its
+bundled style and script. The Content Security Policy otherwise defaults to
+none and restricts connections and frames to self. The
+artifact remains the existing V3 renderer, so all prior hash and grounding
+validation stays in force.
+
+### V4 module map
+
+| Surface | V4 responsibility |
+| --- | --- |
+| `atom_harness_operator.py` | Resident lifecycle, queue, cancellation, retry, restart, journal, recovery, and Spiderweb flow |
+| `atom_harness_operator_server.py` | Exact loopback host, in-memory token, same-origin typed API, safe errors, startup, and shutdown |
+| `atom_harness_operator_ui.py` | Two-pane controls and authenticated real-artifact binding |
+| `atom_harness_session.py` | Session-resident immutable knowledge and explicit full runtime preload |
+| `atom_resident_language_lane.py` | Explicit pre-traffic model and schema warmup plus process supervision |
+| `atom_provider_fabric.py` | Policy-aware provider runtime preload |
+| `atom_run_transaction.py` | Immutable snapshot hard link with fsynced copy fallback |
+| `run-atom-harness-operator.ps1` | Contract-validating Windows launcher |
+| `START-ATOM-HARNESS-OPERATOR.cmd` | Double-click Windows entrypoint |
+| `scripts/certify_atom_harness_operator.py` | Mixed endurance, cancellation, retry, restart, artifact, journal, memory, process, GPU, and immutability certificate |
+| `tests/test_atom_harness_operator.py` | Queue, capacity, cancellation, retry, raw-error hashing, and crash-journal recovery |
+| `tests/test_atom_language_harness_v4_integration.py` | Real wiki and RAG, operator API, security, transaction, side view, restart, journal, and declarations |
+| `scripts/verify_atom_harness_v4.py` | Fail-closed V4 declarations, source wiring, CI, Git, secrets, model, and crate policy |
+
+### Certification contract
+
+Deterministic mode requires at least 32 full operator requests and defaults to
+120. It mixes all eight known Atom domains with unsupported and adversarial
+prompts. It exercises queue buildup, active cancellation, retry, resident
+restart, journal verification, artifact verification, real side-view
+resolution, immutable store hashing, Python allocation growth, process
+working-set growth, and GPU-memory growth when available. Working-set samples
+are grouped by resident process generation. Each generation receives twelve
+settling samples before the certificate compares its first and last
+three-sample medians. This prevents the intentional restart from turning a
+different Windows file-mapping baseline into a false growth result while still
+failing sustained settled growth above 1 GiB or any 24 GiB process ceiling.
+The raw resource samples and per-generation calculations remain in the report.
+
+Live mode defaults to 3,600 seconds and requires at least 100 full requests. It
+uses the official Qwen GGUF and real `llama-server`. Requests are paced across
+the full interval so the certificate proves a resident extended session
+instead of a short burst followed by idle claims. It requires exactly one
+preload before user traffic, mixed grounded and unsupported results,
+successful cancellation and retry, an explicit idle restart and rewarm,
+bounded resource growth, an unchanged Atom store, a valid durable journal, no
+persisted secrets, and clean shutdown.
+
+Reports and progress files live under `local-results` and are excluded from
+Git. A report is evidence only for the exact source, model, backend, GPU
+policy, and machine state that produced it.
+
+### Phase 4 live certification evidence
+
+The final live certificate completed at
+`2026-07-31T04:08:42.615388+00:00` and passed every declared check. It ran 100
+mixed grounded and unsupported requests over 3,601.941 seconds with the
+official Qwen Q8_0 artifact, `llama-server` version `10173 (e9fa0781f)`, and
+`--gpu-layers all`. The local report is:
+
+```text
+C:\Projects\atom-harness\local-results\operator-live-certification-phase4-final-20260730-230836-9980270\atom_harness_operator_certification.json
+```
+
+The report SHA-256 is
+`43d93ccfa6e5f22ddce55a630712bf67d0b1bcf3ee6f96884362eb6067bbc237`.
+Its canonical report hash is
+`7db8fb04a05c0c084e31b8a1f11d4ec619ed4d80ddc104ae5e5881b15cd0a552`.
+The fifteen-file runtime and evaluator source binding has canonical hash
+`df99231af7aadb5e7d5a5aa86557c538e82e5f94cfec16aac3072fa96d8f4806`;
+the complete file map is recorded in
+`atom-language-harness-architecture.json`.
+
+Preload completed with process generation 1, model-load count 1, cold start
+5,270 ms, and schema warmup 156 ms before user traffic. The active
+cancellation probe produced `ProviderCancelledError`; its retry completed and
+retained the parent request binding. The idle restart advanced to generation
+2, model-load count 2, and restart count 1, then rewarmed in 139 ms. There were
+no provider failures. All 100 requested artifacts passed answerability,
+citation, transaction, side-view, and knowledge-binding checks. Total
+per-request latency was 1,681 ms minimum, 9,120.5 ms median, and 10,749 ms
+maximum.
+
+The Atom knowledge database stayed byte-identical at SHA-256
+`f9998147145d14e1a6b406d6e16cb6deaceb320f1c012d7b366235a7608fc352`.
+The journal hash, no-secret rule, local-only provider rule, and clean operator
+shutdown all passed. Python traced growth was 37,361,336 bytes with a
+98,902,902-byte peak. The report retained 96 working-set samples across both
+model generations. Generation 1 settled growth was 365,768,704 bytes and
+generation 2 settled growth was 483,008,512 bytes, both below the 1 GiB limit;
+the maximum observed working set was 13,238,329,344 bytes, below the 24 GiB
+ceiling.
+
+Per-process GPU memory was not observable because NVIDIA WDDM returned
+`used_memory` as `N/A`, so this certificate makes no numeric GPU-memory-growth
+claim. The exact `all` offload policy, two local GPU identities, model
+integrity, provider route, and generation lifecycle remain recorded
+separately. The machine exposed an NVIDIA GeForce RTX 5070 Ti with 16,303 MiB
+and an RTX 3060 with 12,288 MiB under driver 610.88.
+
+### Packaging and update boundary
+
+V4 is a local browser host launched from source. It is not packaged as an
+installer or desktop binary in this phase. Therefore no release updater is
+activated. If a later phase packages the operator as a user-facing desktop
+application, that work must first add `lucerna-update.json` schema 1 with
+explicit consent, SHA-256 verification, out-of-install staging, and
+replacement only after the running app exits.
+
 ## V3 resident language-lane engineering record
 
 V3 changes the local provider lifecycle, not the product authority boundary.

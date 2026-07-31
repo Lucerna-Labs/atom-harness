@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "project_kind": "ai-harness",
-  "runtime_entrypoint": "atom_harness_experiment.py",
+  "runtime_entrypoint": "atom_harness_operator_server.py",
   "wiki_graph": {
     "enabled": true,
     "module_path": "atom_harness_knowledge.py",
@@ -12,5 +12,9 @@
     "module_path": "atom_harness_knowledge.py",
     "runtime_marker": "ATOM_HARNESS_RAG_RUNTIME"
   },
-  "integration_test": "tests/test_atom_language_harness_v3_integration.py"
+  "session_resident": true,
+  "immutable_during_requests": true,
+  "exact_snapshot_bound_into_each_committed_transaction": true,
+  "same_volume_hard_link_with_copy_fallback": true,
+  "integration_test": "tests/test_atom_language_harness_v4_integration.py"
 }

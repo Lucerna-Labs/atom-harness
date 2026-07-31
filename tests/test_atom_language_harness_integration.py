@@ -354,20 +354,20 @@ class AtomLanguageHarnessIntegrationTests(unittest.TestCase):
         architecture = _read_json(
             PROJECT_ROOT / "atom-language-harness-architecture.json"
         )
-        expected_test = "tests/test_atom_language_harness_v3_integration.py"
+        expected_test = "tests/test_atom_language_harness_v4_integration.py"
         self.assertEqual(
             registry["active_runtime"],
-            "language-harness-v3",
+            "language-harness-v4",
         )
-        active = registry["runtimes"]["language-harness-v3"]
+        active = registry["runtimes"]["language-harness-v4"]
         self.assertEqual(
             active["runtime_entrypoint"],
-            "atom_harness_experiment.py",
+            "atom_harness_operator_server.py",
         )
         self.assertEqual(active["integration_test"], expected_test)
         self.assertEqual(
             knowledge["runtime_entrypoint"],
-            "atom_harness_experiment.py",
+            "atom_harness_operator_server.py",
         )
         self.assertEqual(
             knowledge["wiki_graph"]["module_path"],
@@ -380,16 +380,16 @@ class AtomLanguageHarnessIntegrationTests(unittest.TestCase):
         self.assertEqual(knowledge["integration_test"], expected_test)
         self.assertEqual(
             side_view["runtime_entrypoint"],
-            "atom_harness_experiment.py",
+            "atom_harness_operator_server.py",
         )
         self.assertEqual(
             side_view["side_view"]["module_path"],
-            "atom_harness_side_view.py",
+            "atom_harness_operator_ui.py",
         )
         self.assertEqual(side_view["integration_test"], expected_test)
         self.assertEqual(
             architecture["runtime_entrypoint"],
-            "atom_harness_experiment.py",
+            "atom_harness_operator_server.py",
         )
         self.assertEqual(
             architecture["integration_test"],

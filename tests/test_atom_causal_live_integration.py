@@ -236,10 +236,11 @@ class AtomCausalLiveIntegrationTests(unittest.TestCase):
         registry = _read_json(PROJECT_ROOT / "ai-runtime-registry.json")
         knowledge_contract = _read_json(PROJECT_ROOT / "ai-runtime-knowledge.json")
         side_view_contract = _read_json(PROJECT_ROOT / "ai-artifact-side-view.json")
-        self.assertEqual(registry["active_runtime"], "language-harness-v3")
+        self.assertEqual(registry["active_runtime"], "language-harness-v4")
         self.assertNotIn("generative-english", registry["runtimes"])
         self.assertIn("language-harness-v2", registry["runtimes"])
         self.assertIn("language-harness-v3", registry["runtimes"])
+        self.assertIn("language-harness-v4", registry["runtimes"])
         causal_live = registry["runtimes"]["causal-live"]
         architecture = _read_json(PROJECT_ROOT / "atom-causal-live-architecture.json")
         self.assertEqual(
@@ -276,7 +277,7 @@ class AtomCausalLiveIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(
             knowledge_contract["runtime_entrypoint"],
-            "atom_harness_experiment.py",
+            "atom_harness_operator_server.py",
         )
         self.assertEqual(
             knowledge_contract["wiki_graph"]["module_path"],
@@ -288,11 +289,11 @@ class AtomCausalLiveIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(
             side_view_contract["runtime_entrypoint"],
-            "atom_harness_experiment.py",
+            "atom_harness_operator_server.py",
         )
         self.assertEqual(
             side_view_contract["side_view"]["module_path"],
-            "atom_harness_side_view.py",
+            "atom_harness_operator_ui.py",
         )
 
     def test_store_report_and_workflow_hashes_bind_exact_files(

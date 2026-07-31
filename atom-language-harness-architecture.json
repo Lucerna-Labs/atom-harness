@@ -1,9 +1,9 @@
 {
-  "schema": 3,
-  "runtime": "atom-language-harness-v3",
-  "runtime_entrypoint": "atom_harness_experiment.py",
-  "session_entrypoint": "atom_harness_session_cli.py",
-  "integration_test": "tests/test_atom_language_harness_v3_integration.py",
+  "schema": 4,
+  "runtime": "atom-language-harness-operator-v4",
+  "runtime_entrypoint": "atom_harness_operator_server.py",
+  "session_entrypoint": "atom_harness_operator.py",
+  "integration_test": "tests/test_atom_language_harness_v4_integration.py",
   "identity": {
     "system": "Atom evidence harness",
     "semantic_authority": "Atom",
@@ -131,7 +131,11 @@
     "wiki_runtime": "atom-language-harness-wiki-v2",
     "rag_runtime": "atom-language-harness-graph-rag-v2",
     "retrieval_order": "graph relationships before bounded text evidence",
-    "read_only_during_language_requests": true
+    "read_only_during_language_requests": true,
+    "session_resident": true,
+    "preloaded_before_operator_traffic": true,
+    "exact_snapshot_bound_into_each_run_transaction": true,
+    "same_volume_hard_link_with_copy_fallback": true
   },
   "spiderweb": {
     "module": "atom_harness_runtime.py",
@@ -157,7 +161,99 @@
     "target_locking": true,
     "crash_recovery": true,
     "committed_file_manifest": true,
-    "overwrite_allowed": false
+    "overwrite_allowed": false,
+    "operator_journal": "atom-harness-operator-journal-v1",
+    "journal_hash_bound": true,
+    "interrupted_request_recovery": true
+  },
+  "operator": {
+    "module": "atom_harness_operator.py",
+    "runtime": "atom-language-harness-operator-v4",
+    "server_module": "atom_harness_operator_server.py",
+    "server_runtime": "atom-harness-operator-loopback-server-v1",
+    "bind_host": "127.0.0.1",
+    "random_port_default": true,
+    "browser_token_in_memory_only": true,
+    "artifact_cookie_http_only": true,
+    "artifact_cookie_same_site_strict": true,
+    "artifact_cookie_path": "/api/artifacts/",
+    "host_header_validation": true,
+    "same_origin_controls": true,
+    "bounded_request_body": true,
+    "cors_enabled": false,
+    "queue_depth": 8,
+    "worker_count": 1,
+    "controls": [
+      "cancel",
+      "retry",
+      "restart-resident-model",
+      "graceful-shutdown"
+    ],
+    "durable_session_history": true,
+    "raw_provider_errors_persisted": false,
+    "cloud_allowed": false,
+    "underlying_harness_runtime": "atom-language-harness-v3",
+    "artifact_renderer_runtime": "atom-language-harness-side-view-v3",
+    "certification_evidence": {
+      "status": "certified-live-local",
+      "runtime": "atom-harness-operator-certification-v1",
+      "verified_utc": "2026-07-31T04:08:42.615388+00:00",
+      "report_sha256": "43d93ccfa6e5f22ddce55a630712bf67d0b1bcf3ee6f96884362eb6067bbc237",
+      "report_hash": "7db8fb04a05c0c084e31b8a1f11d4ec619ed4d80ddc104ae5e5881b15cd0a552",
+      "source_manifest_hash": "df99231af7aadb5e7d5a5aa86557c538e82e5f94cfec16aac3072fa96d8f4806",
+      "source_files_sha256": {
+        "atom-language-model.json": "025f6c44dd94107ac7813393ce115b757a6657787cb39fb86573ba76cc89ed79",
+        "atom_harness_experiment.py": "fd71eb3b65a6776573ef2a2963de23216208477822e32413dc6d7f5e48726326",
+        "atom_harness_knowledge.py": "0914a26e929c5603cfec67eac014bde5d195123b475f2075f74056ac0d6668ab",
+        "atom_harness_operator.py": "64381a832cf86df5ba86c2726e4894d8a42847bdf0ebafe645eb80c30fa44ac2",
+        "atom_harness_operator_server.py": "b667e663191f8f48907551a84f9b5db4bf36fdd4dd0130bdbf0774fa5b1faa62",
+        "atom_harness_operator_ui.py": "36dbf2aa6e0624cb92381ad849f3546ffab302f6c86c0d4aadb4309b7ced628a",
+        "atom_harness_runtime.py": "e4fb0ea1caefca68e6b4d76e5b3431835b31155fa662f5dce1f6c2de84092242",
+        "atom_harness_session.py": "85ee7062ca69ab555e436c9adcf6b34055154ff3df8868898950df4b5219a66f",
+        "atom_harness_side_view.py": "2363dd2fd3300380178115f06153873cfbb1e381899a0250bd1a49c2213dba51",
+        "atom_llm_protocol.py": "3818c73cd4b696ded176d00b5f1c9130d00025dbfacf1282b5c486ae30b81e3c",
+        "atom_llm_provider.py": "768873dcd2bdc084d918a2681997ac33e2154a8fccf287247bac10b37808c1fb",
+        "atom_provider_fabric.py": "20f29cad1935d4f67ecff557737308d8b33c7b4b85901a92d2c4b3243603d021",
+        "atom_resident_language_lane.py": "9fba4e35744015d525c11ee81b78a4bb553da27d26d8e9f1ad0909fe890383de",
+        "atom_run_transaction.py": "b43295753287feb03090b22f366dc485d296f610de51c13f5cefbfe4654a5856",
+        "scripts/certify_atom_harness_operator.py": "c57443eb4f6669f178f3c357dd7002a158162839b6c11618ad1450e57fb4b302"
+      },
+      "mode": "live",
+      "requested_duration_seconds": 3600,
+      "elapsed_seconds": 3601.941,
+      "request_count": 100,
+      "gpu_layers": "all",
+      "llama_cpp_version": "10173 (e9fa0781f)",
+      "model_artifact_sha256": "ae916ede1c010a26955ee8ae2e908bf8815a3f135ec860439ab924701c69d5f1",
+      "preload_model_load_count": 1,
+      "preload_process_generation": 1,
+      "final_model_load_count": 2,
+      "final_process_generation": 2,
+      "final_restart_count": 1,
+      "cancellation_and_retry_passed": true,
+      "resident_restart_and_rewarm_passed": true,
+      "all_requests_passed": true,
+      "all_checks_passed": true,
+      "knowledge_store_unchanged": true,
+      "journal_hash_valid": true,
+      "operator_closed_cleanly": true,
+      "python_growth_bytes": 37361336,
+      "python_peak_bytes": 98902902,
+      "working_set_sample_count": 96,
+      "working_set_process_count": 2,
+      "working_set_max_bytes": 13238329344,
+      "generation_1_settled_growth_bytes": 365768704,
+      "generation_2_settled_growth_bytes": 483008512,
+      "working_set_growth_limit_bytes": 1073741824,
+      "working_set_ceiling_bytes": 25769803776,
+      "gpu_memory_observed": false,
+      "gpu_memory_limitation": "NVIDIA WDDM returned per-process used_memory as N/A",
+      "latency_ms": {
+        "minimum": 1681,
+        "median": 9120.5,
+        "maximum": 10749
+      }
+    }
   },
   "trust_laws": [
     "LLM output is never Atom evidence",
@@ -174,9 +270,12 @@
     "partial run directories are never published as completed artifacts"
   ],
   "side_view": {
-    "module": "atom_harness_side_view.py",
-    "runtime": "atom-language-harness-side-view-v3",
+    "module": "atom_harness_operator_ui.py",
+    "runtime": "atom-language-harness-operator-ui-v4",
     "placement": "side",
+    "binding": "render_operator_surface",
+    "primary_surface": "interactive-conversation",
+    "artifact_source": "committed V3 artifact side view",
     "binds": [
       "answer",
       "citations",
@@ -195,5 +294,5 @@
       "atomic transaction identity"
     ]
   },
-  "claim_boundary": "V3 adds a supervised resident Qwen language lane to the crash-safe, policy-routed language membrane around saved causal Atom evidence. The model remains language-only. Atom still owns facts, retrieval, grounding, abstention, and memory. Resident certification covers all eight saved domains, sequential reuse, bounded backpressure, an injected process failure, clean restart, wiki graph and RAG, immutable Atom memory, and the bound artifact side view. This does not claim that an LLM creates facts, that all questions are answerable, that every GGUF is compatible, or that retired language-model distillation is active."
+  "claim_boundary": "V4 adds a persistent local operator around the certified V3 harness. It preloads one immutable Atom wiki and graph RAG snapshot plus one supervised resident Qwen lane before accepting traffic, then publishes every answer through the existing atomic V3 artifact transaction. The browser surface is loopback-only, authenticated in memory, and places the real committed artifact beside conversation controls. Atom still owns facts, retrieval, grounding, abstention, and memory. This does not claim that an LLM creates facts, that all questions are answerable, that every GGUF is compatible, that cloud routing is enabled, or that retired language-model distillation is active."
 }

@@ -1,14 +1,14 @@
 {
   "schema": 1,
   "project_kind": "ai-harness",
-  "runtime_entrypoint": "atom_harness_experiment.py",
+  "runtime_entrypoint": "atom_harness_operator_server.py",
   "side_view": {
     "enabled": true,
     "user_visible": true,
     "placement": "side",
-    "module_path": "atom_harness_side_view.py",
-    "runtime_marker": "ATOM_HARNESS_SIDE_VIEW_RUNTIME",
-    "artifact_binding_marker": "render_atom_harness_artifact",
+    "module_path": "atom_harness_operator_ui.py",
+    "runtime_marker": "ATOM_HARNESS_OPERATOR_UI_RUNTIME",
+    "artifact_binding_marker": "render_operator_surface",
     "bound_to_real_artifact_output": true,
     "selected_model_identity_visible": true,
     "model_load_latency_visible": true,
@@ -18,7 +18,14 @@
     "cold_start_and_warm_reuse_visible": true,
     "queue_wait_visible": true,
     "process_generation_visible": true,
-    "intent_assistance_visible": true
+    "intent_assistance_visible": true,
+    "primary_surface": "interactive-conversation",
+    "real_artifact_loaded_from_committed_transaction": true,
+    "authenticated_artifact_fetch": true,
+    "artifact_token_absent_from_url": true,
+    "http_only_same_site_artifact_cookie": true,
+    "artifact_cookie_path_scoped": true,
+    "sandboxed_artifact_frame": true
   },
-  "integration_test": "tests/test_atom_language_harness_v3_integration.py"
+  "integration_test": "tests/test_atom_language_harness_v4_integration.py"
 }

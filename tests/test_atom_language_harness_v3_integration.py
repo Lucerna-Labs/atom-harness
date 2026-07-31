@@ -437,9 +437,8 @@ class AtomLanguageHarnessV3IntegrationTests(unittest.TestCase):
             },
         )
 
-    def test_active_contracts_declare_the_v3_resident_runtime(self) -> None:
+    def test_registry_preserves_the_certified_v3_resident_runtime(self) -> None:
         registry = _read_json(PROJECT_ROOT / "ai-runtime-registry.json")
-        knowledge = _read_json(PROJECT_ROOT / "ai-runtime-knowledge.json")
         side_view = _read_json(PROJECT_ROOT / "ai-artifact-side-view.json")
         fabric = _read_json(PROJECT_ROOT / "ai-provider-fabric.json")
         architecture = _read_json(
@@ -447,11 +446,14 @@ class AtomLanguageHarnessV3IntegrationTests(unittest.TestCase):
         )
         model = _read_json(PROJECT_ROOT / "atom-language-model.json")
 
-        self.assertEqual(registry["active_runtime"], "language-harness-v3")
-        active = registry["runtimes"]["language-harness-v3"]
-        for declaration in (active, knowledge, side_view, fabric, architecture):
-            self.assertEqual(declaration["integration_test"], V3_INTEGRATION_TEST)
-        self.assertEqual(architecture["runtime"], ATOM_LANGUAGE_HARNESS_RUNTIME)
+        self.assertEqual(registry["active_runtime"], "language-harness-v4")
+        historical = registry["runtimes"]["language-harness-v3"]
+        self.assertEqual(historical["integration_test"], V3_INTEGRATION_TEST)
+        self.assertEqual(
+            historical["runtime_entrypoint"],
+            "atom_harness_experiment.py",
+        )
+        self.assertEqual(architecture["runtime"], "atom-language-harness-operator-v4")
         self.assertEqual(
             architecture["language_membrane"]["configured_default_provider"],
             "LlamaCppResidentJsonLanguageModel",
@@ -481,6 +483,10 @@ class AtomLanguageHarnessV3IntegrationTests(unittest.TestCase):
             fabric["provider_fabric"]["external_proxy_disabled_for_loopback"]
         )
         self.assertTrue(fabric["provider_fabric"]["supervised_crash_recovery"])
+        self.assertEqual(
+            side_view["side_view"]["artifact_binding_marker"],
+            "render_operator_surface",
+        )
 
 
 if __name__ == "__main__":

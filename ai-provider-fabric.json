@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "project_kind": "ai-harness",
-  "runtime_entrypoint": "atom_harness_experiment.py",
+  "runtime_entrypoint": "atom_harness_operator_server.py",
   "provider_fabric": {
     "enabled": true,
     "module_path": "atom_provider_fabric.py",
@@ -29,7 +29,10 @@
     "typed_resident_on_off_ramps": true,
     "bounded_resident_queue": true,
     "supervised_crash_recovery": true,
-    "one_model_load_per_process_generation": true
+    "one_model_load_per_process_generation": true,
+    "preloaded_before_operator_accepts_traffic": true,
+    "operator_restart_control": true,
+    "queue_state_user_visible": true
   },
-  "integration_test": "tests/test_atom_language_harness_v3_integration.py"
+  "integration_test": "tests/test_atom_language_harness_v4_integration.py"
 }

@@ -2,20 +2,36 @@
 
 ## Active direction
 
-The active product is Atom Language Harness V3 around the causal Atom runtime.
+The active product is Atom Harness Operator V4 around the certified V3 causal
+Atom runtime.
 Atom owns facts, causal memory, the runtime wiki graph, graph RAG, tool-routing
 policy, and abstention. A replaceable LLM supplies natural-language intent
 parsing and evidence-grounded answer rendering only.
 
-V3 keeps the V2 provider and transaction protections and adds a supervised
-resident language lane. One authenticated loopback `llama-server` process
-loads the local model once, warms the schema path before user traffic, and
-serves intent and grounded-response requests across a multi-question session.
-Admission has a bounded queue. Queue pressure, cold start, warm reuse, process
-generation, and supervised restart are typed Spiderweb evidence. Cloud
-evidence egress remains blocked unless the operator opts in for the current
-process. The side view binds the real answer to evidence, provider routes,
-resident-lane state, timings, privacy state, and the run transaction.
+V4 keeps the V3 provider and transaction protections and adds a persistent
+interactive operator. It loads the immutable Atom wiki and graph RAG snapshot,
+starts the authenticated loopback `llama-server`, and warms the constrained
+language path before it accepts a question. The browser surface places
+conversation and controls on the left and the real committed artifact on the
+right. Every request still passes through its own crash-safe V3 transaction.
+Cancel, retry, idle model restart, and graceful shutdown are first-class
+controls. Queue pressure, lifecycle changes, artifact publication, and
+recovery are typed Spiderweb flow evidence.
+
+Start the operator on Windows:
+
+```powershell
+.\run-atom-harness-operator.ps1
+```
+
+For a double-click launch, use `START-ATOM-HARNESS-OPERATOR.cmd`. The server
+binds only to `127.0.0.1`, chooses a random port by default, and creates its
+browser access token in memory. Cloud routing is not available in the V4
+operator. See `ATOM_HARNESS_OPERATOR.md` for the controls and runtime layout.
+The latest one-hour local certificate passed 100 mixed requests, cancellation
+and retry, model restart and rewarm, journal and transaction checks, immutable
+knowledge checks, settled memory bounds, and clean shutdown. Detailed evidence
+and the report hash are in `DEVELOPER_NOTES.md`.
 
 The selected local language membrane is the official
 `Qwen/Qwen3-4B-Instruct-2507` model in the ggml-org Q8_0 GGUF conversion.
@@ -31,8 +47,8 @@ for the machine-readable contract and certified evidence. Rerun the live
 certification before promoting any new model, backend, prompt transport, or
 authority-boundary revision.
 
-Use `run-atom-harness-session.ps1` when asking multiple questions. It keeps
-one resident process alive for the full session and writes a hash-bound
+`run-atom-harness-session.ps1` remains as the non-interactive V3 batch host.
+It keeps one resident process alive for the full batch and writes a hash-bound
 session report. The V3 certification runs 20 end-to-end cases across all eight
 saved Atom domains, a concurrent backpressure probe, an injected process
 failure, and a full post-restart harness request.
