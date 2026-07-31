@@ -1288,6 +1288,9 @@ lock file, restores in locked mode, treats warnings as errors, enables the
 latest analyzers, and produces deterministic managed builds. The desktop and
 updater are self-contained Windows x64 applications. WebView2 is pinned at
 build time while the installed runtime is checked at verification time.
+`global.json` pins SDK 9.0.305 with roll-forward disabled because the SDK
+selects implicit framework packages such as `Microsoft.NET.ILLink.Tasks`;
+allowing a newer servicing SDK would invalidate an otherwise exact lockfile.
 
 ### 13.3 Process lifecycle and recovery
 

@@ -32,6 +32,7 @@ DESKTOP_ENTRYPOINT = "desktop/AtomHarness.Desktop/Program.cs"
 REQUIRED_DESKTOP_FILES = (
     V5_WORKFLOW,
     "ATOM_HARNESS_DESKTOP.md",
+    "global.json",
     "atom-harness-backend.spec",
     "atom-harness-desktop-architecture.json",
     "atom-harness-desktop-release-evidence.json",
@@ -293,6 +294,15 @@ def _check_desktop_surface() -> dict[str, Any]:
     if "pyinstaller==6.21.0" not in requirements:
         raise PolicyFailure("PyInstaller is not pinned")
 
+    dotnet_sdk = _load_json("global.json").get("sdk")
+    if (
+        not isinstance(dotnet_sdk, dict)
+        or dotnet_sdk.get("version") != "9.0.305"
+        or dotnet_sdk.get("rollForward") != "disable"
+        or dotnet_sdk.get("allowPrerelease") is not False
+    ):
+        raise PolicyFailure("The desktop .NET SDK boundary is not exact")
+
     workflow = _require_markers(
         V5_WORKFLOW,
         (
@@ -321,6 +331,8 @@ def _check_desktop_surface() -> dict[str, Any]:
     for action in expected_actions:
         if action not in workflow:
             raise PolicyFailure(f"Desktop Phase 5 CI action is not pinned: {action}")
+    if 'dotnet-version: "9.0.305"' not in workflow:
+        raise PolicyFailure("Desktop Phase 5 CI must pin .NET SDK 9.0.305")
     for line in workflow.splitlines():
         stripped = line.strip()
         if stripped.startswith("uses:") and not re.search(

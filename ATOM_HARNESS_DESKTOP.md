@@ -70,8 +70,10 @@ in-application update check can distribute a future version.
 
 ## Build a release
 
-Prerequisites are Python 3.13, Rust 1.96.0, .NET 9 SDK, WiX Toolset 3.14, and
-the certified llama.cpp Windows runtime. The build script performs policy
+Prerequisites are Python 3.13, Rust 1.96.0, the exact .NET SDK 9.0.305, WiX
+Toolset 3.14, and the certified llama.cpp Windows runtime. `global.json`
+disables SDK roll-forward so implicit framework packages cannot silently
+rewrite the checked-in lock graph. The build script performs policy
 validation, locked dependency restoration, Rust and .NET builds, .NET tests,
 the frozen Python backend build, full-file manifest creation, ZIP creation,
 and per-user MSI creation.
