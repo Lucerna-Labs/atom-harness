@@ -458,6 +458,9 @@ class AtomLanguageHarnessV4IntegrationTests(unittest.TestCase):
                 encoding="utf-8"
             )
         )
+        workflow = (
+            PROJECT_ROOT / ".github/workflows/atom-harness-v4-ci.yml"
+        ).read_text(encoding="utf-8")
         self.assertEqual(registry["active_runtime"], "language-harness-v4")
         active = registry["runtimes"]["language-harness-v4"]
         for declaration in (
@@ -494,6 +497,12 @@ class AtomLanguageHarnessV4IntegrationTests(unittest.TestCase):
             "utf-8-lf-v1",
         )
         self.assertEqual(len(certification["source_files_sha256"]), 15)
+        for action_pin in (
+            "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+        ):
+            self.assertIn(action_pin, workflow)
 
 
 if __name__ == "__main__":

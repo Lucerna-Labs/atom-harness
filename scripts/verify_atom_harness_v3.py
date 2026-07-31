@@ -460,10 +460,10 @@ def _check_ci_contract() -> dict[str, str]:
         "certify_resident_language_lane.py",
         "install-atom-language-model.ps1",
         "run-atom-harness-session.ps1",
-        "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
         "persist-credentials: false",
-        "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
-        "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+        "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+        "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
         'node-version: "24"',
     ):
         if marker not in workflow:

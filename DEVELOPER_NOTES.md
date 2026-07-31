@@ -1204,12 +1204,15 @@ the renderer pass.
 
 Before merging or publishing a change:
 
-- confirm `language-harness-v2` is still the declared active runtime;
+- confirm `language-harness-v4` is still the declared active runtime and
+  `language-harness-v3` remains registered as historical;
 - confirm wiki graph, graph RAG, and side view remain runtime-wired;
 - confirm provider admission, privacy, and run transaction declarations remain
   runtime-wired;
 - confirm no Rust crate exceeds 4,000 Rust source lines;
 - inspect the staged diff for secrets and generated artifacts;
+- confirm every GitHub action remains pinned by full commit SHA and uses the
+  current Node 24 action runtime;
 - run Python lint, format, compilation, policy, and all declared integration
   suites;
 - run Rust format, Clippy with warnings denied, and all workspace tests;

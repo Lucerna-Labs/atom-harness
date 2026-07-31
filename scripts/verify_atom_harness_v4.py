@@ -274,11 +274,24 @@ def _check_v4_surface() -> dict[str, Any]:
             "Preloading the Atom graph",
         ),
     )
+    _require_markers(
+        ".github/workflows/atom-harness-v4-ci.yml",
+        (
+            "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+            'node-version: "24"',
+            "Run exact Operator V4 integration",
+            "Run full Python regression suite",
+            "Lint Rust with warnings denied",
+        ),
+    )
     return {
         "operator_runtime": active["operator_runtime"],
         "operator_entrypoint": active["runtime_entrypoint"],
         "operator_integration_test": active["integration_test"],
         "operator_certification": active["operator_certification"],
+        "operator_ci": "full-sha-pinned-node24-actions-v7",
     }
 
 
