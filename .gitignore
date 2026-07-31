@@ -31,6 +31,8 @@ kaggle.json
 **/node_modules/
 **/dist/
 **/build/
+**/bin/
+**/obj/
 
 # Runtime outputs and downloaded notebook artifacts
 outputs/

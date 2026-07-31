@@ -1,9 +1,32 @@
-# Atom Language Harness
+# Atom Harness
 
 ## Active direction
 
-The active product is Atom Harness Operator V4 around the certified V3 causal
-Atom runtime.
+The active product is Atom Harness Desktop Phase 5. It is a thin, per-user
+Windows desktop shell around the certified Atom Harness Operator V4 and the
+certified V3 causal Atom runtime. The desktop shell does not replace or widen
+Atom authority. It supervises the existing local runtime, embeds the real
+operator surface with its artifact side view, discovers or consent-downloads
+the exact certified language model, and shuts the full local process tree down
+with the application.
+
+The MSI installs without administrator rights under
+`%LOCALAPPDATA%\Programs\Lucerna Labs\Atom Harness` and creates Desktop and
+Start Menu shortcuts. A portable ZIP is produced from the same verified
+application layout. Updates are opt-in only: the application asks before
+downloading and again before installing, verifies the declared byte count and
+SHA-256, stages outside the install directory, waits for the running
+application to exit, and retains the previous installation for rollback.
+Nothing installs silently.
+
+See `ATOM_HARNESS_DESKTOP.md` for installation, operation, packaging, and
+recovery details. Developers can build both release formats with:
+
+```powershell
+.\scripts\build_atom_harness_desktop.ps1
+```
+
+Operator V4 remains the runtime authority beneath the desktop shell.
 Atom owns facts, causal memory, the runtime wiki graph, graph RAG, tool-routing
 policy, and abstention. A replaceable LLM supplies natural-language intent
 parsing and evidence-grounded answer rendering only.

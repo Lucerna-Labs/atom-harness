@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>AtomHarness.Desktop.Core</AssemblyName>
+    <RootNamespace>LucernaLabs.AtomHarness.Desktop</RootNamespace>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "app_id": "com.lucernalabs.atom-harness",
+  "app_name": "Atom Harness",
+  "platform": "windows-x64",
+  "current_version": "5.0.0",
+  "feed_url": "https://github.com/Lucerna-Labs/atom-harness/releases/latest/download/lucerna-update-feed.json",
+  "policy": {
+    "automatic_download": false,
+    "automatic_install": false,
+    "explicit_user_consent_required": true,
+    "artifact_sha256_required": true,
+    "stage_outside_install_directory": true,
+    "replace_only_after_app_exit": true,
+    "rollback_backup_required": true
+  },
+  "runtime": "lucerna-release-client-v1"
+}

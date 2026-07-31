@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "runtime": "atom-harness-desktop-release-evidence-v1",
+  "version": "5.0.0",
+  "platform": "windows-x64",
+  "all_checks_passed": true,
+  "package": {
+    "result_runtime": "atom-harness-desktop-package-result-v1",
+    "completed_at_utc": "2026-07-31T06:50:03.9058760Z",
+    "file_count": 157,
+    "portable_zip": "Atom-Harness-5.0.0-windows-x64.zip",
+    "portable_zip_bytes": 138684711,
+    "portable_zip_sha256": "808f3699fb7cb12d55894e034770ffecadb8e16f5ffc48e258ae7cb3c0d90cee",
+    "msi": "Atom-Harness-5.0.0-windows-x64.msi",
+    "msi_bytes": 120141010,
+    "msi_sha256": "f71ed80614d70f002cc0da19cedba2afce312c004162c3de2860ac0b826ffce2",
+    "llama_server_sha256": "2ab5559be6a09d9372fd107d7318eb6265eecf1761cdea62674667c752851639"
+  },
+  "installation": {
+    "verification_runtime": "atom-harness-desktop-install-verification-v1",
+    "passed": true,
+    "verified_at_utc": "2026-07-31T06:51:48.086274Z",
+    "verification_report_sha256": "535c71ddc859c50b36dc17b5a891bbca2982061dd5c6ec017354d2a96cc55c77",
+    "install_root": "%LOCALAPPDATA%\\Programs\\Lucerna Labs\\Atom Harness",
+    "desktop_shortcut": true,
+    "start_menu_shortcut": true,
+    "webview2_version": "150.0.4078.105",
+    "full_release_manifest_verified": true
+  },
+  "model": {
+    "model": "Qwen/Qwen3-4B-Instruct-2507",
+    "artifact": "qwen3-4b-instruct-2507-q8_0.gguf",
+    "bytes": 4280403520,
+    "sha256": "ae916ede1c010a26955ee8ae2e908bf8815a3f135ec860439ab924701c69d5f1",
+    "weights_bundled": false,
+    "resident_loads": 1,
+    "resident_restarts": 0
+  },
+  "interactive_runtime": {
+    "verified_at_utc": "2026-07-31T06:53:26.735008Z",
+    "question": "How can repeated verification turn trust into a stable belief?",
+    "completed_attempt": 1,
+    "duration_ms": 7028,
+    "request_sha256": "636032a475e60e09665b2108d77e9923313fde89eda9e95020f506259eb04137",
+    "transaction_sha256": "c03acd4a7f12d6d5838a5b04e3a97caae1192b97a3c7704ef901a0db87356655",
+    "artifact_sha256": "6b0900631d73cd16f92876a98b24c4df9542305febafb45774e11a7557fcc858",
+    "side_view_sha256": "2e4f69c4b5800a765c0d4bd3418e63db0d2e7d2ca40f2c15ebe47ed597726cf4",
+    "citations": 1,
+    "wiki_nodes": 2737,
+    "retrieved_passages": 7,
+    "intent_generation_tokens_per_second": 89.204,
+    "grounded_response_tokens_per_second": 72.49,
+    "cloud_evidence_used": false,
+    "llm_memory_writes": 0,
+    "real_artifact_side_view_visible": true,
+    "failed_attempt_recovered": true,
+    "completed_artifact_recovered_after_restart": true,
+    "graceful_process_tree_shutdown_verified": true
+  },
+  "update_boundary": {
+    "contract": "lucerna-update.json",
+    "explicit_user_consent_required": true,
+    "sha256_required": true,
+    "external_staging_required": true,
+    "replace_only_after_exit": true,
+    "rollback_backup_required": true,
+    "silent_download": false,
+    "silent_install": false,
+    "release_feed_published": false
+  },
+  "claim_boundary": "This evidence certifies the local Phase 5 package, install, installed-layout verification, live local model transaction, real artifact side view, shutdown, and restart recovery. It does not claim that a private GitHub release feed has been published."
+}

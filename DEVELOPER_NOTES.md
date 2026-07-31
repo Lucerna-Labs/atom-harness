@@ -1229,3 +1229,183 @@ If any authority boundary, real-provider path, runtime declaration, knowledge
 integration, side-view binding, warning gate, or test remains unresolved,
 report it as unresolved. Do not describe the harness as complete on the
 strength of a scaffold or deterministic provider alone.
+
+## 13. Desktop Phase 5 release
+
+### 13.1 Product boundary
+
+Phase 5 packages the certified Operator V4 as a native per-user Windows
+desktop application. It deliberately does not create a new authority runtime.
+The .NET shell owns only installation-facing concerns: native windowing,
+single-instance admission, model discovery and provisioning, child-process
+supervision, safe diagnostics, installed-layout verification, and explicit
+update consent. Operator V4 continues to own the authenticated loopback API,
+persistent request journal, provider fabric, transaction state machine, wiki
+graph, graph RAG, artifact publication, and right-side artifact renderer.
+
+The authority chain remains:
+
+```text
+AtomHarness.Desktop.exe
+  -> frozen atom-harness-backend.exe
+    -> Atom Harness Operator V4
+      -> certified wiki graph and graph RAG
+      -> resident language-only llama-server
+      -> committed Atom artifact
+      -> real Operator V4 side view inside WebView2
+```
+
+The desktop process contains the runtime markers
+`ATOM_HARNESS_OPERATOR_RUNTIME`, `ATOM_HARNESS_WIKI_RUNTIME`,
+`ATOM_HARNESS_RAG_RUNTIME`, `ATOM_HARNESS_OPERATOR_UI_RUNTIME`, and
+`render_operator_surface`. The Phase 5 integration invokes the declared V4
+test that exercises the wiki, RAG, operator API, committed artifact, and real
+side view together. This prevents the native shell from satisfying the
+desktop gate with an unrelated mock view.
+
+### 13.2 Source layout
+
+- `desktop/AtomHarness.Desktop` is the .NET 9 WinForms and WebView2 shell.
+- `desktop/AtomHarness.Desktop.Core` contains the model, release-manifest,
+  integrity, release-feed, and safe-update contracts.
+- `desktop/AtomHarness.Updater` is the out-of-process replacement helper.
+- `desktop/AtomHarness.Desktop.Tests` contains the managed safety tests.
+- `atom_harness_desktop_backend.py` is the frozen entrypoint for Operator V4.
+- `atom-harness-backend.spec` binds the required compact Atom data and the
+  release Rust causal-memory executable into the frozen backend.
+- `desktop/packaging/AtomHarness.wxs` defines the per-user MSI and shortcuts.
+- `desktop/packaging/PerUserHarvest.xslt` converts harvested file components
+  to per-user registry keypaths and supplies nested directory cleanup.
+- `scripts/build_atom_harness_desktop.ps1` is the complete release builder.
+- `lucerna-update.json` is the required schema 1 opt-in update declaration.
+- `atom-harness-desktop-architecture.json` is the machine-readable Phase 5
+  boundary.
+- `atom-harness-desktop-release-evidence.json` records the package and live
+  installed-runtime proof without committing the large binaries.
+
+Dependency versions are centrally pinned. Every .NET project has a package
+lock file, restores in locked mode, treats warnings as errors, enables the
+latest analyzers, and produces deterministic managed builds. The desktop and
+updater are self-contained Windows x64 applications. WebView2 is pinned at
+build time while the installed runtime is checked at verification time.
+
+### 13.3 Process lifecycle and recovery
+
+The shell creates a named per-user mutex before any backend starts. It assigns
+the frozen backend to a Windows job object configured with
+`JobObjectLimitKillOnJobClose`. Operator V4 starts its own local
+`llama-server` beneath that process. Window close first requests the
+authenticated V4 graceful-shutdown route and waits. Disposing the job object
+then provides a fail-safe process-tree termination boundary.
+
+Operator V4 journal durability is unchanged. A failed first request remained
+visible after application restart. Selecting that row and using Retry produced
+a completed second attempt. After another full close and restart, both the
+failed attempt and completed attempt were recovered, and the completed
+transaction restored its real artifact in the right-side view.
+
+The frozen backend must not invoke Cargo on an installed machine. The package
+therefore includes the locked release build of `atom-causal-memory.exe`. The
+frozen entrypoint verifies that binary is present, binds
+`atom_causal_memory.RELEASE_BINARY`, replaces the build lookup with the
+bundled path, and only then imports Operator V4. This import order matters
+because the V4 knowledge module captures the release-binary provider during
+module import.
+
+### 13.4 Model provisioning
+
+Model weights are not bundled. The application searches the configured path
+and known local locations for
+`qwen3-4b-instruct-2507-q8_0.gguf`. Admission requires exactly
+4,280,403,520 bytes and SHA-256
+`ae916ede1c010a26955ee8ae2e908bf8815a3f135ec860439ab924701c69d5f1`.
+
+If no valid local model exists, the application presents the download size and
+asks for consent. It writes a partial file only in the per-user model staging
+area outside the installation. The final file is exposed to the runtime only
+after incremental SHA-256 and exact-length verification both pass. A short,
+wrong, or tampered download is rejected and its partial file is removed.
+
+### 13.5 Update safety
+
+`lucerna-update.json` schema 1 is part of the installed application and is
+validated at startup. Automatic download and automatic installation are both
+false. The release client accepts only HTTPS feed and artifact URLs, bounds
+the feed and artifact sizes, validates application and platform identity, and
+requires stable three-part versions.
+
+Update installation is a separate process so the running application cannot
+replace itself. The helper verifies the outer package SHA-256, rejects path
+traversal, Windows device names, alternate data stream paths, trailing-dot and
+trailing-space aliases, and oversized expansion, verifies every file through
+`atom-harness-release-manifest.json`, waits for the desktop process to exit,
+moves the existing application to a timestamped backup, and moves the fully
+staged application into place. If the second move fails, it restores the old
+directory. A receipt binds the installed manifest version, package digest,
+install location, and rollback location.
+
+The repository is private, so its raw GitHub release URL is not an
+unauthenticated production feed. Phase 5 certifies the updater behavior and
+local package. Publishing a future release ZIP and feed at an authorized HTTPS
+endpoint remains a separate operator-controlled distribution action.
+
+### 13.6 Packaging evidence
+
+The final local build completed at `2026-07-31T06:50:03.9058760Z` with 157
+manifest-bound application files.
+
+- Portable ZIP: 138,684,711 bytes, SHA-256
+  `808f3699fb7cb12d55894e034770ffecadb8e16f5ffc48e258ae7cb3c0d90cee`.
+- Per-user MSI: 120,141,010 bytes, SHA-256
+  `f71ed80614d70f002cc0da19cedba2afce312c004162c3de2860ac0b826ffce2`.
+- Bundled llama server: SHA-256
+  `2ab5559be6a09d9372fd107d7318eb6265eecf1761cdea62674667c752851639`.
+
+The MSI installed under
+`%LOCALAPPDATA%\Programs\Lucerna Labs\Atom Harness` without elevation and
+created both requested shortcuts. Installed-layout verification checked every
+release-manifest entry, the model and update contracts, and WebView2
+`150.0.4078.105`. The verification report hash was
+`535c71ddc859c50b36dc17b5a891bbca2982061dd5c6ec017354d2a96cc55c77`.
+
+The installed application then completed the question
+`How can repeated verification turn trust into a stable belief?` in 7,028 ms.
+Transaction SHA-256 was
+`c03acd4a7f12d6d5838a5b04e3a97caae1192b97a3c7704ef901a0db87356655`.
+Artifact SHA-256 was
+`6b0900631d73cd16f92876a98b24c4df9542305febafb45774e11a7557fcc858`,
+and the real side-view SHA-256 was
+`2e4f69c4b5800a765c0d4bd3418e63db0d2e7d2ca40f2c15ebe47ed597726cf4`.
+The runtime used 2,737 wiki nodes, retrieved seven passages, emitted one bound
+citation, performed no LLM memory write, used no cloud evidence, and rendered
+the committed artifact in the right-side view. Intent generation measured
+89.204 tokens per second and grounded response generation measured 72.490
+tokens per second. The model stayed resident with one load and zero restarts.
+
+### 13.7 Release verification
+
+The required local release sequence is:
+
+1. Run Python formatting, lint, and compilation checks.
+2. Parse every changed PowerShell entrypoint.
+3. Run `scripts/verify_atom_harness_v5.py`.
+4. Run the exact declared Phase 5 integration.
+5. Restore all .NET projects in locked mode.
+6. Verify .NET formatting and build the shell and updater with no warnings.
+7. Run all managed update and integrity tests.
+8. Run Rust format, Clippy with warnings denied, workspace tests, and the
+   locked release build.
+9. Run the complete Python integration suite.
+10. Recompute ZIP, MSI, model, installed-report, and installed-file hashes.
+11. Run the installed layout verifier.
+12. Launch the installed application, complete a real local-model request,
+    inspect the side view, close it, confirm child-process cleanup, relaunch,
+    and confirm journal plus artifact recovery.
+13. Push the exact reviewed commit and wait for the V3, V4, and V5 workflows to
+    finish successfully.
+
+`.github/workflows/atom-harness-v5-ci.yml` independently enforces the Phase 5
+policy, exact wiki and RAG plus side-view integration, locked .NET graph,
+managed safety tests, warnings-denied Rust graph, bundled causal-memory build,
+and a real frozen-backend startup probe. Every external action is pinned to a
+full commit SHA.

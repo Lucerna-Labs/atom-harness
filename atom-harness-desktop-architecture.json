@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "product_phase": 5,
+  "runtime": "atom-harness-desktop-v5",
+  "version": "5.0.0",
+  "platform": "windows-x64",
+  "desktop_entrypoint": "desktop/AtomHarness.Desktop/Program.cs",
+  "packaging_entrypoint": "scripts/build_atom_harness_desktop.ps1",
+  "installed_runtime": {
+    "authority_runtime": "language-harness-v4",
+    "backend_entrypoint": "atom_harness_desktop_backend.py",
+    "wiki_runtime": "ATOM_HARNESS_WIKI_RUNTIME",
+    "rag_runtime": "ATOM_HARNESS_RAG_RUNTIME",
+    "side_view_runtime": "ATOM_HARNESS_OPERATOR_UI_RUNTIME",
+    "artifact_binding_marker": "render_operator_surface",
+    "local_only": true,
+    "cloud_allowed": false
+  },
+  "desktop_shell": {
+    "framework": ".NET 9 WinForms plus Microsoft Edge WebView2",
+    "thin_shell_only": true,
+    "atom_authority_unchanged": true,
+    "per_user_install": true,
+    "administrator_required": false,
+    "single_instance": true,
+    "backend_job_object_kill_on_close": true,
+    "graceful_ui_shutdown_first": true,
+    "forced_process_tree_cleanup_fallback": true,
+    "persistent_session_history": true,
+    "real_artifact_side_view_embedded": true
+  },
+  "model_provisioning": {
+    "model": "Qwen/Qwen3-4B-Instruct-2507",
+    "weights_bundled": false,
+    "existing_model_discovery": true,
+    "explicit_download_consent": true,
+    "download_staged_outside_install_directory": true,
+    "bytes_verified": true,
+    "sha256_verified": true
+  },
+  "updates": {
+    "contract": "lucerna-update.json",
+    "runtime": "lucerna-release-client-v1",
+    "explicit_install_consent": true,
+    "sha256_before_install": true,
+    "staging_outside_install_directory": true,
+    "wait_for_app_exit": true,
+    "rollback_backup": true,
+    "silent_install": false
+  },
+  "release": {
+    "format": [
+      "portable-zip",
+      "per-user-msi"
+    ],
+    "release_manifest": "atom-harness-release-manifest-v1",
+    "package_evidence": "atom-harness-desktop-release-evidence.json",
+    "integration_test": "tests/test_atom_harness_desktop_v5_integration.py",
+    "dotnet_tests": "desktop/AtomHarness.Desktop.Tests/AtomHarness.Desktop.Tests.csproj"
+  },
+  "claim_boundary": "Phase 5 packages the certified Operator V4 as a private per-user Windows desktop application. The shell supervises the existing local backend, embeds its real side view, discovers or consent-downloads the exact certified model, and offers only consented SHA-256-verified updates after the running application exits. It does not grant the LLM tools, cloud authority, Atom-memory writes, or new evidence authority."
+}
