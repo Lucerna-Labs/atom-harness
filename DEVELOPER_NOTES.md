@@ -228,9 +228,10 @@ The report SHA-256 is
 `43d93ccfa6e5f22ddce55a630712bf67d0b1bcf3ee6f96884362eb6067bbc237`.
 Its canonical report hash is
 `7db8fb04a05c0c084e31b8a1f11d4ec619ed4d80ddc104ae5e5881b15cd0a552`.
-The fifteen-file runtime and evaluator source binding has canonical hash
-`df99231af7aadb5e7d5a5aa86557c538e82e5f94cfec16aac3072fa96d8f4806`;
-the complete file map is recorded in
+The fifteen-file runtime and evaluator source binding normalizes UTF-8 text to
+LF endings and has canonical hash
+`523918483823494d73d4a854c6f6f161946ade329a72d83f7b4215eef905f3f9`;
+the complete portable file map is recorded in
 `atom-language-harness-architecture.json`.
 
 Preload completed with process generation 1, model-load count 1, cold start

@@ -37,11 +37,13 @@ def _is_sha256(value: object) -> bool:
 
 
 def _sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for block in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
+    normalized = (
+        path.read_text(encoding="utf-8")
+        .replace("\r\n", "\n")
+        .replace("\r", "\n")
+        .encode("utf-8")
+    )
+    return hashlib.sha256(normalized).hexdigest()
 
 
 def _require_markers(path: str, markers: tuple[str, ...]) -> None:
@@ -106,6 +108,7 @@ def _check_v4_surface() -> dict[str, Any]:
     if (
         certification.get("status") != "certified-live-local"
         or certification.get("runtime") != "atom-harness-operator-certification-v1"
+        or certification.get("source_hash_normalization") != "utf-8-lf-v1"
         or certification.get("mode") != "live"
         or certification.get("request_count") != 100
         or certification.get("elapsed_seconds", 0) < 3600

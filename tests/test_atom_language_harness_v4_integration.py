@@ -489,6 +489,10 @@ class AtomLanguageHarnessV4IntegrationTests(unittest.TestCase):
         self.assertEqual(certification["request_count"], 100)
         self.assertGreaterEqual(certification["elapsed_seconds"], 3600)
         self.assertTrue(certification["all_checks_passed"])
+        self.assertEqual(
+            certification["source_hash_normalization"],
+            "utf-8-lf-v1",
+        )
         self.assertEqual(len(certification["source_files_sha256"]), 15)
 
 
