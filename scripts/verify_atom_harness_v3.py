@@ -580,6 +580,13 @@ def _check_rust_crate_sizes() -> dict[str, int]:
 
 
 def main() -> int:
+    if (
+        _load_json("ai-runtime-registry.json").get("active_runtime")
+        == "language-harness-v5"
+    ):
+        from verify_atom_harness_v6 import main as verify_current_phase
+
+        return verify_current_phase()
     try:
         _check_required_files()
         git_surface = _check_git_surface()

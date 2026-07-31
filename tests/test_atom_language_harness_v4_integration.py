@@ -47,6 +47,7 @@ from atom_run_transaction import verify_committed_run
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 V4_INTEGRATION_TEST = "tests/test_atom_language_harness_v4_integration.py"
+PHASE6_INTEGRATION_TEST = "tests/test_atom_permissioned_hands_integration.py"
 
 
 def _one(record, role: str) -> str:
@@ -437,7 +438,7 @@ class AtomLanguageHarnessV4IntegrationTests(unittest.TestCase):
             operator.shutdown(wait=True, cancel_pending=True)
             temporary.cleanup()
 
-    def test_active_declarations_select_operator_v4(self) -> None:
+    def test_operator_v4_remains_registered_beneath_phase6(self) -> None:
         registry = json.loads(
             (PROJECT_ROOT / "ai-runtime-registry.json").read_text(encoding="utf-8")
         )
@@ -461,8 +462,10 @@ class AtomLanguageHarnessV4IntegrationTests(unittest.TestCase):
         workflow = (
             PROJECT_ROOT / ".github/workflows/atom-harness-v4-ci.yml"
         ).read_text(encoding="utf-8")
-        self.assertEqual(registry["active_runtime"], "language-harness-v4")
-        active = registry["runtimes"]["language-harness-v4"]
+        self.assertEqual(registry["active_runtime"], "language-harness-v5")
+        active = registry["runtimes"]["language-harness-v5"]
+        historical = registry["runtimes"]["language-harness-v4"]
+        self.assertEqual(historical["integration_test"], V4_INTEGRATION_TEST)
         for declaration in (
             active,
             knowledge,
@@ -470,7 +473,7 @@ class AtomLanguageHarnessV4IntegrationTests(unittest.TestCase):
             fabric,
             transaction,
         ):
-            self.assertEqual(declaration["integration_test"], V4_INTEGRATION_TEST)
+            self.assertEqual(declaration["integration_test"], PHASE6_INTEGRATION_TEST)
         self.assertEqual(
             active["runtime_entrypoint"],
             "atom_harness_operator_server.py",
@@ -487,7 +490,7 @@ class AtomLanguageHarnessV4IntegrationTests(unittest.TestCase):
         self.assertTrue(knowledge["rag"]["enabled"])
         self.assertTrue(fabric["provider_fabric"]["resident_model_preload"])
         self.assertTrue(transaction["run_transaction"]["durable_operator_journal"])
-        certification = architecture["operator"]["certification_evidence"]
+        certification = architecture["operator"]["v4_certification_evidence"]
         self.assertEqual(certification["status"], "certified-live-local")
         self.assertEqual(certification["request_count"], 100)
         self.assertGreaterEqual(certification["elapsed_seconds"], 3600)

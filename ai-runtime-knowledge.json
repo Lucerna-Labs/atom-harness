@@ -16,5 +16,6 @@
   "immutable_during_requests": true,
   "exact_snapshot_bound_into_each_committed_transaction": true,
   "same_volume_hard_link_with_copy_fallback": true,
-  "integration_test": "tests/test_atom_language_harness_v4_integration.py"
+  "permissioned_tool_artifacts_bind_the_same_immutable_snapshot": true,
+  "integration_test": "tests/test_atom_permissioned_hands_integration.py"
 }

@@ -1,8 +1,10 @@
 """Strict language-boundary contracts for the Atom harness.
 
-The LLM is allowed to translate natural language into a typed query and to
-render retrieved evidence. It is not allowed to create evidence, mutate Atom
-memory, choose tools, or relax an abstention decision.
+The grounded language renderer may translate natural language into a typed
+query and render retrieved evidence. It is not allowed to create evidence,
+mutate Atom memory, choose tools, or relax an abstention decision. A separate
+Phase 6 planner may propose typed capabilities, but receives no executable
+handle and no permission authority.
 """
 
 from __future__ import annotations
@@ -22,6 +24,9 @@ ATOM_LANGUAGE_INTENT_RUNTIME = "atom-language-intent-v2"
 ATOM_GROUNDED_RESPONSE_RUNTIME = "atom-grounded-response-v2"
 ATOM_LANGUAGE_MODEL_PROTOCOL = "atom-json-language-model-v2"
 ATOM_ABSTENTION = "I do not have enough Atom evidence to answer that."
+LANGUAGE_DATA_SENSITIVITIES = frozenset(
+    {"private-atom-evidence", "private-operator-intent"}
+)
 GROUNDING_FIELDS = (
     "source_experience_id",
     "kind",
@@ -398,7 +403,7 @@ class JsonGenerationRequest:
             raise ValueError("language request token limit is invalid")
         if self.validator is not None and not callable(self.validator):
             raise ValueError("language request validator is not callable")
-        if self.data_sensitivity != "private-atom-evidence":
+        if self.data_sensitivity not in LANGUAGE_DATA_SENSITIVITIES:
             raise ValueError("language request data sensitivity is invalid")
 
 

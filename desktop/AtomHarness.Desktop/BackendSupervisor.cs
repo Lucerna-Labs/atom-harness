@@ -10,7 +10,10 @@ internal sealed record BackendStartup(
     string WikiRuntime,
     string RagRuntime,
     string SideViewRuntime,
-    string ArtifactBindingMarker);
+    string ArtifactBindingMarker,
+    string PermissionedHandsRuntime,
+    string ToolSideViewRuntime,
+    string ToolWorkspace);
 
 internal sealed class BackendSupervisor : IAsyncDisposable
 {
@@ -267,7 +270,7 @@ internal sealed class BackendSupervisor : IAsyncDisposable
             JsonElement root = document.RootElement;
             string runtime = root.GetProperty("runtime").GetString() ?? string.Empty;
             string originText = root.GetProperty("origin").GetString() ?? string.Empty;
-            if (runtime != "atom-harness-operator-loopback-server-v1"
+            if (runtime != "atom-harness-operator-loopback-server-v2"
                 || !Uri.TryCreate(originText, UriKind.Absolute, out Uri? origin)
                 || origin.Scheme != Uri.UriSchemeHttp
                 || origin.Host != "127.0.0.1")
@@ -283,11 +286,19 @@ internal sealed class BackendSupervisor : IAsyncDisposable
                 root.GetProperty("rag_runtime").GetString() ?? string.Empty,
                 root.GetProperty("side_view_runtime").GetString() ?? string.Empty,
                 root.GetProperty("artifact_binding_marker").GetString()
-                    ?? string.Empty);
+                    ?? string.Empty,
+                root.GetProperty("permissioned_hands_runtime").GetString()
+                    ?? string.Empty,
+                root.GetProperty("tool_side_view_runtime").GetString()
+                    ?? string.Empty,
+                root.GetProperty("tool_workspace").GetString() ?? string.Empty);
             if (startup.WikiRuntime != "atom-language-harness-wiki-v2"
                 || startup.RagRuntime != "atom-language-harness-graph-rag-v2"
-                || startup.SideViewRuntime != "atom-language-harness-operator-ui-v4"
-                || startup.ArtifactBindingMarker != "render_operator_surface")
+                || startup.SideViewRuntime != "atom-language-harness-operator-ui-v5"
+                || startup.ArtifactBindingMarker != "render_operator_surface"
+                || startup.PermissionedHandsRuntime != "atom-permissioned-hands-fabric-v1"
+                || startup.ToolSideViewRuntime != "atom-permissioned-hands-side-view-v1"
+                || !Path.IsPathFullyQualified(startup.ToolWorkspace))
             {
                 startup = null;
                 return false;

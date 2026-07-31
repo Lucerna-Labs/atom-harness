@@ -1,18 +1,18 @@
-# Atom Harness Desktop Phase 5
+# Atom Harness Desktop Phase 6
 
 Atom Harness Desktop is the installed Windows form of the certified Atom
-Harness Operator V4. The desktop application is deliberately a shell, not a
+Harness Operator V5. The desktop application is deliberately a shell, not a
 second reasoning system. Atom still owns evidence, the wiki graph, graph RAG,
 causal memory, policy, abstention, and the committed artifact. The selected
 Qwen model supplies language only.
 
 ## Install and start
 
-The Phase 5 release has two Windows x64 formats:
+The Phase 6 release has two Windows x64 formats:
 
-- `Atom-Harness-5.0.0-windows-x64.msi` installs per user without administrator
+- `Atom-Harness-6.0.3-windows-x64.msi` installs per user without administrator
   rights.
-- `Atom-Harness-5.0.0-windows-x64.zip` is the portable and update payload.
+- `Atom-Harness-6.0.3-windows-x64.zip` is the portable and update payload.
 
 The MSI installs to:
 
@@ -32,10 +32,16 @@ exact byte count and SHA-256 match the model contract.
 
 ## Everyday operation
 
-The left side of the window contains the persistent operator conversation,
-request status, retry and cancel controls, and model lifecycle information.
-The right side is the real artifact side view produced by the certified V4
-runtime. It is not a preview assembled by the desktop shell.
+The left side of the window contains Evidence and Permissioned hands tabs,
+request status, retry and cancel controls, exact permission controls, and model
+lifecycle information. The right side is the real artifact side view produced
+by the runtime. It displays either a committed evidence artifact or a committed
+tool artifact. It is not a preview assembled by the desktop shell.
+
+No tool executes merely because the model proposed it. The user sees the exact
+manifest, including paths, executable, arguments, effects, risk, workspace,
+hash, and expiry, then approves or denies it. Approval is single-use. Tool
+output is displayed as untrusted and cannot approve more work.
 
 The application starts a private loopback backend and a private loopback
 `llama-server`. Neither service is exposed to the network. Cloud routing
@@ -112,8 +118,10 @@ contracts, the installed WebView2 runtime, and the declared authority runtime.
 
 ## Authority boundary
 
-Phase 5 adds installation, lifecycle supervision, verified model
-provisioning, safe updates, and a native window. It does not give the LLM
-tools, evidence authority, Atom DB write access, cloud access, or permission to
-override abstention. Wiki graph and graph RAG execution remain mandatory, and
-the produced artifact remains visibly bound into the right-side view.
+Phase 6 retains installation, lifecycle supervision, verified model
+provisioning, safe updates, and the native window. It gives the model a
+proposal vocabulary for registered tools, not an execution handle or
+permission authority. The model still has no evidence authority, Atom DB write
+access, cloud provider access, or permission to override abstention. Wiki graph
+and graph RAG execution remain mandatory, and every produced artifact remains
+visibly bound into the right-side view.

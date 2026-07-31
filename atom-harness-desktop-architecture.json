@@ -1,18 +1,21 @@
 {
   "schema": 1,
-  "product_phase": 5,
-  "runtime": "atom-harness-desktop-v5",
-  "version": "5.0.0",
+  "product_phase": 6,
+  "runtime": "atom-harness-desktop-v6",
+  "version": "6.0.3",
   "platform": "windows-x64",
   "desktop_entrypoint": "desktop/AtomHarness.Desktop/Program.cs",
   "packaging_entrypoint": "scripts/build_atom_harness_desktop.ps1",
   "installed_runtime": {
-    "authority_runtime": "language-harness-v4",
+    "authority_runtime": "language-harness-v5",
     "backend_entrypoint": "atom_harness_desktop_backend.py",
     "wiki_runtime": "ATOM_HARNESS_WIKI_RUNTIME",
     "rag_runtime": "ATOM_HARNESS_RAG_RUNTIME",
     "side_view_runtime": "ATOM_HARNESS_OPERATOR_UI_RUNTIME",
     "artifact_binding_marker": "render_operator_surface",
+    "permissioned_hands_runtime": "ATOM_PERMISSIONED_HANDS_RUNTIME",
+    "tool_side_view_runtime": "ATOM_TOOL_SIDE_VIEW_RUNTIME",
+    "tool_artifact_binding_marker": "render_atom_tool_artifact",
     "local_only": true,
     "cloud_allowed": false
   },
@@ -27,7 +30,9 @@
     "graceful_ui_shutdown_first": true,
     "forced_process_tree_cleanup_fallback": true,
     "persistent_session_history": true,
-    "real_artifact_side_view_embedded": true
+    "real_artifact_side_view_embedded": true,
+    "trusted_permission_controls_embedded": true,
+    "exact_action_manifest_visible_before_approval": true
   },
   "model_provisioning": {
     "model": "Qwen/Qwen3-4B-Instruct-2507",
@@ -48,6 +53,27 @@
     "rollback_backup": true,
     "silent_install": false
   },
+  "permissioned_hands": {
+    "experimental": true,
+    "broad_capability_registry": true,
+    "coding_and_builds": true,
+    "simulations": true,
+    "documents": true,
+    "workspace_management": true,
+    "public_web_reads": true,
+    "process_executable_sha256_bound_into_manifest": true,
+    "process_output_retention_bounded": true,
+    "process_timeout_terminates_process_tree": true,
+    "public_web_address_set_bound_into_manifest": true,
+    "web_connect_uses_only_permission_bound_address": true,
+    "web_redirects_allowed": false,
+    "operator_permission_required_for_every_execution": true,
+    "candidate_normalizations_user_visible": true,
+    "exact_manifest_hash_bound": true,
+    "one_time_grants": true,
+    "tool_results_untrusted": true,
+    "atom_memory_writes_allowed": false
+  },
   "release": {
     "format": [
       "portable-zip",
@@ -55,8 +81,8 @@
     ],
     "release_manifest": "atom-harness-release-manifest-v1",
     "package_evidence": "atom-harness-desktop-release-evidence.json",
-    "integration_test": "tests/test_atom_harness_desktop_v5_integration.py",
+    "integration_test": "tests/test_atom_harness_desktop_v6_integration.py",
     "dotnet_tests": "desktop/AtomHarness.Desktop.Tests/AtomHarness.Desktop.Tests.csproj"
   },
-  "claim_boundary": "Phase 5 packages the certified Operator V4 as a private per-user Windows desktop application. The shell supervises the existing local backend, embeds its real side view, discovers or consent-downloads the exact certified model, and offers only consented SHA-256-verified updates after the running application exits. It does not grant the LLM tools, cloud authority, Atom-memory writes, or new evidence authority."
+  "claim_boundary": "Phase 6 packages Operator V5 as a private per-user Windows adversarial capability experiment. The language model may propose broad registered tools for code, builds, simulations, documents, workspace management, and public web reads, but it cannot execute or grant permission. The trusted local interface requires explicit approval of one exact manifest before every execution. Tool results remain untrusted and Atom memory remains read-only. The shell preserves verified model provisioning, explicit opt-in updates, SHA-256 verification, out-of-install staging, exit-before-replacement, rollback, and the real artifact side view. This does not claim that prompt injection is solved, unattended production autonomy is safe, cloud tool execution is enabled, or external publishing is authorized."
 }

@@ -1,9 +1,9 @@
-# Atom Language Harness Operator V4
+# Atom Language Harness Operator V5
 
 The active product is a local AI harness. Atom remains the semantic authority:
 it owns causal evidence, the durable database, the runtime wiki graph, graph
-RAG, and the decision to answer or abstain. A replaceable LLM is used only as a
-language membrane.
+RAG, and the decision to answer or abstain. A replaceable LLM is used as a
+language membrane and as a proposal-only planner for permissioned tools.
 
 The language path has two passes:
 
@@ -19,17 +19,30 @@ The language path has two passes:
    packet. If retrieval is insufficient, the harness emits a deterministic
    abstention without asking the LLM to fill the gap.
 
-LLM output never becomes evidence and has no write path to Atom DB. V3 keeps
+LLM output never becomes evidence and has no write path to Atom DB. Tool plans
+also carry no execution authority. V3 keeps
 the policy-routed provider fabric and atomic run transaction, then adds a
 supervised resident language lane around that same authority boundary. V4
-keeps that V3 execution core and adds the persistent interactive operator.
+keeps that V3 execution core and adds the persistent interactive operator. V5
+keeps both and adds a separate permissioned capability lane.
 
-Before the V4 server accepts traffic, it opens one immutable Atom catalog,
+Before the V5 server accepts traffic, it opens one immutable Atom catalog,
 constructs the wiki graph and graph RAG view, starts one local Qwen process,
-and warms the schema-constrained inference path. Each operator question then
+warms the schema-constrained inference path, and preloads the capability
+registry. Each operator question then
 uses those resident resources but publishes a separate atomic V3 artifact
 bundle. Session history stores only bounded request state and references to
 committed artifacts. It never treats conversation as Atom evidence.
+
+A tool task takes a separate path. Qwen returns a strict proposal referencing
+only registered capabilities. Atom reduces the untrusted candidate to the
+chosen capability schemas, records any canonical action ID or omitted
+unsupported field, validates and prepares exact arguments, computes effects and
+risk, hashes the resulting execution manifest, and pauses. Missing required
+arguments or invalid values still fail closed. The trusted interface is the
+only component that may create a single-use permission grant. Results are
+committed as quarantined data in a separate atomic artifact and cannot become
+Atom evidence or permission.
 
 ## Interactive operator
 
@@ -39,7 +52,7 @@ Start the Windows operator:
 .\run-atom-harness-operator.ps1
 ```
 
-The launcher validates the active V4 registry and official local-model
+The launcher validates the active V5 registry and official local-model
 contract, locates Python and `llama-server`, verifies that the GGUF is present,
 and waits for preloading. The browser opens only when the operator is ready.
 `START-ATOM-HARNESS-OPERATOR.cmd` provides the same path for double-click use.

@@ -1,9 +1,10 @@
-"""Secure loopback API and browser host for Atom Harness Operator V4."""
+"""Secure loopback API and browser host for Atom Harness Operator V5."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import secrets
 import signal
 import threading
@@ -31,9 +32,17 @@ from atom_harness_operator_ui import (
     render_operator_surface,
 )
 from atom_harness_session import AtomHarnessSession, default_session_output_root
+from atom_tool_fabric import (
+    ATOM_PERMISSIONED_HANDS_RUNTIME,
+    PermissionedToolFabric,
+    ToolCapacityError,
+    ToolPermissionError,
+    ToolStateError,
+)
+from atom_tool_side_view import ATOM_TOOL_SIDE_VIEW_RUNTIME
 
 
-ATOM_HARNESS_OPERATOR_SERVER_RUNTIME = "atom-harness-operator-loopback-server-v1"
+ATOM_HARNESS_OPERATOR_SERVER_RUNTIME = "atom-harness-operator-loopback-server-v2"
 LOOPBACK_HOST = "127.0.0.1"
 MAX_REQUEST_BODY_BYTES = 16 * 1024
 
@@ -104,7 +113,7 @@ class AtomOperatorRequestHandler(BaseHTTPRequestHandler):
             self.server.access_token,
         )
 
-    def _artifact_authorized(self) -> bool:
+    def _artifact_authorized(self, cookie_name: str) -> bool:
         if self._authorized():
             return True
         raw_cookie = self.headers.get("Cookie", "")
@@ -115,7 +124,7 @@ class AtomOperatorRequestHandler(BaseHTTPRequestHandler):
             cookies.load(raw_cookie)
         except CookieError:
             return False
-        morsel = cookies.get("AtomArtifactToken")
+        morsel = cookies.get(cookie_name)
         return morsel is not None and secrets.compare_digest(
             morsel.value,
             self.server.access_token,
@@ -132,7 +141,7 @@ class AtomOperatorRequestHandler(BaseHTTPRequestHandler):
         content_length: int,
         nonce: str | None = None,
         frame_policy: str = "DENY",
-        extra_headers: Mapping[str, str] | None = None,
+        extra_headers: Mapping[str, str | tuple[str, ...]] | None = None,
     ) -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
@@ -161,7 +170,9 @@ class AtomOperatorRequestHandler(BaseHTTPRequestHandler):
                 ),
             )
         for name, value in (extra_headers or {}).items():
-            self.send_header(name, value)
+            values = value if isinstance(value, tuple) else (value,)
+            for item in values:
+                self.send_header(name, item)
         self.end_headers()
 
     def _bytes(
@@ -172,7 +183,7 @@ class AtomOperatorRequestHandler(BaseHTTPRequestHandler):
         content_type: str,
         nonce: str | None = None,
         frame_policy: str = "DENY",
-        extra_headers: Mapping[str, str] | None = None,
+        extra_headers: Mapping[str, str | tuple[str, ...]] | None = None,
     ) -> None:
         self._send_headers(
             status=int(status),
@@ -257,7 +268,10 @@ class AtomOperatorRequestHandler(BaseHTTPRequestHandler):
                     "Set-Cookie": (
                         "AtomArtifactToken="
                         + self.server.access_token
-                        + "; Path=/api/artifacts/; HttpOnly; SameSite=Strict"
+                        + "; Path=/api/artifacts/; HttpOnly; SameSite=Strict",
+                        "AtomToolArtifactToken="
+                        + self.server.access_token
+                        + "; Path=/api/tool-artifacts/; HttpOnly; SameSite=Strict",
                     )
                 },
             )
@@ -274,6 +288,8 @@ class AtomOperatorRequestHandler(BaseHTTPRequestHandler):
                     "wiki_runtime": ATOM_HARNESS_WIKI_RUNTIME,
                     "rag_runtime": ATOM_HARNESS_RAG_RUNTIME,
                     "side_view_runtime": ATOM_HARNESS_OPERATOR_UI_RUNTIME,
+                    "tool_runtime": ATOM_PERMISSIONED_HANDS_RUNTIME,
+                    "tool_side_view_runtime": ATOM_TOOL_SIDE_VIEW_RUNTIME,
                 }
             )
             return
@@ -282,10 +298,30 @@ class AtomOperatorRequestHandler(BaseHTTPRequestHandler):
                 return
             self._json(self.server.operator.snapshot())
             return
+        proposal_prefix = "/api/tools/proposals/"
+        if route.startswith(proposal_prefix):
+            if not self._guard():
+                return
+            proposal_id = unquote(route[len(proposal_prefix) :]).strip("/")
+            if (
+                not proposal_id
+                or "/" in proposal_id
+                or "\\" in proposal_id
+                or len(proposal_id) > 128
+            ):
+                self._error(HTTPStatus.BAD_REQUEST, "invalid-proposal-id")
+                return
+            try:
+                self._json(self.server.operator.tool_proposal_snapshot(proposal_id))
+            except KeyError:
+                self._error(HTTPStatus.NOT_FOUND, "proposal-not-found")
+            except OperatorStateError:
+                self._error(HTTPStatus.CONFLICT, "tool-state-conflict")
+            return
         prefix = "/api/artifacts/"
         suffix = "/side-view"
         if route.startswith(prefix) and route.endswith(suffix):
-            if not self._artifact_authorized():
+            if not self._artifact_authorized("AtomArtifactToken"):
                 self._error(HTTPStatus.UNAUTHORIZED, "authentication-required")
                 return
             encoded = route[len(prefix) : -len(suffix)]
@@ -306,6 +342,36 @@ class AtomOperatorRequestHandler(BaseHTTPRequestHandler):
                 return
             except (OperatorStateError, ValueError, OSError):
                 self._error(HTTPStatus.CONFLICT, "artifact-not-available")
+                return
+            self._bytes(
+                data,
+                content_type="text/html; charset=utf-8",
+                frame_policy="SAMEORIGIN",
+            )
+            return
+        tool_prefix = "/api/tool-artifacts/"
+        if route.startswith(tool_prefix) and route.endswith(suffix):
+            if not self._artifact_authorized("AtomToolArtifactToken"):
+                self._error(HTTPStatus.UNAUTHORIZED, "authentication-required")
+                return
+            encoded = route[len(tool_prefix) : -len(suffix)]
+            proposal_id = unquote(encoded).strip("/")
+            if (
+                not proposal_id
+                or "/" in proposal_id
+                or "\\" in proposal_id
+                or len(proposal_id) > 128
+            ):
+                self._error(HTTPStatus.BAD_REQUEST, "invalid-proposal-id")
+                return
+            try:
+                path = self.server.operator.tool_side_view_path(proposal_id)
+                data = path.read_bytes()
+            except KeyError:
+                self._error(HTTPStatus.NOT_FOUND, "proposal-not-found")
+                return
+            except (OperatorStateError, ToolStateError, ValueError, OSError):
+                self._error(HTTPStatus.CONFLICT, "tool-artifact-not-available")
                 return
             self._bytes(
                 data,
@@ -354,6 +420,53 @@ class AtomOperatorRequestHandler(BaseHTTPRequestHandler):
                 result = self.server.operator.restart_resident_lane()
                 self._json(result)
                 return
+            if route == "/api/tools/propose":
+                if (
+                    set(payload) - {"task", "parent_proposal_id"}
+                    or "task" not in payload
+                ):
+                    raise ValueError("tool-propose-fields")
+                parent = payload.get("parent_proposal_id")
+                if parent is not None and not isinstance(parent, str):
+                    raise ValueError("tool-parent")
+                record = self.server.operator.submit_tool_task(
+                    str(payload["task"]),
+                    parent_proposal_id=parent,
+                )
+                self._json(record, status=HTTPStatus.ACCEPTED)
+                return
+            if route in {"/api/tools/approve", "/api/tools/deny"}:
+                if set(payload) != {
+                    "proposal_id",
+                    "manifest_hash",
+                    "decision_nonce",
+                }:
+                    raise ValueError("tool-decision-fields")
+                decision = (
+                    self.server.operator.approve_tool
+                    if route.endswith("approve")
+                    else self.server.operator.deny_tool
+                )
+                record = decision(
+                    str(payload["proposal_id"]),
+                    manifest_hash=str(payload["manifest_hash"]),
+                    decision_nonce=str(payload["decision_nonce"]),
+                )
+                self._json(
+                    record,
+                    status=(
+                        HTTPStatus.ACCEPTED
+                        if route.endswith("approve")
+                        else HTTPStatus.OK
+                    ),
+                )
+                return
+            if route == "/api/tools/cancel":
+                if set(payload) != {"proposal_id"}:
+                    raise ValueError("tool-cancel-fields")
+                record = self.server.operator.cancel_tool(str(payload["proposal_id"]))
+                self._json(record)
+                return
             if route == "/api/shutdown":
                 if set(payload) - {"cancel_pending"}:
                     raise ValueError("shutdown-fields")
@@ -376,6 +489,15 @@ class AtomOperatorRequestHandler(BaseHTTPRequestHandler):
         except OperatorCapacityError:
             self._error(HTTPStatus.TOO_MANY_REQUESTS, "operator-capacity")
             return
+        except ToolCapacityError:
+            self._error(HTTPStatus.TOO_MANY_REQUESTS, "tool-capacity")
+            return
+        except ToolPermissionError:
+            self._error(HTTPStatus.CONFLICT, "tool-permission-conflict")
+            return
+        except ToolStateError:
+            self._error(HTTPStatus.CONFLICT, "tool-state-conflict")
+            return
         except OperatorStateError:
             self._error(HTTPStatus.CONFLICT, "operator-state-conflict")
             return
@@ -397,7 +519,7 @@ def build_server(
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Start the persistent local Atom Harness Operator V4."
+        description="Start the persistent local Atom Harness Operator V5."
     )
     parser.add_argument("--output-root", type=Path)
     parser.add_argument("--model-path", type=Path)
@@ -407,6 +529,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--startup-timeout-seconds", type=int)
     parser.add_argument("--lane-acquire-timeout-seconds", type=float)
     parser.add_argument("--max-queue-depth", type=int, default=8)
+    parser.add_argument("--tool-workspace", type=Path)
+    parser.add_argument(
+        "--tool-permission-ttl-seconds",
+        type=int,
+        default=900,
+    )
     parser.add_argument("--port", type=int, default=0)
     parser.add_argument("--no-browser", action="store_true")
     return parser
@@ -421,10 +549,20 @@ def main() -> int:
         else default_output.with_name(
             default_output.name.replace(
                 "resident-session",
-                "operator-v4",
+                "operator-v5",
             )
         )
     ).resolve()
+    configured_workspace = arguments.tool_workspace
+    if configured_workspace is None:
+        environment_workspace = os.environ.get("ATOM_TOOL_WORKSPACE")
+        if environment_workspace:
+            configured_workspace = Path(environment_workspace)
+        elif os.name == "nt" and Path("C:/Projects").is_dir():
+            configured_workspace = Path("C:/Projects")
+        else:
+            configured_workspace = Path.cwd()
+    tool_workspace = Path(configured_workspace).resolve()
     session = AtomHarnessSession.official_local(
         output_root=output_root,
         model_path=arguments.model_path,
@@ -436,10 +574,19 @@ def main() -> int:
         max_queue_depth=arguments.max_queue_depth,
         max_concurrency=1,
     )
+    tool_fabric = PermissionedToolFabric(
+        provider_fabric=session.provider_fabric,
+        knowledge_loader=session.preload_knowledge,
+        workspace_root=tool_workspace,
+        state_root=output_root / "permissioned-hands",
+        max_queue_depth=arguments.max_queue_depth,
+        permission_ttl_seconds=arguments.tool_permission_ttl_seconds,
+    )
     operator = AtomHarnessOperator(
         session,
         state_root=output_root,
         max_queue_depth=arguments.max_queue_depth,
+        tool_fabric=tool_fabric,
     )
     server = build_server(operator, port=arguments.port)
 
@@ -461,6 +608,10 @@ def main() -> int:
             "rag_runtime": ATOM_HARNESS_RAG_RUNTIME,
             "side_view_runtime": ATOM_HARNESS_OPERATOR_UI_RUNTIME,
             "artifact_binding_marker": ATOM_HARNESS_OPERATOR_ARTIFACT_BINDING,
+            "permissioned_hands_runtime": ATOM_PERMISSIONED_HANDS_RUNTIME,
+            "tool_side_view_runtime": ATOM_TOOL_SIDE_VIEW_RUNTIME,
+            "tool_workspace": str(tool_workspace),
+            "permission_required_for_every_tool_execution": True,
             "access_token_persisted": False,
             "cloud_allowed": False,
         }

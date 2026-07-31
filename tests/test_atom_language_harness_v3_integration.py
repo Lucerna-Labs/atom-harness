@@ -446,14 +446,14 @@ class AtomLanguageHarnessV3IntegrationTests(unittest.TestCase):
         )
         model = _read_json(PROJECT_ROOT / "atom-language-model.json")
 
-        self.assertEqual(registry["active_runtime"], "language-harness-v4")
+        self.assertEqual(registry["active_runtime"], "language-harness-v5")
         historical = registry["runtimes"]["language-harness-v3"]
         self.assertEqual(historical["integration_test"], V3_INTEGRATION_TEST)
         self.assertEqual(
             historical["runtime_entrypoint"],
             "atom_harness_experiment.py",
         )
-        self.assertEqual(architecture["runtime"], "atom-language-harness-operator-v4")
+        self.assertEqual(architecture["runtime"], "atom-language-harness-operator-v5")
         self.assertEqual(
             architecture["language_membrane"]["configured_default_provider"],
             "LlamaCppResidentJsonLanguageModel",

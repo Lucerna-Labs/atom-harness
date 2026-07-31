@@ -1,6 +1,475 @@
 # Atom Harness Developer Notes
 
+## Phase 6 permissioned-hands engineering record
+
+Phase 6 changes Atom Harness from a language-and-evidence operator into an
+adversarial capability experiment. The model can propose useful work, and the
+runtime can perform real work, but these are deliberately separate powers.
+The model never receives a callable tool object, never creates permission, and
+never decides that an outside instruction is trusted. The operator must approve
+the exact prepared manifest before each execution.
+
+The active registry identity is `language-harness-v5`. The desktop identity is
+`atom-harness-desktop-v6` version `6.0.3`. The mandatory Phase 6 integration is
+`tests/test_atom_permissioned_hands_integration.py`. The historical V4 operator
+and V3 evidence runtime remain registered and testable below this active layer.
+
+### 1. Experimental question
+
+The experiment is not whether a language model can call a function. It is
+whether broad, useful capability can be placed behind a boundary that remains
+observable and fail-closed when prompts, files, process output, documents, or
+web content try to influence the model.
+
+Phase 6 therefore tests these separations:
+
+1. Language planning is not execution.
+2. A model proposal is not permission.
+3. Outside content is data, not authority.
+4. A previous tool result is not permission for a next tool.
+5. A visible plan is not the executable object until it is prepared and hashed.
+6. One approval cannot be replayed for another execution.
+7. Tool output cannot enter Atom memory or become causal evidence.
+8. Every completed result must be bound into a real, user-visible artifact.
+
+This is a falsifiable experiment. A bypass of any separation above is a Phase
+6 failure, even if the requested task happened to complete.
+
+### 2. Threat model
+
+The runtime assumes that all of the following can contain hostile or misleading
+instructions:
+
+- the operator's task text;
+- a file read from the workspace;
+- search matches;
+- process standard output and standard error;
+- simulation output;
+- generated documents;
+- public web content;
+- a previous tool artifact supplied to a follow-up plan;
+- the language model's own proposal and rationale.
+
+The trusted computing base is intentionally smaller. It includes the local
+Python runtime, the typed validators, the capability adapters, the exact
+manifest builder, the in-memory permission key, the authenticated loopback
+server, the trusted permission controls, the transaction verifier, and the
+operator who reviews the manifest.
+
+Phase 6 does not assume the model is honest. It assumes only that valid model
+output can be reduced to a registered capability contract. Invalid output is
+rejected without granting a capability. Safe reduction may assign Atom's
+canonical action ID and omit fields that the chosen capability does not
+recognize. Every such change is displayed, included in the exact manifest, and
+covered by the manifest hash before the operator can approve it.
+
+### 2.1 Planner-candidate normalization
+
+The resident llama.cpp grammar binds the proposal to the exact task hash,
+context hash, registered capability names, and bounded action IDs. A single
+JSON Schema union that duplicated all twelve capability argument objects was
+tested against the packaged llama-server and rejected at grammar admission.
+The production design therefore keeps model generation structurally strict and
+performs capability-specific reduction in Atom after generation.
+
+Reduction is deliberately one way. Atom assigns `action-1`, `action-2`, and so
+on in array order and removes argument fields that are absent from the selected
+capability's schema. It never invents a missing required field, changes a
+capability name, repairs an invalid value, adds an action, lowers risk, or
+executes the result. Missing required arguments, unknown capabilities, invalid
+values, path escapes, and preparation failures still fail closed before a
+permission request exists.
+
+The execution manifest carries `planner_normalizations`. The trusted UI shows
+each canonicalized action ID and omitted field beside the exact arguments,
+effects, risk, and action hash. This prevents a model's broader candidate from
+being mistaken for the authoritative manifest.
+
+The live Qwen probe that motivated this boundary selected
+`workspace.write_text` correctly but also supplied the `format` field belonging
+to `document.create`. Atom omitted only that unsupported field, retained the
+required path, content, mode, and existing-file hash binding, prepared the
+exact write effect, and stopped at permission. No file was created during the
+probe.
+
+### 3. Spiderweb topology
+
+The tool path follows the project Spiderweb doctrine rather than a single
+opaque agent loop.
+
+- L0 is the authenticated local transport and bounded planning or execution
+  queue.
+- L1 contains typed messages such as `ToolTask`, `ToolProposal`,
+  `ApprovedToolManifest`, `QuarantinedToolResult`, and `CommittedToolArtifact`.
+- L2 is the permissioned action flow. It forms proposal threads, pauses at the
+  permission intersection, promotes approved work onto the capability lane,
+  and demotes results into an artifact off-ramp.
+- L3 contains Atom policy and trusted local operator authority. The model is
+  not present at this layer.
+
+Flow events are durable vertical vibrations. Planning, backpressure,
+permission request, grant, denial, expiry, capability on-ramp, capability
+off-ramp, cancellation, artifact publication, and restart recovery are recorded
+with canonical hashes. There is one bounded worker highway, so action order is
+deterministic and pressure is visible rather than hidden in unbounded threads.
+
+The capability registry is preloaded before the operator opens admission. A
+proposal can reference only names in that registry. This is the same
+preload-before-traffic rule used by the resident language lane and the wiki and
+RAG catalog.
+
+### 4. Modules and ownership
+
+`atom_tool_protocol.py` owns the planner protocol. It normalizes task text,
+bounds and marks prior context as untrusted, detects observable injection-like
+phrases, defines the strict proposal schema, validates proposal identity and
+hashes, and constructs the planner payload. The planner system message states
+that it may propose but cannot execute or grant permission.
+
+`atom_tool_capabilities.py` owns capability preparation and execution. Every
+adapter has a JSON argument schema, deterministic preparation step, declared
+effects, base and dynamic risk, and execution function. Preparation resolves
+paths and programs and computes content bindings before permission. Execution
+accepts only the prepared representation.
+
+`atom_tool_fabric.py` owns queueing, proposal lifecycle, permission grants,
+execution, recovery, journals, and atomic artifact publication. It is the only
+component that can call a capability adapter. Its grant key is random process
+memory and is never serialized.
+
+`atom_tool_side_view.py` renders the real committed tool artifact. It validates
+the artifact, workflow, wiki graph, and binding identities before escaping and
+rendering values. The binding marker is `render_atom_tool_artifact` and the
+runtime is `atom-permissioned-hands-side-view-v1`.
+
+`atom_harness_operator.py` hosts the evidence queue and tool fabric as sibling
+lanes. A failure while preloading either lane closes both resources before the
+operator enters the failed state. Shutdown stops admission, drains or cancels
+according to the explicit request, closes the tool lane, and then closes the
+resident provider session.
+
+`atom_harness_operator_server.py` exposes the trusted local API. It creates a
+separate HttpOnly, SameSite cookie scoped to tool artifact routes, maintains the
+existing origin, host, token, content type, and request size checks, and maps
+permission conflicts to HTTP 409 without leaking raw error text.
+
+`atom_harness_operator_ui.py` owns the trusted review controls. It renders
+untrusted values only through `textContent` and DOM text nodes. It does not use
+`innerHTML`. The same sandboxed right-side frame loads either the evidence
+artifact or the tool artifact from an authenticated same-origin route.
+
+### 5. Capability registry
+
+The first Phase 6 registry contains twelve capabilities.
+
+| Capability | Purpose | Important preparation boundary |
+| --- | --- | --- |
+| `workspace.list` | Bounded directory inventory | Workspace-contained path, entry limit |
+| `workspace.read_text` | Bounded UTF-8 file read | Regular file, maximum bytes |
+| `workspace.search_text` | Bounded literal text search | Root, glob, query, result limit |
+| `workspace.write_text` | Create or replace UTF-8 text | Create refuses overwrite, replace binds old SHA-256 |
+| `workspace.patch_text` | Exact text replacement | Old SHA-256 and occurrence count |
+| `workspace.make_directory` | Create a directory | Exact path and parents flag |
+| `workspace.move` | Move a file or tree | Full file or tree hash and absent destination |
+| `workspace.quarantine` | Recoverably remove an item from active workspace | Full hash and private recovery destination |
+| `process.run` | Run one exact program | Resolved executable and SHA-256, argument array, cwd, timeout, stdin, bounded streamed output |
+| `simulation.run` | Run bounded named cases | Resolved executable and SHA-256, base arguments, exact cases, per-case timeout, bounded streamed output |
+| `document.create` | Create Markdown, text, HTML, or JSON | Format-extension match and write hash rules |
+| `web.fetch` | Read bounded public HTTP or HTTPS content | Public address set bound into permission, pinned connection, no credentials or redirects, byte and time limit |
+
+There is no generic delete capability. Quarantine is recoverable and stores the
+recovery path in the result. There is no implicit shell command string. Process
+execution always uses an argument array and `shell=False`. If the exact program
+is itself a shell, the manifest labels the action critical and displays that
+program and every argument before approval.
+
+Only a small allowlist of operating-system variables is forwarded to a child
+process. Provider API keys and arbitrary parent environment values are not
+forwarded. Standard output and standard error are drained through bounded
+in-memory previews while full byte counts and SHA-256 values are retained. They
+are never accumulated in unbounded temporary files. Timeout or cancellation
+terminates the process group before the action closes.
+
+Workspace paths are relative to an explicit existing root. Absolute paths,
+parent traversal, root mutation, and symbolic-link crossings are rejected.
+The default Windows workspace is `C:\Projects`, and the launcher exposes
+`-ToolWorkspace` so a narrower experimental workspace can be selected.
+
+### 6. Proposal and permission state machine
+
+The durable states are:
+
+`planning -> awaiting-permission -> approved -> executing -> completed`
+
+Terminal alternatives are `no-actions`, `denied`, `expired`, `cancelled`,
+`failed`, `failed-closed`, and `interrupted`.
+
+The transition details are:
+
+1. `submit_task` validates and hashes the task, optionally loads only a
+   completed parent result as bounded untrusted context, creates a cancellation
+   token, emits `hands-planning-thread-formed`, and queues planning.
+2. The provider returns strict JSON for `tool.plan`. The validator requires the
+   exact task and context hashes and only registered capability names. Atom
+   then reduces the untrusted candidate to the selected capability schemas and
+   records every safe normalization.
+3. Each reduced action is prepared. Preparation converts model strings into
+   resolved, bounded arguments and declared effects. Dynamic risk can raise but
+   never lower the registered risk.
+4. The fabric builds `atom-exact-tool-execution-manifest-v1`, including the
+   workspace root, capability registry hash, every action hash, maximum risk,
+   creation time, and expiry. The complete core is canonically hashed.
+5. The UI receives the exact prepared manifest and a random decision nonce.
+   No grant exists while the record is `awaiting-permission`.
+6. Approval must echo the proposal ID, manifest hash, and decision nonce. A
+   mismatch leaves the proposal waiting and produces no side effect.
+7. The fabric creates a random grant ID and an HMAC signature using its
+   process-only key. The durable permission receipt contains only a grant hash,
+   never the key or signature.
+8. Execution atomically pops the in-memory grant, reconstructs the exact
+   actions from the approved manifest, verifies the registry, manifest, and
+   action hashes again, and marks the grant consumed before the first action.
+9. A second approval attempt fails because the state is no longer awaiting and
+   the grant no longer exists. A restart also destroys all grants and marks
+   nonterminal records interrupted.
+
+Denial uses the same manifest and nonce binding but creates no grant. Expiry
+removes any grant and closes the record. Cancellation propagates through the
+provider or action lane and cannot publish a partial run as passed.
+
+### 7. Time-of-check to time-of-use controls
+
+Manifest approval must bind what will execute, not merely a model's prose.
+Replacement and patch actions record the current file SHA-256. Patch actions
+also record the exact expected occurrence count. Move and quarantine record a
+deterministic file or full tree hash. Each is recomputed immediately before the
+mutation. A changed target fails without overwriting the changed data.
+
+Programs are resolved and hashed during preparation. Both the executable path
+and SHA-256 are stored in the manifest and rechecked before spawn. Web hosts
+are resolved to public addresses during preparation
+and resolved again during execution. The connection bypasses ambient proxy
+configuration and opens only to one of the exact approved addresses while
+retaining the reviewed host for HTTP and TLS certificate verification. A
+changed address set, non-public address, credential-bearing URL, redirect,
+unsupported port, response over the approved limit, or timeout fails closed.
+
+These controls reduce common drift and rebinding paths. They do not claim that
+all operating-system races are eliminated. Directory entries can still change
+between a final user-space check and the kernel operation. This is one reason
+Phase 6 remains explicitly experimental.
+
+### 8. Results, memory, and artifacts
+
+Every result uses `atom-quarantined-tool-result-v1` and includes the approved
+action ID and action hash, status, elapsed time, `untrusted-tool-output` trust
+label, bounded output, and a canonical result hash. A failed action stops the
+sequence. Later actions are not attempted.
+
+Before execution the fabric loads the resident `HarnessKnowledge`, hashes the
+Atom store, and records the wiki graph hash. It repeats both checks after the
+actions. The artifact passes only if Atom memory and the graph are unchanged,
+every result belongs to the corresponding approved action, execution stopped
+after a failure, all requested actions completed, and every result is marked
+untrusted.
+
+The run transaction stages and atomically publishes:
+
+- `atom_tool_artifact.json`;
+- `atom_tool_workflow.json`;
+- `atom_tool_permission.json`;
+- `atom_tool_results.json`;
+- `atom_harness_knowledge.json`;
+- `atom_harness_wiki_graph.json`;
+- `atom_tool_side_view.html`;
+- the exact immutable Atom database snapshot.
+
+The transaction is non-overwriting and has a committed file manifest. The
+workflow binds the manifest, permission receipt, every result, knowledge hash,
+graph hash, wiki runtime, RAG runtime, transaction ID, and side-view runtime.
+The right-side UI fetches this committed file. It does not re-render model text
+into an unbound preview.
+
+### 9. Loopback API and cookies
+
+The Phase 6 API adds:
+
+- `POST /api/tools/propose`;
+- `GET /api/tools/proposals/{proposal_id}`;
+- `POST /api/tools/approve`;
+- `POST /api/tools/deny`;
+- `POST /api/tools/cancel`;
+- `GET /api/tool-artifacts/{proposal_id}/side-view`.
+
+Control routes require the in-memory `X-Atom-Operator-Token`, exact loopback
+origin, valid host, JSON content type, bounded content length, and exact request
+fields. Evidence and tool artifacts use separate cookies with distinct scoped
+paths. Tokens are not placed in artifact URLs. Both artifact types render in a
+sandboxed frame with same-origin framing policy.
+
+### 10. Adversarial and integration coverage
+
+`tests/test_atom_permissioned_hands.py` exercises five core attacks and flows:
+
+- a forged manifest hash cannot approve and a bound denial creates no file;
+- a Qwen-shaped mixed argument candidate is reduced to the chosen capability,
+  the omitted field and canonical ID are visible, and denial still creates no
+  file;
+- a real code, simulation, and document workflow requires one exact approval,
+  commits a verified artifact, preserves Atom memory, and rejects replay;
+- an injected file that claims permission remains tainted, and a follow-up
+  workspace escape is rejected before any new permission can be created;
+- a file changed after approval fails the hash check and preserves the newer
+  external content;
+- a changed process executable fails before spawn, while process output is
+  streamed into bounded previews rather than unbounded files; and
+- public web execution connects only to the address set bound into the exact
+  permission manifest.
+
+`tests/test_atom_permissioned_hands_integration.py` uses the real Atom catalog,
+wiki graph, graph RAG, provider fabric, operator, authenticated loopback server,
+trusted permission route, capability execution, atomic transaction verifier,
+evidence side view, and tool side view. It first completes a grounded evidence
+request, then proves that a tampered permission gets HTTP 409 with no side
+effect, approves the exact manifest, runs generated Python simulation cases,
+writes a document, verifies both artifact bindings, and confirms that the
+planner request has `model_may_execute` false.
+
+`tests/test_atom_harness_desktop_v6_integration.py` invokes that exact chain
+through the declared desktop gate and checks the installed runtime and opt-in
+update contracts.
+
+`scripts/certify_atom_permissioned_hands.py` runs all three suites and writes a
+source-bound report below `local-results`. It records normalized source hashes,
+the source-manifest hash, observed adversarial cases, command, timings, and a
+report hash. Its claim is deliberately narrow: it certifies the deterministic
+and loopback test matrix, not universal prompt-injection resistance.
+
+`scripts/verify_atom_harness_v6.py` checks the machine declarations, active and
+historical runtimes, wiki and RAG wiring, both side-view bindings, permission
+rules, capability source markers, update contract, desktop runtime, pinned CI
+actions, Git candidate safety, and the 4,000-line Rust crate ceiling.
+
+### 11. Desktop and packaging boundary
+
+The Phase 6 desktop remains a thin .NET shell. It expects loopback server V2,
+operator UI V5, the permissioned-hands fabric, and the tool side-view runtime in
+the backend startup record. It does not implement a second permission engine.
+All approval controls are served by the authenticated Python runtime inside the
+existing WebView2 surface.
+
+The updater boundary is unchanged and remains opt-in. `lucerna-update.json`
+schema 1 prohibits automatic download and automatic install, requires explicit
+consent, SHA-256, external staging, application exit before replacement, and a
+rollback backup. Phase 6 packages are version `6.0.3` and the build output uses
+`local-results/desktop-v6-package-*`.
+
+### 11.1 Phase 6.0.3 completion evidence
+
+The final local package completed at `2026-07-31T15:59:33.7968270Z` with 157
+manifest-bound application files.
+
+- Portable ZIP: 138,764,940 bytes, SHA-256
+  `ede0d697dbb3351f513632fe572b68ea84010fb3f2bdcd97dd01594abed5fb63`.
+- Per-user MSI: 120,206,546 bytes, SHA-256
+  `2cb27e6ea84810b21935ee08418cc9aeadc117d3ca90e7cc38a7bcbf39656dc3`.
+- Bundled llama server: SHA-256
+  `2ab5559be6a09d9372fd107d7318eb6265eecf1761cdea62674667c752851639`.
+
+The MSI installed without elevation and created the desktop and Start menu
+shortcuts. The installed-layout verifier passed the complete release manifest
+with WebView2 `150.0.4078.105`. Its report SHA-256 was
+`300d7caa5107af7e10e92a32eb4b8859b274cc1ea0257993669772b88d534e58`.
+
+The installed application completed the real local Qwen question
+`How can repeated verification turn trust into a stable belief?` in 7,409 ms.
+It used 2,737 wiki nodes, retrieved seven passages, emitted one bound citation,
+performed no LLM memory write, and used no cloud evidence. Intent generation
+measured 89.467 tokens per second and grounded response generation measured
+74.158 tokens per second. The model stayed resident with one load and zero
+restarts. The committed transaction SHA-256 was
+`ed4c5881cb29d15fa6d383cb20eee7318cf8aa71842a7e7311a59e371a6eb101`;
+the logical artifact SHA-256 was
+`478e70eab7478dd993ad5d19e138c6e2251bb7c425fe768001f559fc7ad1f71b`;
+and the real right-side view SHA-256 was
+`42f413efaa03c1f74f5fbf9f7b41b83170df978ac8dc429712bccf1b823e0198`.
+
+The live hands probe asked Qwen to write
+`phase6-v603-live-denied.txt`. Qwen selected `workspace.write_text` and supplied
+one extra `format` field. Atom displayed that field's omission, the exact
+prepared arguments, effects, risk, action hash, and manifest hash before any
+permission could exist. The operator used Deny. The durable result had zero
+tool results, no persisted grant or grant secret, and no proposed file at
+either the configured or application-virtualized workspace path. Closing and
+reopening the installed application recovered the same denied proposal and
+normalization record. The manifest SHA-256 was
+`2aa800abc5f60c08bf0d26e02774a6fb095a13b844bc8c16e15ec515b55257f5`;
+the permission receipt SHA-256 was
+`bc71e7d4c6efa6dfa019bdf85e2441425ee0b5946a1791696dd56840b7ba4333`;
+and the recovered journal SHA-256 was
+`75ec33b012ec6eaf8df606163b12897bc75e5933e10b1aef5819f9c8a5c61075`.
+
+The 6.0.3 hardening audit also exercised four resource and outside-influence
+boundaries. Public web connections use only a permission-bound public address,
+so the HTTP layer cannot perform a later ambient DNS lookup. A changed
+executable hash fails before spawn. Standard output larger than 512 KiB is
+fully drained and hashed but only a bounded preview is retained, with no
+unbounded output file. A timed-out Python parent and its sleeping child were
+both gone before the action returned.
+
+`atom-permissioned-hands-certification.json` binds the adversarial, loopback,
+desktop, live-model, and denial evidence to normalized hashes of the exact
+Phase 6 source. Its source-manifest SHA-256 is
+`5e73d71146bfc105f421cb47c917393c33ae543d3ea50744b0b4b2fd8751d9b0`
+and its canonical report hash is
+`93e38dd9191f8f77f27971ae07a864bd241dca41882e71392087616ce066e548`.
+Changing a bound runtime, declaration, verifier, or test invalidates this
+certificate until the full adversarial certificate is regenerated.
+
+### 12. Adding a capability safely
+
+A new capability is incomplete until all of these are true:
+
+1. It has one focused adapter with a strict JSON argument schema.
+2. Preparation resolves all implicit state into exact manifest fields.
+3. Declared effects name every read, write, process, network, or external
+   consequence the operator must evaluate.
+4. Base and dynamic risk are honest and cannot be lowered by model output.
+5. Execution accepts only prepared arguments and propagates cancellation.
+6. Output is bounded, hash-bound, and marked untrusted.
+7. The capability cannot mutate Atom memory or access provider secrets.
+8. A denial, tamper, replay, expiry, path escape, and relevant time-of-check
+   drift test exists.
+9. The exact loopback integration exercises the capability and both mandatory
+   knowledge and artifact surfaces after the latest change.
+10. Documentation and the machine-readable capability contract are updated.
+
+Do not add a raw fallback. If an operation cannot be expressed with exact
+arguments and visible effects, it is not ready for the registry.
+
+### 13. Known limits and honest claim boundary
+
+Phase 6 does not solve prompt injection. It makes the tested authority boundary
+explicit and gives the operator a chance to stop a harmful plan. A user can
+still approve a harmful exact command. A shell executable can still interpret
+its approved arguments as a script. A process can modify any resource its
+operating-system account can reach, even though the declared workspace and
+sanitized environment reduce ambient reach. The web connection is pinned to
+the permission-bound public address set, but public DNS and filesystem checks
+remain user-space defenses, not kernel capabilities. The current permission is
+per manifest, so one approved multi-action plan can contain several sequential
+effects.
+
+For that reason the product remains an adversarial experiment, not unattended
+production autonomy. The correct Phase 6 claim is: the harness provides broad
+registered hands, requires an explicit exact one-time approval for every
+execution, fails closed on the tested tamper and drift paths, quarantines tool
+results, preserves Atom memory, and renders the real result beside the primary
+surface.
+
 ## V4 interactive operator engineering record
+
+This section is the preserved V4 engineering record. V5 is now active.
 
 V4 is a persistent operator around the certified V3 harness. It does not
 replace the V3 evidence, provider, transaction, or artifact rules. The V4 host
@@ -10,7 +479,7 @@ path.
 
 ### Product and authority boundary
 
-The active registry identity is `language-harness-v4`, with
+The V4 registry identity is `language-harness-v4`, with
 `atom_harness_operator_server.py` as its runtime entrypoint. The underlying
 answer runtime remains `atom-language-harness-v3`. Atom still owns the
 immutable database, wiki graph, graph-first RAG, primary claim, citation
@@ -1204,7 +1673,7 @@ the renderer pass.
 
 Before merging or publishing a change:
 
-- confirm `language-harness-v4` is still the declared active runtime and
+- confirm `language-harness-v4` is still preserved as a historical runtime and
   `language-harness-v3` remains registered as historical;
 - confirm wiki graph, graph RAG, and side view remain runtime-wired;
 - confirm provider admission, privacy, and run transaction declarations remain
@@ -1230,11 +1699,12 @@ integration, side-view binding, warning gate, or test remains unresolved,
 report it as unresolved. Do not describe the harness as complete on the
 strength of a scaffold or deterministic provider alone.
 
-## 13. Desktop Phase 5 release
+## 13. Historical Desktop Phase 5 release
 
 ### 13.1 Product boundary
 
-Phase 5 packages the certified Operator V4 as a native per-user Windows
+This section preserves the Phase 5 packaging record. Phase 5 packaged the
+certified Operator V4 as a native per-user Windows
 desktop application. It deliberately does not create a new authority runtime.
 The .NET shell owns only installation-facing concerns: native windowing,
 single-instance admission, model discovery and provisioning, child-process

@@ -1,4 +1,4 @@
-"""Frozen desktop entrypoint for the certified Atom Harness Operator V4."""
+"""Frozen desktop entrypoint for Atom Harness Phase 6 Operator V5."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 
-ATOM_HARNESS_DESKTOP_BACKEND_RUNTIME = "atom-harness-desktop-backend-v5"
+ATOM_HARNESS_DESKTOP_BACKEND_RUNTIME = "atom-harness-desktop-backend-v6"
 ATOM_HARNESS_BUNDLED_CAUSAL_RUNTIME = "atom-harness-bundled-causal-memory-v1"
 
 

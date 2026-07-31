@@ -84,7 +84,7 @@ internal sealed class MainForm : Form
             Renderer = new ToolStripProfessionalRenderer(
                 new DarkColorTable()),
         };
-        toolbar.Items.Add(new ToolStripLabel("Atom Harness Desktop 5")
+        toolbar.Items.Add(new ToolStripLabel("Atom Harness Desktop 6")
         {
             Font = new Font("Segoe UI Semibold", 10, FontStyle.Bold),
         });
@@ -154,7 +154,7 @@ internal sealed class MainForm : Form
             settings.ModelPath = modelPath;
             await settings.SaveAsync(_paths.SettingsPath);
             UpdateStartup(
-                "Preloading the Atom graph and resident Qwen model",
+                "Preloading Atom, Qwen, and the permission registry",
                 null);
             await InitializeWebViewAsync();
             _backend = new BackendSupervisor(_paths, _diagnostics);

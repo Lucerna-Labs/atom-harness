@@ -1,4 +1,4 @@
-"""Two-pane operator surface bound to committed Atom harness artifacts."""
+"""Two-pane evidence and permissioned-hands operator surface."""
 
 from __future__ import annotations
 
@@ -8,9 +8,14 @@ from atom_harness_knowledge import (
     ATOM_HARNESS_RAG_RUNTIME,
     ATOM_HARNESS_WIKI_RUNTIME,
 )
+from atom_tool_fabric import ATOM_PERMISSIONED_HANDS_RUNTIME
+from atom_tool_side_view import (
+    ATOM_TOOL_ARTIFACT_BINDING,
+    ATOM_TOOL_SIDE_VIEW_RUNTIME,
+)
 
 
-ATOM_HARNESS_OPERATOR_UI_RUNTIME = "atom-language-harness-operator-ui-v4"
+ATOM_HARNESS_OPERATOR_UI_RUNTIME = "atom-language-harness-operator-ui-v5"
 ATOM_HARNESS_OPERATOR_ARTIFACT_BINDING = "render_operator_surface"
 
 
@@ -25,6 +30,8 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
     ui_runtime = _javascript_string(ATOM_HARNESS_OPERATOR_UI_RUNTIME)
     wiki_runtime = _javascript_string(ATOM_HARNESS_WIKI_RUNTIME)
     rag_runtime = _javascript_string(ATOM_HARNESS_RAG_RUNTIME)
+    hands_runtime = _javascript_string(ATOM_PERMISSIONED_HANDS_RUNTIME)
+    tool_side_view_runtime = _javascript_string(ATOM_TOOL_SIDE_VIEW_RUNTIME)
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -79,7 +86,7 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
     }}
     .conversation {{
       display: grid;
-      grid-template-rows: auto 1fr auto;
+      grid-template-rows: auto auto 1fr auto;
       min-width: 0;
       border-right: 1px solid var(--line);
       background: var(--panel);
@@ -118,6 +125,10 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
       overflow: auto;
       padding: 14px;
     }}
+    #hands-history {{ overflow: auto; padding: 14px; }}
+    .mode-tabs {{ display: flex; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); }}
+    .mode-tabs button.active {{ color: #0d120a; background: var(--green); border-color: var(--green); font-weight: 700; }}
+    [hidden] {{ display: none !important; }}
     .empty {{
       margin: 24px;
       color: var(--muted);
@@ -136,6 +147,17 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
       cursor: pointer;
     }}
     .request:hover, .request.selected {{ border-color: var(--green); }}
+    .tool-request {{ cursor: default; }}
+    .tool-request.selected {{ border-color: var(--blue); }}
+    .tool-request .request-select {{ width: 100%; padding: 0; color: inherit; text-align: left; background: transparent; border: 0; }}
+    .tool-actions {{ margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line); }}
+    .tool-action {{ margin: 7px 0; padding: 9px; border: 1px solid var(--line); border-radius: 7px; background: #10120f; }}
+    .tool-action-head {{ display: flex; align-items: center; gap: 8px; }}
+    .risk {{ padding: 2px 6px; border: 1px solid var(--line); border-radius: 999px; color: var(--amber); font-size: 9px; text-transform: uppercase; }}
+    .exact {{ max-height: 180px; overflow: auto; margin: 7px 0 0; padding: 8px; color: #d5d8ce; background: #090a08; border-radius: 6px; font: 10px/1.4 ui-monospace,monospace; white-space: pre-wrap; overflow-wrap: anywhere; }}
+    .warning {{ margin-top: 8px; padding: 8px; color: var(--amber); background: #292313; border: 1px solid #5d4c22; border-radius: 7px; font-size: 11px; }}
+    .permission {{ margin-top: 10px; padding: 10px; border: 1px solid #5d4c22; border-radius: 8px; background: #18150d; }}
+    .permission strong {{ display: block; margin-bottom: 7px; color: var(--amber); }}
     .request .question {{ font-size: 13px; line-height: 1.45; }}
     .request .answer {{
       margin-top: 9px;
@@ -153,6 +175,8 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
     .status-completed {{ color: var(--green); }}
     .status-failed, .status-cancelled {{ color: var(--red); }}
     .status-running, .status-queued {{ color: var(--amber); }}
+    .status-planning, .status-approved, .status-executing, .status-awaiting-permission {{ color: var(--amber); }}
+    .status-denied, .status-expired, .status-interrupted, .status-no-actions {{ color: var(--muted); }}
     form {{
       padding: 14px;
       border-top: 1px solid var(--line);
@@ -211,9 +235,12 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
 <body data-runtime="{ATOM_HARNESS_OPERATOR_UI_RUNTIME}"
       data-binding="{ATOM_HARNESS_OPERATOR_ARTIFACT_BINDING}"
       data-wiki="{ATOM_HARNESS_WIKI_RUNTIME}"
-      data-rag="{ATOM_HARNESS_RAG_RUNTIME}">
+      data-rag="{ATOM_HARNESS_RAG_RUNTIME}"
+      data-hands="{ATOM_PERMISSIONED_HANDS_RUNTIME}"
+      data-tool-side-view="{ATOM_TOOL_SIDE_VIEW_RUNTIME}"
+      data-tool-binding="{ATOM_TOOL_ARTIFACT_BINDING}">
   <header>
-    <h1>ATOM HARNESS OPERATOR</h1>
+    <h1>ATOM HARNESS EXPERIMENT</h1>
     <span id="runtime-state" class="pill">preloading</span>
     <span id="model-state" class="pill">model waiting</span>
     <span class="grow"></span>
@@ -222,13 +249,20 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
   <main class="layout">
     <section class="conversation" aria-label="Conversation and controls">
       <div class="metrics">
-        <div class="metric"><span>Queue</span><strong id="queue">0 / 8</strong></div>
+        <div class="metric"><span>Queues</span><strong id="queue">0 / 8</strong></div>
         <div class="metric"><span>Model loads</span><strong id="loads">0</strong></div>
         <div class="metric"><span>Restarts</span><strong id="restarts">0</strong></div>
         <div class="metric"><span>Last time</span><strong id="timing">none</strong></div>
       </div>
+      <div class="mode-tabs" role="tablist" aria-label="Experiment mode">
+        <button id="mode-evidence" class="active" type="button" role="tab">Evidence</button>
+        <button id="mode-hands" type="button" role="tab">Permissioned hands</button>
+      </div>
       <div id="history">
         <p class="empty">The resident model and Atom graph are loading. Your committed answers will appear here, with the real evidence artifact beside them.</p>
+      </div>
+      <div id="hands-history" hidden>
+        <p class="empty">Tool proposals will appear here. Nothing can execute until you approve the exact displayed manifest.</p>
       </div>
       <form id="ask-form">
         <label for="question">Ask the Atom evidence harness</label>
@@ -242,11 +276,22 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
           <button class="danger" id="shutdown" type="button">Shut down</button>
         </div>
       </form>
+      <form id="tool-form" hidden>
+        <label for="tool-task">Give Atom a task that may require hands</label>
+        <textarea id="tool-task" maxlength="4096" required
+          placeholder="Create code, build a simulation, write a document, or manage a project"></textarea>
+        <div class="actions">
+          <button class="primary" id="plan-tools" type="submit">Plan exact actions</button>
+          <button id="continue-tools" type="button">Continue from selected result</button>
+          <button id="cancel-tools" type="button">Cancel selected task</button>
+        </div>
+        <p class="warning">Planning does not grant permission. Every exact action must be approved here before any tool runs.</p>
+      </form>
     </section>
     <section class="artifact" aria-label="Committed artifact side view">
       <div class="artifact-bar">
         <strong>REAL ARTIFACT SIDE VIEW</strong>
-        <span id="artifact-label">Select a completed answer</span>
+        <span id="artifact-label">Select a completed answer or tool run</span>
       </div>
       <iframe id="artifact-frame" title="Atom evidence artifact"
         sandbox="" referrerpolicy="no-referrer"
@@ -259,13 +304,17 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
     const uiRuntime = {ui_runtime};
     const wikiRuntime = {wiki_runtime};
     const ragRuntime = {rag_runtime};
+    const handsRuntime = {hands_runtime};
+    const toolSideViewRuntime = {tool_side_view_runtime};
     const headers = {{
       "X-Atom-Operator-Token": accessToken,
       "Content-Type": "application/json"
     }};
     const state = {{
       snapshot: null,
+      mode: "evidence",
       selected: null,
+      selectedTool: null,
       loadingArtifactId: null,
       loadedArtifactId: null
     }};
@@ -334,8 +383,171 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
       return button;
     }}
 
+    function setMode(mode) {{
+      state.mode = mode;
+      const hands = mode === "hands";
+      byId("mode-evidence").classList.toggle("active", !hands);
+      byId("mode-hands").classList.toggle("active", hands);
+      byId("history").hidden = hands;
+      byId("hands-history").hidden = !hands;
+      byId("ask-form").hidden = hands;
+      byId("tool-form").hidden = !hands;
+    }}
+
+    function appendText(parent, className, text) {{
+      const item = document.createElement("div");
+      item.className = className;
+      item.textContent = text;
+      parent.appendChild(item);
+      return item;
+    }}
+
+    function toolRequestCard(record) {{
+      const card = document.createElement("article");
+      card.className = "request tool-request" +
+        (state.selectedTool === record.proposal_id ? " selected" : "");
+      const select = document.createElement("button");
+      select.type = "button";
+      select.className = "request-select";
+      select.addEventListener("click", async () => {{
+        await selectTool(record.proposal_id);
+        if (state.snapshot) render(state.snapshot);
+      }});
+      appendText(select, "question", record.task);
+      if (record.summary) appendText(select, "answer", record.summary);
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      const status = document.createElement("span");
+      status.className = "status-" + record.status;
+      status.textContent = record.status;
+      meta.appendChild(status);
+      const count = document.createElement("span");
+      count.textContent = record.action_count + " actions";
+      meta.appendChild(count);
+      if (record.maximum_risk) {{
+        const risk = document.createElement("span");
+        risk.textContent = "max risk " + record.maximum_risk;
+        meta.appendChild(risk);
+      }}
+      select.appendChild(meta);
+      card.appendChild(select);
+
+      if (record.injection_signals?.length) {{
+        appendText(
+          card,
+          "warning",
+          "Outside influence signals: " + record.injection_signals.join(", ")
+        );
+      }}
+
+      if (record.planner_normalizations?.length) {{
+        const normalized = record.planner_normalizations.map((item) => {{
+          const fields = item.fields?.length ? " (" + item.fields.join(", ") + ")" : "";
+          return item.action_id + ": " + item.kind + fields;
+        }});
+        appendText(
+          card,
+          "warning",
+          "Atom normalized the untrusted model proposal before permission: " +
+            normalized.join("; ") + ". The exact manifest below is authoritative."
+        );
+      }}
+
+      if (record.error) {{
+        const failure = record.error.operator_message ||
+          "Planning failed closed. No tool action ran.";
+        const kinds = (record.error.provider_failures || [])
+          .map((item) => item.failure_kind)
+          .filter(Boolean);
+        appendText(
+          card,
+          "warning",
+          failure + (kinds.length ? " Provider boundary: " + kinds.join(", ") + "." : "")
+        );
+      }}
+
+      if (record.actions?.length) {{
+        const actions = document.createElement("div");
+        actions.className = "tool-actions";
+        record.actions.forEach((action) => {{
+          const item = document.createElement("section");
+          item.className = "tool-action";
+          const head = document.createElement("div");
+          head.className = "tool-action-head";
+          const name = document.createElement("strong");
+          name.textContent = action.action_id + "  " + action.capability;
+          head.appendChild(name);
+          const risk = document.createElement("span");
+          risk.className = "risk";
+          risk.textContent = action.risk;
+          head.appendChild(risk);
+          item.appendChild(head);
+          appendText(item, "answer", action.rationale);
+          appendText(item, "exact", JSON.stringify({{
+            arguments: action.arguments,
+            effects: action.effects,
+            action_hash: action.action_hash
+          }}, null, 2));
+          actions.appendChild(item);
+        }});
+        card.appendChild(actions);
+      }}
+
+      if (record.status === "awaiting-permission") {{
+        const permission = document.createElement("div");
+        permission.className = "permission";
+        const label = document.createElement("strong");
+        label.textContent = "Permission required for this exact manifest";
+        permission.appendChild(label);
+        appendText(permission, "exact", record.manifest_hash);
+        const controls = document.createElement("div");
+        controls.className = "actions";
+        const approve = document.createElement("button");
+        approve.type = "button";
+        approve.className = "primary";
+        approve.textContent = "Approve exact actions";
+        approve.addEventListener("click", async () => {{
+          try {{
+            await api("/api/tools/approve", {{
+              method: "POST",
+              body: JSON.stringify({{
+                proposal_id: record.proposal_id,
+                manifest_hash: record.manifest_hash,
+                decision_nonce: record.decision_nonce
+              }})
+            }});
+            setNotice("One-time permission granted to the exact manifest.");
+            await refresh();
+          }} catch (error) {{ setNotice(error.message); }}
+        }});
+        const deny = document.createElement("button");
+        deny.type = "button";
+        deny.className = "danger";
+        deny.textContent = "Deny";
+        deny.addEventListener("click", async () => {{
+          try {{
+            await api("/api/tools/deny", {{
+              method: "POST",
+              body: JSON.stringify({{
+                proposal_id: record.proposal_id,
+                manifest_hash: record.manifest_hash,
+                decision_nonce: record.decision_nonce
+              }})
+            }});
+            setNotice("Tool proposal denied. No action ran.");
+            await refresh();
+          }} catch (error) {{ setNotice(error.message); }}
+        }});
+        controls.append(approve, deny);
+        permission.appendChild(controls);
+        card.appendChild(permission);
+      }}
+      return card;
+    }}
+
     function render(snapshot) {{
       state.snapshot = snapshot;
+      const hands = snapshot.hands || {{enabled: false, proposals: []}};
       const runtimeState = byId("runtime-state");
       runtimeState.textContent = snapshot.state;
       runtimeState.className = "pill " + snapshot.state;
@@ -344,7 +556,8 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
         ? "model resident"
         : (snapshot.preload ? "model available" : "model waiting");
       byId("model-state").className = "pill " + (currentLane?.alive ? "ready" : "");
-      byId("queue").textContent = snapshot.queue_depth + " / " + snapshot.max_queue_depth;
+      byId("queue").textContent = snapshot.queue_depth + " / " + snapshot.max_queue_depth +
+        " | hands " + (hands.queue_depth ?? 0) + " / " + (hands.max_queue_depth ?? 0);
       byId("loads").textContent = currentLane?.model_load_count ?? 0;
       byId("restarts").textContent = currentLane?.restart_count ?? 0;
       const completed = snapshot.requests.filter((item) => item.status === "completed");
@@ -353,10 +566,18 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
         ? latest.artifact.total_ms + " ms"
         : "none";
       byId("ask").disabled = !snapshot.accepting;
+      byId("plan-tools").disabled = !snapshot.accepting || hands.accepting === false;
       byId("cancel").disabled = !snapshot.active_request_id;
       const selected = snapshot.requests.find((item) => item.request_id === state.selected);
       byId("retry").disabled = !selected || !["failed", "cancelled", "interrupted"].includes(selected.status);
       byId("restart").disabled = !snapshot.accepting || !!snapshot.active_request_id || snapshot.queue_depth > 0;
+      const selectedTool = (hands.proposals || []).find(
+        (item) => item.proposal_id === state.selectedTool
+      );
+      byId("continue-tools").disabled = !selectedTool || selectedTool.status !== "completed";
+      byId("cancel-tools").disabled = !selectedTool || [
+        "completed", "failed", "cancelled", "denied", "interrupted", "expired", "no-actions"
+      ].includes(selectedTool.status);
       const history = byId("history");
       history.replaceChildren();
       if (!snapshot.requests.length) {{
@@ -371,30 +592,84 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
         selectRequest(latest.request_id);
       }} else if (
         selected?.status === "completed" &&
-        state.loadedArtifactId !== selected.request_id &&
-        state.loadingArtifactId !== selected.request_id
+        state.loadedArtifactId !== "answer:" + selected.request_id &&
+        state.loadingArtifactId !== "answer:" + selected.request_id
       ) {{
         selectRequest(selected.request_id);
+      }}
+
+      const handsHistory = byId("hands-history");
+      handsHistory.replaceChildren();
+      if (!(hands.proposals || []).length) {{
+        const empty = document.createElement("p");
+        empty.className = "empty";
+        empty.textContent = "The capability registry is ready. Submit a task to produce a permission request. No tool can run before approval.";
+        handsHistory.appendChild(empty);
+      }} else {{
+        [...hands.proposals].reverse().forEach(
+          (record) => handsHistory.appendChild(toolRequestCard(record))
+        );
+      }}
+      const latestTool = [...(hands.proposals || [])].reverse().find(
+        (item) => item.artifact
+      );
+      if (state.mode === "hands" && !state.selectedTool && latestTool) {{
+        selectTool(latestTool.proposal_id);
+      }} else if (
+        state.mode === "hands" && selectedTool?.artifact &&
+        state.loadedArtifactId !== "tool:" + selectedTool.proposal_id &&
+        state.loadingArtifactId !== "tool:" + selectedTool.proposal_id
+      ) {{
+        selectTool(selectedTool.proposal_id);
       }}
     }}
 
     async function selectRequest(requestId) {{
       state.selected = requestId;
+      const artifactKey = "answer:" + requestId;
       const record = state.snapshot?.requests.find((item) => item.request_id === requestId);
       if (!record || record.status !== "completed") return;
       if (
-        state.loadedArtifactId === requestId ||
-        state.loadingArtifactId === requestId
+        state.loadedArtifactId === artifactKey ||
+        state.loadingArtifactId === artifactKey
       ) return;
-      state.loadingArtifactId = requestId;
+      state.loadingArtifactId = artifactKey;
       try {{
-        state.loadedArtifactId = requestId;
+        state.loadedArtifactId = artifactKey;
         const artifactFrame = byId("artifact-frame");
         artifactFrame.removeAttribute("srcdoc");
         artifactFrame.src =
           `/api/artifacts/${{encodeURIComponent(requestId)}}/side-view`;
         byId("artifact-label").textContent =
           record.artifact.citations.length + " citations, transaction " +
+          record.artifact.transaction_id.slice(0, 12);
+      }} catch (error) {{
+        setNotice(error.message);
+      }} finally {{
+        state.loadingArtifactId = null;
+      }}
+    }}
+
+    async function selectTool(proposalId) {{
+      state.selectedTool = proposalId;
+      const artifactKey = "tool:" + proposalId;
+      const record = state.snapshot?.hands?.proposals?.find(
+        (item) => item.proposal_id === proposalId
+      );
+      if (!record?.artifact) return;
+      if (
+        state.loadedArtifactId === artifactKey ||
+        state.loadingArtifactId === artifactKey
+      ) return;
+      state.loadingArtifactId = artifactKey;
+      try {{
+        state.loadedArtifactId = artifactKey;
+        const artifactFrame = byId("artifact-frame");
+        artifactFrame.removeAttribute("srcdoc");
+        artifactFrame.src =
+          `/api/tool-artifacts/${{encodeURIComponent(proposalId)}}/side-view`;
+        byId("artifact-label").textContent =
+          record.action_count + " permissioned actions, transaction " +
           record.artifact.transaction_id.slice(0, 12);
       }} catch (error) {{
         setNotice(error.message);
@@ -412,6 +687,15 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
       }}
     }}
 
+    byId("mode-evidence").addEventListener("click", () => {{
+      setMode("evidence");
+      if (state.selected) selectRequest(state.selected);
+    }});
+    byId("mode-hands").addEventListener("click", () => {{
+      setMode("hands");
+      if (state.selectedTool) selectTool(state.selectedTool);
+    }});
+
     byId("ask-form").addEventListener("submit", async (event) => {{
       event.preventDefault();
       const question = byId("question").value.trim();
@@ -424,6 +708,53 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
         const record = await response.json();
         state.selected = record.request_id;
         byId("question").value = "";
+        await refresh();
+      }} catch (error) {{ setNotice(error.message); }}
+    }});
+    byId("tool-form").addEventListener("submit", async (event) => {{
+      event.preventDefault();
+      const task = byId("tool-task").value.trim();
+      if (!task) return;
+      try {{
+        const response = await api("/api/tools/propose", {{
+          method: "POST",
+          body: JSON.stringify({{task}})
+        }});
+        const record = await response.json();
+        state.selectedTool = record.proposal_id;
+        byId("tool-task").value = "";
+        setNotice("Planning started. No tool has permission to run.");
+        await refresh();
+      }} catch (error) {{ setNotice(error.message); }}
+    }});
+    byId("continue-tools").addEventListener("click", async () => {{
+      const task = byId("tool-task").value.trim();
+      if (!task || !state.selectedTool) {{
+        setNotice("Enter the next objective before continuing from a result.");
+        return;
+      }}
+      try {{
+        const response = await api("/api/tools/propose", {{
+          method: "POST",
+          body: JSON.stringify({{
+            task,
+            parent_proposal_id: state.selectedTool
+          }})
+        }});
+        const record = await response.json();
+        state.selectedTool = record.proposal_id;
+        byId("tool-task").value = "";
+        setNotice("Prior results were supplied as untrusted context. Review the new manifest before approval.");
+        await refresh();
+      }} catch (error) {{ setNotice(error.message); }}
+    }});
+    byId("cancel-tools").addEventListener("click", async () => {{
+      if (!state.selectedTool) return;
+      try {{
+        await api("/api/tools/cancel", {{
+          method: "POST",
+          body: JSON.stringify({{proposal_id: state.selectedTool}})
+        }});
         await refresh();
       }} catch (error) {{ setNotice(error.message); }}
     }});
@@ -460,7 +791,8 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
         setNotice("Graceful shutdown started. Open work will finish first.");
       }} catch (error) {{ setNotice(error.message); }}
     }});
-    if (!uiRuntime || !wikiRuntime || !ragRuntime) throw new Error("runtime markers absent");
+    if (!uiRuntime || !wikiRuntime || !ragRuntime || !handsRuntime || !toolSideViewRuntime) throw new Error("runtime markers absent");
+    setMode("evidence");
     refresh();
     setInterval(refresh, 800);
   </script>

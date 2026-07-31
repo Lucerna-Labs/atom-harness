@@ -15,7 +15,10 @@
     "durable_operator_journal": true,
     "journal_hash_bound": true,
     "journal_recovery_marks_interrupted_requests": true,
-    "operator_history_references_committed_artifacts": true
+    "operator_history_references_committed_artifacts": true,
+    "permissioned_tool_artifacts_atomic": true,
+    "permission_receipt_manifested": true,
+    "quarantined_tool_results_manifested": true
   },
-  "integration_test": "tests/test_atom_language_harness_v4_integration.py"
+  "integration_test": "tests/test_atom_permissioned_hands_integration.py"
 }

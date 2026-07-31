@@ -2,13 +2,29 @@
 
 ## Active direction
 
-The active product is Atom Harness Desktop Phase 5. It is a thin, per-user
-Windows desktop shell around the certified Atom Harness Operator V4 and the
+The active product is Atom Harness Desktop Phase 6. It is a thin, per-user
+Windows desktop shell around Atom Harness Operator V5 and the
 certified V3 causal Atom runtime. The desktop shell does not replace or widen
 Atom authority. It supervises the existing local runtime, embeds the real
 operator surface with its artifact side view, discovers or consent-downloads
 the exact certified language model, and shuts the full local process tree down
 with the application.
+
+Phase 6 is the permissioned-hands experiment. Qwen may propose registered
+actions for code, builds, simulations, documents, workspace management, and
+bounded public web reads. It receives no executable handle and cannot approve
+its own proposal. The trusted local interface displays the exact arguments,
+effects, risk, workspace, manifest hash, and expiry. Nothing executes until
+the operator approves that exact one-time manifest. Denied, changed, expired,
+missing, or replayed permission fails closed. Every result is quarantined as
+untrusted data, cannot authorize another action, and cannot write Atom memory.
+Atom assigns canonical action IDs and omits argument fields outside the chosen
+capability contract. Those reductions are visible and hash-bound in the exact
+manifest rather than being hidden model repair. Public web reads also bind the
+resolved public address set into that manifest and connect only to an approved
+address, with redirects disabled. Process actions bind the resolved executable
+hash, stream output into bounded previews, and terminate the process group on
+timeout or cancellation.
 
 The MSI installs without administrator rights under
 `%LOCALAPPDATA%\Programs\Lucerna Labs\Atom Harness` and creates Desktop and
@@ -26,20 +42,22 @@ recovery details. Developers can build both release formats with:
 .\scripts\build_atom_harness_desktop.ps1
 ```
 
-Operator V4 remains the runtime authority beneath the desktop shell.
+Operator V5 is the active runtime beneath the desktop shell.
 Atom owns facts, causal memory, the runtime wiki graph, graph RAG, tool-routing
 policy, and abstention. A replaceable LLM supplies natural-language intent
-parsing and evidence-grounded answer rendering only.
+parsing, evidence-grounded answer rendering, and proposal-only tool planning.
+The human operator is the sole execution-permission authority.
 
-V4 keeps the V3 provider and transaction protections and adds a persistent
-interactive operator. It loads the immutable Atom wiki and graph RAG snapshot,
+V5 keeps the V4 interactive operator and V3 provider and transaction
+protections. It loads the immutable Atom wiki and graph RAG snapshot,
 starts the authenticated loopback `llama-server`, and warms the constrained
-language path before it accepts a question. The browser surface places
-conversation and controls on the left and the real committed artifact on the
-right. Every request still passes through its own crash-safe V3 transaction.
-Cancel, retry, idle model restart, and graceful shutdown are first-class
-controls. Queue pressure, lifecycle changes, artifact publication, and
-recovery are typed Spiderweb flow evidence.
+language and tool-planning paths before it accepts work. The browser surface
+places conversation and trusted permission controls on the left and the real
+committed evidence or tool artifact on the right. Every answer and tool run
+passes through its own crash-safe atomic transaction. Cancel, retry, deny,
+exact approval, idle model restart, and graceful shutdown are first-class
+controls. Queue pressure, lifecycle changes, permissions, capability ramps,
+artifact publication, and recovery are typed Spiderweb flow evidence.
 
 Start the operator on Windows:
 
@@ -49,9 +67,9 @@ Start the operator on Windows:
 
 For a double-click launch, use `START-ATOM-HARNESS-OPERATOR.cmd`. The server
 binds only to `127.0.0.1`, chooses a random port by default, and creates its
-browser access token in memory. Cloud routing is not available in the V4
+browser access token in memory. Cloud routing is not available in the V5
 operator. See `ATOM_HARNESS_OPERATOR.md` for the controls and runtime layout.
-The latest one-hour local certificate passed 100 mixed requests, cancellation
+The historical V4 one-hour local certificate passed 100 mixed requests, cancellation
 and retry, model restart and rewarm, journal and transaction checks, immutable
 knowledge checks, settled memory bounds, and clean shutdown. Detailed evidence
 and the report hash are in `DEVELOPER_NOTES.md`.
@@ -65,7 +83,8 @@ ephemeral in-memory API key, no web UI, `qwen-chatml-manual-v1`, a
 32,768-token admission window, reasoning off, temperature zero, and seed one.
 This 4B dense model is intentionally smaller than an agentic general-purpose
 model because Atom retains evidence, memory, graph RAG, authority, and
-abstention. The model supplies language only. See `atom-language-model.json`
+abstention. The model supplies language and plans, but never execution
+authority. See `atom-language-model.json`
 for the machine-readable contract and certified evidence. Rerun the live
 certification before promoting any new model, backend, prompt transport, or
 authority-boundary revision.

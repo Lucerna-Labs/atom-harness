@@ -28,6 +28,12 @@ param(
     [ValidateRange(1, 256)]
     [int]$MaxQueueDepth = 8,
 
+    [string]$ToolWorkspace = $(if ($env:ATOM_TOOL_WORKSPACE) {
+        $env:ATOM_TOOL_WORKSPACE
+    } else {
+        'C:\Projects'
+    }),
+
     [ValidateRange(0, 65535)]
     [int]$Port = $(if ($env:ATOM_HARNESS_OPERATOR_PORT) {
         [int]$env:ATOM_HARNESS_OPERATOR_PORT
@@ -54,13 +60,15 @@ try {
 
 if (
     $runtimeRegistry.schema_version -ne 1 -or
-    $runtimeRegistry.active_runtime -ne 'language-harness-v4' -or
-    $runtimeRegistry.runtimes.'language-harness-v4'.runtime_entrypoint -ne
+    $runtimeRegistry.active_runtime -ne 'language-harness-v5' -or
+    $runtimeRegistry.runtimes.'language-harness-v5'.runtime_entrypoint -ne
         'atom_harness_operator_server.py' -or
-    $runtimeRegistry.runtimes.'language-harness-v4'.artifact_binding_marker -ne
-        'render_operator_surface'
+    $runtimeRegistry.runtimes.'language-harness-v5'.artifact_binding_marker -ne
+        'render_operator_surface' -or
+    $runtimeRegistry.runtimes.'language-harness-v5'.tool_artifact_binding_marker -ne
+        'render_atom_tool_artifact'
 ) {
-    throw 'The active Atom Harness Operator V4 registry is invalid.'
+    throw 'The active Atom Harness Operator V5 registry is invalid.'
 }
 
 if (
@@ -140,6 +148,10 @@ if (-not $pythonExecutable) {
 if (-not $pythonExecutable) {
     throw 'No Python environment with NumPy is available.'
 }
+if (-not (Test-Path -LiteralPath $ToolWorkspace -PathType Container)) {
+    throw 'The permissioned-hands workspace must be an existing directory.'
+}
+$ToolWorkspace = [System.IO.Path]::GetFullPath($ToolWorkspace)
 
 $arguments = @(
     (Join-Path $projectRoot 'atom_harness_operator_server.py'),
@@ -150,6 +162,7 @@ $arguments = @(
     '--startup-timeout-seconds', $StartupTimeoutSeconds,
     '--lane-acquire-timeout-seconds', $LaneAcquireTimeoutSeconds,
     '--max-queue-depth', $MaxQueueDepth,
+    '--tool-workspace', $ToolWorkspace,
     '--port', $Port
 )
 if ($OutputRoot) {
@@ -159,7 +172,7 @@ if ($NoBrowser) {
     $arguments += '--no-browser'
 }
 
-Write-Host 'Preloading the Atom graph and resident Qwen model. The operator opens when both are ready.'
+Write-Host "Preloading Atom, Qwen, and the permission registry for $ToolWorkspace."
 Push-Location $projectRoot
 try {
     & $pythonExecutable @arguments

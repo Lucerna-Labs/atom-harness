@@ -34,5 +34,5 @@
     "operator_restart_control": true,
     "queue_state_user_visible": true
   },
-  "integration_test": "tests/test_atom_language_harness_v4_integration.py"
+  "integration_test": "tests/test_atom_permissioned_hands_integration.py"
 }

@@ -25,7 +25,12 @@
     "artifact_token_absent_from_url": true,
     "http_only_same_site_artifact_cookie": true,
     "artifact_cookie_path_scoped": true,
-    "sandboxed_artifact_frame": true
+    "sandboxed_artifact_frame": true,
+    "permission_manifest_visible": true,
+    "tool_results_visible": true,
+    "tool_results_rendered_as_untrusted": true,
+    "tool_artifact_side_view_runtime": "ATOM_TOOL_SIDE_VIEW_RUNTIME",
+    "tool_artifact_binding_marker": "render_atom_tool_artifact"
   },
-  "integration_test": "tests/test_atom_language_harness_v4_integration.py"
+  "integration_test": "tests/test_atom_permissioned_hands_integration.py"
 }

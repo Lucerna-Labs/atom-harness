@@ -3,7 +3,7 @@
   "app_id": "com.lucernalabs.atom-harness",
   "app_name": "Atom Harness",
   "platform": "windows-x64",
-  "current_version": "5.0.0",
+  "current_version": "6.0.3",
   "feed_url": "https://github.com/Lucerna-Labs/atom-harness/releases/latest/download/lucerna-update-feed.json",
   "policy": {
     "automatic_download": false,

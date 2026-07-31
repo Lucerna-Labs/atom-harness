@@ -1,6 +1,6 @@
 # Fork and Publication Boundary
 
-This checkout is the local Atom Harness Operator V4 fork:
+This checkout is the local Atom Harness Operator V5 fork:
 
 ```text
 C:\Projects\atom-harness
@@ -29,5 +29,5 @@ and Atom DB evidence store.
 See `DEVELOPER_NOTES.md` for the architecture, trust boundary, module map,
 provider contract, resident-lane lifecycle, transaction and recovery behavior,
 operation, verification, and handoff checklist. The active runtime is
-`language-harness-v4`. The certified V3 harness remains the per-request
+`language-harness-v5`. The certified V3 harness remains the per-request
 execution and artifact core.

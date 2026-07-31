@@ -16,11 +16,12 @@ from atom_causal_world_schema import canonical_hash
 from atom_harness_session import AtomHarnessSession
 from atom_llm_protocol import CancellationToken, ProviderCancelledError
 from atom_run_transaction import verify_committed_run
+from atom_tool_fabric import PermissionedToolFabric
 
 
-ATOM_HARNESS_OPERATOR_RUNTIME = "atom-language-harness-operator-v4"
+ATOM_HARNESS_OPERATOR_RUNTIME = "atom-language-harness-operator-v5"
 ATOM_HARNESS_OPERATOR_JOURNAL_RUNTIME = "atom-harness-operator-journal-v1"
-ATOM_HARNESS_OPERATOR_FLOW_RUNTIME = "atom-harness-operator-spiderweb-flow-v1"
+ATOM_HARNESS_OPERATOR_FLOW_RUNTIME = "atom-harness-operator-spiderweb-flow-v2"
 MAX_OPERATOR_QUESTION_CHARS = 4096
 MAX_OPERATOR_HISTORY = 1000
 
@@ -82,6 +83,7 @@ class AtomHarnessOperator:
         *,
         state_root: Path,
         max_queue_depth: int = 8,
+        tool_fabric: PermissionedToolFabric | None = None,
     ) -> None:
         if not 1 <= int(max_queue_depth) <= 256:
             raise ValueError("operator queue depth must be between one and 256")
@@ -90,6 +92,7 @@ class AtomHarnessOperator:
         self.runs_root = self.state_root / "runs"
         self.journal_path = self.state_root / "atom_harness_operator_journal.json"
         self.max_queue_depth = int(max_queue_depth)
+        self.tool_fabric = tool_fabric
         self._lock = threading.RLock()
         self._maintenance_lock = threading.Lock()
         self._queue: queue.Queue[str | None] = queue.Queue(maxsize=self.max_queue_depth)
@@ -234,7 +237,19 @@ class AtomHarnessOperator:
             self._persist_locked()
         try:
             preload = self.session.preload_runtime()
+            hands_preload = (
+                self.tool_fabric.start() if self.tool_fabric is not None else None
+            )
         except BaseException:
+            if self.tool_fabric is not None:
+                try:
+                    self.tool_fabric.shutdown(wait=True, cancel_pending=True)
+                except BaseException:
+                    pass
+            try:
+                self.session.close()
+            except BaseException:
+                pass
             with self._lock:
                 self._state = "failed"
                 self._accepting = False
@@ -251,6 +266,7 @@ class AtomHarnessOperator:
                     detail={
                         "knowledge_hash": preload["knowledge"]["knowledge_hash"],
                         "provider_preload_hash": preload["providers"]["preload_hash"],
+                        "permissioned_hands_ready": hands_preload is not None,
                     },
                 )
             )
@@ -564,6 +580,62 @@ class AtomHarnessOperator:
                 raise KeyError("operator request does not exist")
             return dict(record)
 
+    def submit_tool_task(
+        self,
+        task: str,
+        *,
+        parent_proposal_id: str | None = None,
+    ) -> dict[str, Any]:
+        if self.tool_fabric is None:
+            raise OperatorStateError("permissioned hands are unavailable")
+        with self._lock:
+            if self._state != "ready" or not self._accepting:
+                raise OperatorStateError("operator is not accepting tool tasks")
+        return self.tool_fabric.submit_task(
+            task,
+            parent_proposal_id=parent_proposal_id,
+        )
+
+    def approve_tool(
+        self,
+        proposal_id: str,
+        *,
+        manifest_hash: str,
+        decision_nonce: str,
+    ) -> dict[str, Any]:
+        if self.tool_fabric is None:
+            raise OperatorStateError("permissioned hands are unavailable")
+        return self.tool_fabric.approve(
+            proposal_id,
+            manifest_hash=manifest_hash,
+            decision_nonce=decision_nonce,
+        )
+
+    def deny_tool(
+        self,
+        proposal_id: str,
+        *,
+        manifest_hash: str,
+        decision_nonce: str,
+    ) -> dict[str, Any]:
+        if self.tool_fabric is None:
+            raise OperatorStateError("permissioned hands are unavailable")
+        return self.tool_fabric.deny(
+            proposal_id,
+            manifest_hash=manifest_hash,
+            decision_nonce=decision_nonce,
+        )
+
+    def cancel_tool(self, proposal_id: str) -> dict[str, Any]:
+        if self.tool_fabric is None:
+            raise OperatorStateError("permissioned hands are unavailable")
+        return self.tool_fabric.cancel(proposal_id)
+
+    def tool_proposal_snapshot(self, proposal_id: str) -> dict[str, Any]:
+        if self.tool_fabric is None:
+            raise OperatorStateError("permissioned hands are unavailable")
+        return self.tool_fabric.proposal_snapshot(proposal_id)
+
     def side_view_path(self, request_id: str) -> Path:
         record = self.request_snapshot(request_id)
         if record["status"] != "completed" or not isinstance(
@@ -579,6 +651,11 @@ class AtomHarnessOperator:
             raise ValueError("operator side view is unavailable")
         return side_view
 
+    def tool_side_view_path(self, proposal_id: str) -> Path:
+        if self.tool_fabric is None:
+            raise OperatorStateError("permissioned hands are unavailable")
+        return self.tool_fabric.side_view_path(proposal_id)
+
     def snapshot(self) -> dict[str, Any]:
         with self._lock:
             recent = [dict(self._requests[identity]) for identity in self._order[-100:]]
@@ -587,6 +664,16 @@ class AtomHarnessOperator:
                 status = str(record["status"])
                 status_counts[status] = status_counts.get(status, 0) + 1
             session = dict(self.session.manifest())
+            hands = (
+                self.tool_fabric.snapshot()
+                if self.tool_fabric is not None
+                else {
+                    "schema": 1,
+                    "enabled": False,
+                    "state": "unavailable",
+                    "permission_required_for_every_execution": True,
+                }
+            )
             core = {
                 "schema": 1,
                 "runtime": ATOM_HARNESS_OPERATOR_RUNTIME,
@@ -600,6 +687,7 @@ class AtomHarnessOperator:
                 "requests": recent,
                 "preload": dict(self._preload) if self._preload else None,
                 "session": session,
+                "hands": hands,
                 "flow": {
                     "runtime": ATOM_HARNESS_OPERATOR_FLOW_RUNTIME,
                     "events": list(self._events[-100:]),
@@ -653,6 +741,11 @@ class AtomHarnessOperator:
         if wait and worker is not None and worker is not threading.current_thread():
             worker.join()
         if worker is None or not worker.is_alive():
+            if self.tool_fabric is not None:
+                self.tool_fabric.shutdown(
+                    wait=True,
+                    cancel_pending=cancel_pending,
+                )
             self.session.close()
             with self._lock:
                 self._state = "closed"

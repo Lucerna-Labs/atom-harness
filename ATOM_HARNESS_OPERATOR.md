@@ -1,10 +1,15 @@
-# Atom Harness Operator V4
+# Atom Harness Operator V5
 
-Atom Harness Operator V4 is the persistent local interface for the certified
+Atom Harness Operator V5 is the persistent local interface for the certified
 Atom language harness. It keeps the official Qwen language model, the Atom wiki
 graph, graph RAG, provider fabric, and operator queue available for an extended
 session. It does not change who owns meaning. Atom remains the sole authority
 for evidence, retrieval, grounding, citations, memory, and abstention.
+
+V5 adds an experimental permissioned-hands lane. The language model may draft
+an exact plan using registered capabilities, but it cannot execute, approve,
+or manufacture a grant. Every action waits at a trusted permission surface.
+One approval is bound to one manifest and is consumed once.
 
 ## Start
 
@@ -30,6 +35,7 @@ Useful optional launcher arguments:
 ```powershell
 .\run-atom-harness-operator.ps1 `
   -OutputRoot C:\Projects\atom-harness-runtime\my-session `
+  -ToolWorkspace C:\Projects `
   -GpuLayers all `
   -MaxQueueDepth 8 `
   -Port 0
@@ -41,15 +47,25 @@ root, but never prints the access token.
 
 ## What the two panes show
 
-The conversation pane on the left shows each question, its current state, its
+The left pane has Evidence and Permissioned hands tabs. Evidence shows each
+question, its current state, its
 answer when committed, citation count, attempt number, queue occupancy, model
 load count, model restart count, and the latest total runtime.
 
-The artifact pane on the right is not a summary invented by the UI. It renders
-the actual `atom_harness_side_view.html` from the selected committed
-transaction. That artifact binds the answer, citations, Atom primary claim,
-evidence packet, wiki graph, graph RAG identity, Spiderweb trace, provider
-routes, privacy state, model metrics, and transaction ID.
+Permissioned hands shows the task, outside-influence warnings, exact proposed
+capabilities and arguments, declared effects, risk, workspace root, expiry,
+manifest hash, and trusted approve, deny, and cancel controls. A proposed plan
+does not mean approval. The approve control submits both the current manifest
+hash and its one-time decision nonce. If Atom canonicalizes an action ID or
+omits an argument the selected capability does not support, the pane names that
+normalization and makes the resulting exact manifest authoritative.
+
+The artifact pane on the right is not a summary invented by the UI. For
+evidence, it renders the actual `atom_harness_side_view.html` from the selected
+committed transaction. For hands, it renders the actual
+`atom_tool_side_view.html`. These views bind the real output, permission
+receipt, manifest, quarantined results, wiki and RAG identity, Spiderweb trace,
+provider route, privacy state, and transaction ID.
 
 ## Controls
 
@@ -64,6 +80,43 @@ routes, privacy state, model metrics, and transaction ID.
 - Shut down performs a graceful close. It stops new admission, lets open work
   finish by default, closes the provider process, and writes final journal
   state.
+- Plan tools asks Qwen for a schema-valid proposal against the current
+  capability registry. Planning itself has no side effect.
+- Approve exact actions creates an in-memory, HMAC-bound, one-time grant for
+  the displayed manifest and schedules that exact manifest for execution.
+- Deny records a bound denial receipt and leaves the workspace unchanged.
+- Cancel tool work propagates cancellation to planning or execution and never
+  publishes an incomplete run as successful.
+
+## Permission and outside-influence boundary
+
+Tool tasks, workspace files, web responses, process output, and prior tool
+results are untrusted input. Injection-like phrases are surfaced as warnings,
+not treated as authority. A previous result enters a follow-up planning request
+only when the operator deliberately continues from that completed proposal,
+and it remains marked `untrusted-tool-output`.
+
+The current registry covers bounded workspace listing, UTF-8 reads and search,
+hash-bound create, replace, and patch, directory creation, hash-bound move and
+recoverable quarantine, exact process execution without shell expansion,
+multi-case simulations, Markdown, text, HTML, and JSON documents, and
+credential-free public web GETs with redirects disabled. Process arguments and
+resolved executable paths are visible before approval. Environment forwarding
+is allowlisted and excludes provider credentials. The executable SHA-256 is
+bound into the manifest and checked again before spawn. Output is drained into
+bounded previews without unbounded temporary files, and timeout or cancellation
+terminates the process group. Public web connections bypass ambient proxy
+settings and connect only to an address in the public address set bound into
+the exact permission manifest. HTTPS still verifies the reviewed hostname
+through TLS.
+
+All workspace paths are resolved below the configured root and symbolic-link
+crossings are rejected. Replacement, patch, move, and quarantine actions bind
+the current content hash so a time-of-check to time-of-use change fails closed.
+Public web destinations are resolved and checked before permission and again
+before execution. The HTTP or HTTPS socket is pinned to that exact address set,
+so a later resolver answer cannot silently redirect the approved request. Any
+redirect or destination change requires a new plan and new permission.
 
 ## Durable session state
 
@@ -101,8 +154,8 @@ the frame to authenticate without placing a secret in its URL. The
 resident `llama-server` has its own separate random in-memory API key, no web
 UI, and an explicit no-proxy loopback transport.
 
-Cloud providers are unavailable through the V4 operator entrypoint. This is a
-local language-only runtime.
+Cloud providers are unavailable through the V5 operator entrypoint. This is a
+local evidence and permissioned-capability runtime.
 
 ## Knowledge and artifact storage
 
@@ -118,11 +171,11 @@ manifest hashes the file either way, so verification is identical.
 
 ## Verification
 
-The exact integration gate is:
+The exact Phase 6 integration gate is:
 
 ```powershell
 python -m unittest discover -s tests `
-  -p "test_atom_language_harness_v4_integration.py" -v
+  -p "test_atom_permissioned_hands_integration.py" -v
 ```
 
 Operator lifecycle and journal tests are:
@@ -132,10 +185,11 @@ python -m unittest discover -s tests `
   -p "test_atom_harness_operator.py" -v
 ```
 
-Repository policy is:
+Repository policy and the adversarial certificate are:
 
 ```powershell
-python scripts\verify_atom_harness_v4.py
+python scripts\verify_atom_harness_v6.py
+python scripts\certify_atom_permissioned_hands.py
 ```
 
 The deterministic endurance certificate uses at least 32 requests. The

@@ -1,13 +1,13 @@
 {
-  "schema": 4,
-  "runtime": "atom-language-harness-operator-v4",
+  "schema": 5,
+  "runtime": "atom-language-harness-operator-v5",
   "runtime_entrypoint": "atom_harness_operator_server.py",
   "session_entrypoint": "atom_harness_operator.py",
-  "integration_test": "tests/test_atom_language_harness_v4_integration.py",
+  "integration_test": "tests/test_atom_permissioned_hands_integration.py",
   "identity": {
-    "system": "Atom evidence harness",
+    "system": "Atom adversarial capability experiment",
     "semantic_authority": "Atom",
-    "language_renderer": "replaceable external LLM",
+    "language_renderer": "replaceable external LLM with a separate proposal-only tool planner",
     "training_pipeline": "none"
   },
   "language_membrane": {
@@ -78,12 +78,13 @@
     },
     "selection_basis": [
       "Atom owns evidence, reasoning policy, memory, graph RAG, and abstention",
-      "the model performs only schema-bound intent parsing and grounded language rendering",
+      "the model performs schema-bound intent parsing, grounded language rendering, and proposal-only tool planning",
       "4B dense weights avoid paying for unused agentic or knowledge authority",
       "Q8_0 prioritizes instruction and schema fidelity while fitting local GPU memory",
       "non-thinking-only behavior matches the harness reasoning-off boundary",
       "one resident model load serves intent and grounded-response requests across a session",
-      "bounded admission and supervised restart expose pressure and failure as typed evidence"
+      "bounded admission and supervised restart expose pressure and failure as typed evidence",
+      "tool planning supplies no executable handle and no permission authority"
     ],
     "provider_admission": {
       "strict_json_required": true,
@@ -114,7 +115,8 @@
     "passes": [
       "exact wiki vocabulary anchors and narrow relation grammar to validated Atom intent",
       "natural language to validated Atom intent",
-      "bounded Atom evidence to cited and machine-grounded natural language"
+      "bounded Atom evidence to cited and machine-grounded natural language",
+      "operator task to a validated permission request containing exact registered capabilities"
     ],
     "intent_assistance": {
       "runtime": "atom-exact-vocabulary-anchor-v1",
@@ -138,12 +140,12 @@
     "same_volume_hard_link_with_copy_fallback": true
   },
   "spiderweb": {
-    "module": "atom_harness_runtime.py",
+    "module": "atom_harness_runtime.py and atom_tool_fabric.py",
     "layers": {
       "L0": "transport and bytes",
-      "L1": "typed request, intent, and response messages",
-      "L2": "intent, query, graph RAG, and rendering flow",
-      "L3": "authority policy and fail-closed disposition"
+      "L1": "typed request, intent, response, capability, permission, and result messages",
+      "L2": "intent, query, graph RAG, rendering, planning, and permissioned action flow",
+      "L3": "Atom policy plus trusted local operator authority and fail-closed disposition"
     },
     "on_off_ramps": true,
     "threads_form_from_observed_flow": true,
@@ -168,15 +170,16 @@
   },
   "operator": {
     "module": "atom_harness_operator.py",
-    "runtime": "atom-language-harness-operator-v4",
+    "runtime": "atom-language-harness-operator-v5",
     "server_module": "atom_harness_operator_server.py",
-    "server_runtime": "atom-harness-operator-loopback-server-v1",
+    "server_runtime": "atom-harness-operator-loopback-server-v2",
     "bind_host": "127.0.0.1",
     "random_port_default": true,
     "browser_token_in_memory_only": true,
     "artifact_cookie_http_only": true,
     "artifact_cookie_same_site_strict": true,
     "artifact_cookie_path": "/api/artifacts/",
+    "tool_artifact_cookie_path": "/api/tool-artifacts/",
     "host_header_validation": true,
     "same_origin_controls": true,
     "bounded_request_body": true,
@@ -187,6 +190,10 @@
       "cancel",
       "retry",
       "restart-resident-model",
+      "propose-tool-plan",
+      "approve-exact-tool-manifest",
+      "deny-tool-manifest",
+      "cancel-tool-task",
       "graceful-shutdown"
     ],
     "durable_session_history": true,
@@ -194,7 +201,7 @@
     "cloud_allowed": false,
     "underlying_harness_runtime": "atom-language-harness-v3",
     "artifact_renderer_runtime": "atom-language-harness-side-view-v3",
-    "certification_evidence": {
+    "v4_certification_evidence": {
       "status": "certified-live-local",
       "runtime": "atom-harness-operator-certification-v1",
       "verified_utc": "2026-07-31T04:08:42.615388+00:00",
@@ -256,6 +263,62 @@
       }
     }
   },
+  "permissioned_hands": {
+    "experiment_phase": 6,
+    "fabric_module": "atom_tool_fabric.py",
+    "fabric_runtime": "atom-permissioned-hands-fabric-v1",
+    "protocol_module": "atom_tool_protocol.py",
+    "planner_runtime": "atom-permissioned-tool-planner-v1",
+    "capability_module": "atom_tool_capabilities.py",
+    "capability_runtime": "atom-permissioned-capability-registry-v1",
+    "side_view_module": "atom_tool_side_view.py",
+    "side_view_runtime": "atom-permissioned-hands-side-view-v1",
+    "artifact_binding_marker": "render_atom_tool_artifact",
+    "planner_may_select_registered_capabilities": true,
+    "model_candidate_reduced_to_capability_contract": true,
+    "candidate_normalizations_user_visible": true,
+    "missing_required_arguments_fail_closed": true,
+    "planner_receives_executable_handles": false,
+    "planner_may_grant_permission": false,
+    "every_execution_requires_operator_permission": true,
+    "permission_scope": "one-time exact manifest",
+    "changed_manifest_requires_new_permission": true,
+    "permission_grants_persisted": false,
+    "tool_results_are_untrusted": true,
+    "tool_results_can_grant_permission": false,
+    "atom_memory_mutation_allowed": false,
+    "workspace_scope_is_explicit": true,
+    "process_shell_expansion": false,
+    "process_environment_secrets_forwarded": false,
+    "process_executable_sha256_bound_into_manifest": true,
+    "process_output_retention_bounded": true,
+    "process_timeout_terminates_process_tree": true,
+    "public_web_address_set_bound_into_manifest": true,
+    "web_connect_uses_only_permission_bound_address": true,
+    "web_redirects_allowed": false,
+    "capability_categories": [
+      "workspace read",
+      "workspace write",
+      "workspace management",
+      "code and build",
+      "simulation",
+      "documents",
+      "network read"
+    ],
+    "adversarial_surfaces": [
+      "direct operator prompt injection",
+      "indirect file and tool-output injection",
+      "authority spoofing",
+      "manifest tampering",
+      "permission replay",
+      "path escape",
+      "time-of-check to time-of-use drift",
+      "private-network fetch",
+      "shell expansion",
+      "Atom memory mutation"
+    ],
+    "integration_test": "tests/test_atom_permissioned_hands_integration.py"
+  },
   "trust_laws": [
     "LLM output is never Atom evidence",
     "LLM output cannot mutate Atom DB",
@@ -268,15 +331,19 @@
     "cloud evidence egress requires explicit per-process consent",
     "provider failure cannot weaken schemas or override abstention",
     "exact vocabulary assistance may route retrieval but cannot assert that evidence exists",
-    "partial run directories are never published as completed artifacts"
+    "partial run directories are never published as completed artifacts",
+    "the tool planner may propose capabilities but never receives an executable handle",
+    "every capability execution requires a one-time operator grant bound to the exact manifest",
+    "a changed, expired, denied, replayed, or missing grant fails closed",
+    "tool outputs and outside content remain untrusted data and cannot authorize another action"
   ],
   "side_view": {
     "module": "atom_harness_operator_ui.py",
-    "runtime": "atom-language-harness-operator-ui-v4",
+    "runtime": "atom-language-harness-operator-ui-v5",
     "placement": "side",
     "binding": "render_operator_surface",
     "primary_surface": "interactive-conversation",
-    "artifact_source": "committed V3 artifact side view",
+    "artifact_source": "committed V3 evidence artifact or committed Phase 6 tool artifact",
     "binds": [
       "answer",
       "citations",
@@ -292,8 +359,13 @@
       "cold-start versus warm-request reuse",
       "resident queue wait and restart evidence",
       "exact vocabulary anchor count and model-to-final intent path",
-      "atomic transaction identity"
+      "atomic transaction identity",
+      "exact proposed tool arguments and declared effects",
+      "outside influence signals",
+      "one-time permission receipt",
+      "quarantined tool results",
+      "tool artifact transaction identity"
     ]
   },
-  "claim_boundary": "V4 adds a persistent local operator around the certified V3 harness. It preloads one immutable Atom wiki and graph RAG snapshot plus one supervised resident Qwen lane before accepting traffic, then publishes every answer through the existing atomic V3 artifact transaction. The browser surface is loopback-only, authenticated in memory, and places the real committed artifact beside conversation controls. Atom still owns facts, retrieval, grounding, abstention, and memory. This does not claim that an LLM creates facts, that all questions are answerable, that every GGUF is compatible, that cloud routing is enabled, or that retired language-model distillation is active."
+  "claim_boundary": "Operator V5 adds the Phase 6 permissioned-hands experiment around the certified evidence runtime. The replaceable language model may propose registered capabilities for coding, builds, simulations, documents, workspace management, and public web reads, but it receives no executable handle and cannot grant permission. The trusted loopback interface must approve one exact hash-bound manifest before execution. Changed, expired, denied, replayed, or missing grants fail closed. Tool results remain untrusted and cannot mutate Atom memory or authorize another action. The existing grounded evidence renderer, wiki graph, graph RAG, abstention authority, provider privacy, atomic transactions, and user-visible side view remain runtime-wired. This is an adversarial experimental platform, not a claim that prompt injection is solved or that unattended production autonomy is safe."
 }

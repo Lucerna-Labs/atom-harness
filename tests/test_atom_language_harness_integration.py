@@ -354,12 +354,12 @@ class AtomLanguageHarnessIntegrationTests(unittest.TestCase):
         architecture = _read_json(
             PROJECT_ROOT / "atom-language-harness-architecture.json"
         )
-        expected_test = "tests/test_atom_language_harness_v4_integration.py"
+        expected_test = "tests/test_atom_permissioned_hands_integration.py"
         self.assertEqual(
             registry["active_runtime"],
-            "language-harness-v4",
+            "language-harness-v5",
         )
-        active = registry["runtimes"]["language-harness-v4"]
+        active = registry["runtimes"]["language-harness-v5"]
         self.assertEqual(
             active["runtime_entrypoint"],
             "atom_harness_operator_server.py",

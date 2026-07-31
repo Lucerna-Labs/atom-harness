@@ -4,7 +4,7 @@ import json
 import unittest
 from pathlib import Path
 
-from test_atom_language_harness_v4_integration import (
+from tests.test_atom_language_harness_v4_integration import (
     AtomLanguageHarnessV4IntegrationTests,
 )
 
@@ -17,7 +17,7 @@ ATOM_HARNESS_OPERATOR_ARTIFACT_BINDING = "render_operator_surface"
 
 
 class AtomHarnessDesktopV5IntegrationTests(unittest.TestCase):
-    def test_desktop_entrypoint_preserves_v4_authority_and_update_boundary(
+    def test_phase5_compatibility_gate_accepts_phase6_successor_boundaries(
         self,
     ) -> None:
         architecture = json.loads(
@@ -44,11 +44,11 @@ class AtomHarnessDesktopV5IntegrationTests(unittest.TestCase):
             PROJECT_ROOT / "scripts/build_atom_harness_desktop.ps1"
         ).read_text(encoding="utf-8")
 
-        self.assertEqual(architecture["product_phase"], 5)
-        self.assertEqual(architecture["runtime"], "atom-harness-desktop-v5")
+        self.assertEqual(architecture["product_phase"], 6)
+        self.assertEqual(architecture["runtime"], "atom-harness-desktop-v6")
         self.assertEqual(
             architecture["installed_runtime"]["authority_runtime"],
-            "language-harness-v4",
+            "language-harness-v5",
         )
         self.assertTrue(architecture["desktop_shell"]["thin_shell_only"])
         self.assertTrue(
@@ -60,13 +60,17 @@ class AtomHarnessDesktopV5IntegrationTests(unittest.TestCase):
         self.assertTrue(update["policy"]["artifact_sha256_required"])
         self.assertTrue(update["policy"]["stage_outside_install_directory"])
         self.assertTrue(update["policy"]["replace_only_after_app_exit"])
+        installed_verifier = (
+            PROJECT_ROOT / "desktop/AtomHarness.Desktop/InstalledLayoutVerifier.cs"
+        ).read_text(encoding="utf-8")
+        runtime_sources = program + installed_verifier
         for marker in (
             ATOM_HARNESS_WIKI_RUNTIME,
             ATOM_HARNESS_RAG_RUNTIME,
             ATOM_HARNESS_OPERATOR_UI_RUNTIME,
             ATOM_HARNESS_OPERATOR_ARTIFACT_BINDING,
         ):
-            self.assertIn(marker, program)
+            self.assertIn(marker, runtime_sources)
         self.assertIn("atom_harness_operator_server", backend)
         self.assertIn("atom-harness-bundled-causal-memory-v1", backend)
         self.assertIn("_bind_bundled_causal_memory", backend)
@@ -78,7 +82,7 @@ class AtomHarnessDesktopV5IntegrationTests(unittest.TestCase):
         self.assertIn("DownloadAndVerifyAsync", main_form)
         self.assertIn("RequestGracefulShutdownAsync", main_form)
 
-    def test_desktop_chain_exercises_real_v4_wiki_rag_and_side_view(self) -> None:
+    def test_desktop_chain_preserves_real_v4_wiki_rag_and_side_view(self) -> None:
         runtime_case = AtomLanguageHarnessV4IntegrationTests(
             "test_operator_runtime_wires_wiki_rag_api_and_real_side_view"
         )
