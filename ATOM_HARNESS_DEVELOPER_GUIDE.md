@@ -1493,6 +1493,7 @@ Use these documents by audience:
 | --- | --- |
 | `ATOM_HARNESS_USER_GUIDE.md` | Installation, everyday use, permission review, data, updates, recovery |
 | `ATOM_HARNESS_DEVELOPER_GUIDE.md` | Canonical reconstruction, architecture, build, extension, and verification |
+| `ATOM_HARNESS_TODO.md` | Canonical unfinished-work inventory, priorities, acceptance evidence, release gates, and preserved non-goals |
 | `ATOM_HARNESS_DESKTOP.md` | Focused Phase 7 desktop behavior and package record |
 | `ATOM_HARNESS_OPERATOR.md` | Focused Operator V6 control and loopback security record |
 | `ATOM_UNIVERSAL_KNOWLEDGE.md` | Knowledge schema, sources, rights, graph, and extension record |

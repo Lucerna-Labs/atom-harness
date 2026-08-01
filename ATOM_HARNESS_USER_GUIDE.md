@@ -710,6 +710,11 @@ The current release has these honest limits:
 - The private update feed may not be published even when a local release has
   been certified.
 
+The developer-facing list of planned work, release gates, and optional
+extensions is maintained in `ATOM_HARNESS_TODO.md`. Current safety boundaries
+are not missing features and remain in force unless the experiment is
+explicitly redesigned.
+
 ## 21. Glossary
 
 | Term | Meaning |

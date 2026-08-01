@@ -12,6 +12,9 @@ Start here according to your role:
   prerequisites, model admission, source launch, API, knowledge schemas,
   capability security, transactions, desktop packaging, CI, and a clean-machine
   acceptance checklist.
+- [Canonical TODO and roadmap](ATOM_HARNESS_TODO.md) records every currently
+  known unfinished item, priority, dependency, acceptance condition, release
+  blocker, optional extension, and boundary that must not be weakened.
 - [Desktop](ATOM_HARNESS_DESKTOP.md), [operator](ATOM_HARNESS_OPERATOR.md), and
   [universal knowledge](ATOM_UNIVERSAL_KNOWLEDGE.md) are focused subsystem
   records.

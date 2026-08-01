@@ -2,7 +2,7 @@
 
 ## Reconstruction documentation record
 
-The repository now has two canonical handoff documents:
+The repository now has three canonical handoff documents:
 
 - `ATOM_HARNESS_DEVELOPER_GUIDE.md` is a reconstruction-grade engineering
   manual. It records the product identity, non-negotiable authority boundaries,
@@ -17,6 +17,10 @@ The repository now has two canonical handoff documents:
   permissioned-hands workflows, exact approval review, artifact interpretation,
   storage, backup, restore, updates, privacy, troubleshooting, uninstall,
   limitations, glossary, and diagnostic handoff.
+- `ATOM_HARNESS_TODO.md` is the canonical living backlog. It separates Phase 8
+  experiment work, security and reliability hardening, external-release gates,
+  optional expansions, and safety boundaries that must not be treated as
+  missing features.
 
 `README.md` is now the documentation index, while the focused desktop, operator,
 knowledge, language, fork, and chronological records remain available. The
@@ -45,6 +49,65 @@ workflows now match the already historical V3 workflow: they are manual
 Only the active V7 workflow runs automatically on current pushes and pull
 requests. No historical verifier was weakened or taught to accept the wrong
 runtime.
+
+### Canonical backlog audit
+
+The follow-on audit inspected the active source, contracts, certificates,
+release evidence, documentation, package scripts, Git history, and live GitHub
+repository state at commit
+`58e0cbb59d5fabdec3bff45e2e785860f9a806d4`. It found no active-source `TODO`,
+`FIXME`, placeholder, or unimplemented marker. The only literal `TODO` was an
+example search request in the user guide. Remaining work therefore belongs to
+explicit experimental, product, security, reliability, or release milestones
+rather than abandoned source branches.
+
+`ATOM_HARNESS_TODO.md` records that work with stable IDs and acceptance
+evidence. Its next required milestone is Phase 8, Knowledge Acquisition and
+Adversarial Evaluation. The Phase 8 backlog covers versioned pack evolution,
+candidate quarantine, rights and reviewer provenance, source freshness,
+correction and contradiction records, deeper domain coverage, graph-scale
+measurement, a held-out multidisciplinary benchmark, and a content-addressed
+prompt-injection corpus. It also requires attacks against retrieval,
+permissions, lane separation, long context, and tool-result quarantine before
+the phase can claim completion.
+
+The audit preserved a separate external-release gate because the certified
+Phase 7 artifacts are local evidence, not a published distribution. The private
+GitHub repository has no tag or release, and
+`atom-harness-desktop-release-evidence.json` explicitly records
+`release_feed_published: false`. The source tree has no Authenticode signing or
+timestamping step and no root license, security policy, changelog, contribution
+guide, SBOM, or third-party notice. These are publication tasks, not reasons to
+misreport the locally certified experiment as broken.
+
+Two source-level V5 labels remain in `atom_harness_operator_server.py`: the CLI
+description and default output folder. They do not change the active V6 runtime,
+but the file is source-certificate bound. The backlog therefore schedules the
+label cleanup with full recertification and new package evidence instead of
+silently making a cosmetic edit that invalidates the current certificate.
+
+The strongest measured runtime follow-up is performance diagnosis. Resident
+language-lane certification measured about 73 to 94 generated tokens per
+second, while the recorded installed multidisciplinary transaction reported
+3.051 tokens per second and about 69.9 seconds end to end. The backlog requires
+separate timing for intent generation, retrieval, prompt processing, grounded
+rendering, transaction publication, side-view creation, desktop transport, and
+recovery so a future optimization does not hide a grounding or authority
+regression.
+
+GitHub governance remains an account-level limitation and follow-up. The
+repository currently allows all Actions and does not enforce SHA pinning at the
+repository setting, although the active workflow pins third-party Actions by
+full commit SHA and the Phase 7 verifier checks those pins. Branch protection
+and repository rulesets were unavailable for this private repository under the
+current account plan. The backlog records both the preferred settings and the
+existing verifier as a compensating control.
+
+The backlog also has an explicit non-goal section. Closing work must never add
+unattended tool execution, model self-approval, hidden cloud routing, silent
+updates, unrestricted browsing, unlicensed bulk text, LLM memory writes, lane
+collapse, or removal of either mandatory side view. The Ornith 1.0 capability
+floor remains additive to every Phase 8 and release task.
 
 ## Phase 7 multidisciplinary knowledge engineering record
 
