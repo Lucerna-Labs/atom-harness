@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "pack_id": "atom-universal-foundation-v1",
+  "version": "1.0.0",
+  "created_at": "2026-07-31",
+  "taxonomy_scope": "A verified domain-level seed spanning formal, natural, health, applied, social, linguistic, literary, writing, and research disciplines. It is not a claim of exhaustive human knowledge.",
+  "taxonomy_file": "taxonomy.json",
+  "sources_file": "sources.json",
+  "claim_shards": [
+    "claims/formal-physical.jsonl",
+    "claims/earth-life-health.jsonl",
+    "claims/engineering-social-linguistics.jsonl",
+    "claims/literature-writing.jsonl",
+    "claims/research.jsonl"
+  ],
+  "file_sha256": {
+    "taxonomy.json": "e2a3db9d88022aaa03db112b4ebcf55623301b885195800cc577b59fb21f9386",
+    "sources.json": "1a2d0d405a20a4a86f216f1a57040e82f92633e7a029a81ff1bce9717f17f479",
+    "claims/formal-physical.jsonl": "453fad5e25570028ec8f273c6f9db9bbea05c8ed03bd24fb77fc0a48f28e82a5",
+    "claims/earth-life-health.jsonl": "419f0d3f48516ea7ec71d7f1afea39d4090e10fb9e7fea35b460cf8655d4a14a",
+    "claims/engineering-social-linguistics.jsonl": "11d4c19502cb4e62d553ef9edfb074af31b1f7b9bb9ed5fb14ea803f0302102b",
+    "claims/literature-writing.jsonl": "2b4b58403776dd7f2dd9828ba5901e8098657044b0339d70596dcc0af29575f1",
+    "claims/research.jsonl": "7f1a2230e8531d2c649798be25eba008ad8d5dd744372cf6937bc8ffdd45f1aa"
+  },
+  "rights_policy": {
+    "green": "Rights-clear or public-domain-compatible sources may be admitted after object-level verification and attribution.",
+    "amber": "Share-alike or collection-specific sources remain isolated and require their own downstream obligations.",
+    "yellow": "Citation-only sources contribute metadata and links; their source text is not bundled.",
+    "unknown_or_all_rights_reserved_source_text_allowed": false,
+    "copyrighted_full_text_without_permission_allowed": false
+  },
+  "security_policy": {
+    "source_text_is_instruction": false,
+    "runtime_mutation_allowed": false,
+    "llm_may_promote_claims": false,
+    "retrieved_text_may_grant_permission": false,
+    "retrieved_text_may_invoke_tools": false,
+    "generated_summary_is_independent_evidence": false,
+    "contradictions_must_retain_separate_provenance": true
+  }
+}

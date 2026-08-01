@@ -26,6 +26,13 @@ from atom_causal_memory import (
     load_forge,
 )
 from atom_causal_world_schema import canonical_hash
+from atom_multidisciplinary_knowledge import (
+    ATOM_MULTIDISCIPLINARY_RAG_RUNTIME,
+    ATOM_MULTIDISCIPLINARY_WIKI_RUNTIME,
+    DEFAULT_KNOWLEDGE_PACK,
+    MultidisciplinaryKnowledge,
+    load_multidisciplinary_knowledge,
+)
 
 
 ATOM_HARNESS_WIKI_RUNTIME = "atom-language-harness-wiki-v2"
@@ -97,6 +104,7 @@ class HarnessKnowledge:
     inventory: Mapping[str, Any]
     graph: CausalExperienceWikiGraph
     graph_manifest: Mapping[str, Any]
+    universal: MultidisciplinaryKnowledge
 
     def vocabulary(self) -> dict[str, tuple[str, ...]]:
         values: dict[str, set[str]] = {role: set() for role in VOCABULARY_ROLES}
@@ -108,6 +116,7 @@ class HarnessKnowledge:
 
     def manifest(self) -> dict[str, Any]:
         vocabulary = self.vocabulary()
+        universal = self.universal.manifest()
         core = {
             "schema": 1,
             "wiki_runtime": ATOM_HARNESS_WIKI_RUNTIME,
@@ -125,6 +134,20 @@ class HarnessKnowledge:
             "vocabulary_counts": {
                 role: len(items) for role, items in vocabulary.items()
             },
+            "causal_lane": {
+                "wiki_runtime": ATOM_HARNESS_WIKI_RUNTIME,
+                "rag_runtime": ATOM_HARNESS_RAG_RUNTIME,
+                "graph_knowledge_hash": self.graph_manifest["knowledge_hash"],
+                "experience_count": len(self.inventory["experiences"]),
+            },
+            "multidisciplinary_lane": universal,
+            "multidisciplinary_wiki_runtime": ATOM_MULTIDISCIPLINARY_WIKI_RUNTIME,
+            "multidisciplinary_rag_runtime": ATOM_MULTIDISCIPLINARY_RAG_RUNTIME,
+            "multidisciplinary_knowledge_hash": universal["knowledge_hash"],
+            "multidisciplinary_graph_hash": universal["graph_knowledge_hash"],
+            "multidisciplinary_domain_count": universal["domain_count"],
+            "multidisciplinary_claim_count": universal["claim_count"],
+            "knowledge_lanes": ["causal-experience", "multidisciplinary"],
         }
         return {**core, "knowledge_hash": canonical_hash(core)}
 
@@ -237,6 +260,7 @@ def _open_knowledge(
     store_path: Path,
     corpus: ExperienceCorpus,
     binary: Path,
+    universal_path: Path,
 ) -> HarnessKnowledge:
     client = ExperienceMemoryClient(Path(store_path), Path(binary))
     inventory = client.inventory()
@@ -247,6 +271,7 @@ def _open_knowledge(
         inventory=inventory,
         corpus=corpus,
     )
+    universal = load_multidisciplinary_knowledge(Path(universal_path))
     return HarnessKnowledge(
         store_path=Path(store_path),
         client=client,
@@ -254,6 +279,7 @@ def _open_knowledge(
         inventory=inventory,
         graph=graph,
         graph_manifest=graph_manifest,
+        universal=universal,
     )
 
 
@@ -263,6 +289,7 @@ def bootstrap_harness_knowledge(
     forge_path: Path,
     evidence_path: Path,
     model_path: Path,
+    universal_path: Path = DEFAULT_KNOWLEDGE_PACK,
 ) -> HarnessKnowledge:
     """Create a fresh immutable evidence catalog for a harness run."""
 
@@ -293,6 +320,7 @@ def bootstrap_harness_knowledge(
         store_path=store_path,
         corpus=corpus,
         binary=binary,
+        universal_path=Path(universal_path),
     )
 
 
@@ -302,6 +330,7 @@ def reopen_harness_knowledge(
     evidence_path: Path,
     model_path: Path,
     binary: Path,
+    universal_path: Path = DEFAULT_KNOWLEDGE_PACK,
 ) -> HarnessKnowledge:
     """Reconstruct the graph and RAG runtime from a persisted Atom store."""
 
@@ -313,6 +342,7 @@ def reopen_harness_knowledge(
         store_path=Path(store_path),
         corpus=corpus,
         binary=Path(binary),
+        universal_path=Path(universal_path),
     )
 
 
@@ -322,6 +352,7 @@ def load_or_bootstrap_harness_knowledge(
     forge_path: Path,
     evidence_path: Path,
     model_path: Path,
+    universal_path: Path = DEFAULT_KNOWLEDGE_PACK,
 ) -> HarnessKnowledge:
     """Open one durable immutable catalog, creating it on first session start."""
 
@@ -333,6 +364,7 @@ def load_or_bootstrap_harness_knowledge(
             evidence_path=Path(evidence_path),
             model_path=Path(model_path),
             binary=build_release_binary(),
+            universal_path=Path(universal_path),
         )
     if store_path.exists():
         raise ValueError("Atom harness knowledge path is not a regular file")
@@ -341,4 +373,5 @@ def load_or_bootstrap_harness_knowledge(
         forge_path=Path(forge_path),
         evidence_path=Path(evidence_path),
         model_path=Path(model_path),
+        universal_path=Path(universal_path),
     )

@@ -99,7 +99,17 @@ def _checks(answer: Mapping[str, Any]) -> dict[str, bool]:
     packet = answer["evidence_packet"]
     response = answer["response"]
     trace = answer["spiderweb_trace"]
-    allowed = {item["experience_id"] for item in packet["passages"]}
+    packet_lane = str(packet.get("lane", "causal-experience"))
+    allowed = {
+        str(item.get("experience_id") or item.get("claim_id"))
+        for item in packet["passages"]
+        if item.get("experience_id") or item.get("claim_id")
+    }
+    expected_graph_hash = (
+        answer["knowledge"]["multidisciplinary_graph_hash"]
+        if packet_lane == "multidisciplinary"
+        else answer["knowledge"]["graph_knowledge_hash"]
+    )
     layer_names = [item["layer"] for item in trace["layers"]]
     provider_routes = answer["provider_routes"]
     provider_policy = answer["provider_preload"]["policy"]
@@ -137,6 +147,20 @@ def _checks(answer: Mapping[str, Any]) -> dict[str, bool]:
             and answer["knowledge"]["rag_runtime"] == ATOM_HARNESS_RAG_RUNTIME
             and answer["knowledge"]["node_count"] > 0
             and answer["knowledge"]["edge_count"] > 0
+            and answer["knowledge"]["multidisciplinary_lane"]["node_count"] > 0
+            and answer["knowledge"]["multidisciplinary_lane"]["edge_count"] > 0
+        ),
+        "multidisciplinary_knowledge_is_runtime_wired": (
+            answer["knowledge"]["multidisciplinary_wiki_runtime"]
+            == "atom-multidisciplinary-wiki-v1"
+            and answer["knowledge"]["multidisciplinary_rag_runtime"]
+            == "atom-multidisciplinary-graph-rag-v1"
+            and answer["knowledge"]["multidisciplinary_domain_count"] == 15
+            and answer["knowledge"]["multidisciplinary_claim_count"] >= 45
+            and answer["knowledge"]["multidisciplinary_lane"]["coverage"][
+                "every_declared_domain_seeded"
+            ]
+            is True
         ),
         "evidence_packet_is_hash_bound": (
             packet["packet_hash"]
@@ -156,8 +180,7 @@ def _checks(answer: Mapping[str, Any]) -> dict[str, bool]:
             or (not response["answerable"] and response["grounding"] is None)
         ),
         "graph_snapshot_is_bound_end_to_end": (
-            packet["graph_knowledge_hash"]
-            == answer["knowledge"]["graph_knowledge_hash"]
+            packet["graph_knowledge_hash"] == expected_graph_hash
         ),
         "insufficient_evidence_forces_abstention": (
             not packet["insufficient_evidence"]
@@ -172,6 +195,33 @@ def _checks(answer: Mapping[str, Any]) -> dict[str, bool]:
             and answer["memory"]["llm_write_access"] is False
             and answer["memory"]["store_sha256_before"]
             == answer["memory"]["store_sha256_after"]
+            and answer["memory"]["multidisciplinary_unchanged"] is True
+            and answer["memory"]["multidisciplinary_source_hashes_before"]
+            == answer["memory"]["multidisciplinary_source_hashes_after"]
+        ),
+        "epistemic_lane_is_preserved": (
+            packet_lane != "multidisciplinary"
+            or all(
+                item["claim_type"]
+                in {
+                    "axiom",
+                    "definition",
+                    "theorem",
+                    "formal-method",
+                    "measurement-standard",
+                    "empirical-finding",
+                    "scientific-law",
+                    "scientific-model",
+                    "research-method",
+                    "taxonomy",
+                    "historical-context",
+                    "literary-context",
+                    "interpretation",
+                    "craft-principle",
+                }
+                and isinstance(item["fictional"], bool)
+                for item in packet["passages"]
+            )
         ),
         "spiderweb_layers_are_preserved": (
             layer_names == ["L0", "L1", "L2", "L3"]
@@ -294,6 +344,22 @@ def run_atom_language_harness(
                 "runtime/atom_harness_knowledge.atomdb",
                 run_knowledge.store_path,
             )
+        universal_snapshot_paths = [
+            "runtime/knowledge_packs/universal-foundation-v1/manifest.json"
+        ]
+        transaction.snapshot_file(
+            universal_snapshot_paths[0],
+            run_knowledge.universal.manifest_path,
+        )
+        for relative in sorted(run_knowledge.universal.file_hashes):
+            snapshot_relative = (
+                "runtime/knowledge_packs/universal-foundation-v1/" + relative
+            )
+            transaction.snapshot_file(
+                snapshot_relative,
+                run_knowledge.universal.pack_root / relative,
+            )
+            universal_snapshot_paths.append(snapshot_relative)
         answer = AtomLanguageHarness(
             knowledge=run_knowledge,
             language_model=language_model,
@@ -343,6 +409,18 @@ def run_atom_language_harness(
             ],
             "knowledge_hash": artifact["knowledge"]["knowledge_hash"],
             "graph_knowledge_hash": run_knowledge.graph_manifest["knowledge_hash"],
+            "multidisciplinary_graph_hash": run_knowledge.universal.graph_manifest[
+                "knowledge_hash"
+            ],
+            "multidisciplinary_knowledge_hash": run_knowledge.universal.manifest()[
+                "knowledge_hash"
+            ],
+            "multidisciplinary_manifest_sha256": _sha256(
+                run_knowledge.universal.manifest_path
+            ),
+            "evidence_graph_knowledge_hash": artifact["evidence_packet"][
+                "graph_knowledge_hash"
+            ],
             "store_sha256": artifact["memory"]["store_sha256_after"],
             "binary_sha256": _sha256(RELEASE_BINARY),
             "model_manifest_hash": canonical_hash(artifact["language_model"]),
@@ -358,6 +436,7 @@ def run_atom_language_harness(
             artifact,
             workflow,
             run_knowledge.graph_manifest,
+            run_knowledge.universal.graph_manifest,
         )
 
         transaction.write_json("atom_harness_artifact.json", artifact)
@@ -369,6 +448,10 @@ def run_atom_language_harness(
         transaction.write_json(
             "atom_harness_wiki_graph.json",
             run_knowledge.graph_manifest,
+        )
+        transaction.write_json(
+            "atom_multidisciplinary_wiki_graph.json",
+            run_knowledge.universal.graph_manifest,
         )
         transaction.write_json(
             "atom_harness_evidence_packet.json",
@@ -385,9 +468,11 @@ def run_atom_language_harness(
                 "atom_harness_workflow.json",
                 "atom_harness_knowledge.json",
                 "atom_harness_wiki_graph.json",
+                "atom_multidisciplinary_wiki_graph.json",
                 "atom_harness_evidence_packet.json",
                 "atom_harness_side_view.html",
                 "runtime/atom_harness_knowledge.atomdb",
+                *universal_snapshot_paths,
             )
         )
         transaction.commit()

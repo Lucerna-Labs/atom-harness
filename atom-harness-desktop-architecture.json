@@ -1,16 +1,19 @@
 {
   "schema": 1,
-  "product_phase": 6,
-  "runtime": "atom-harness-desktop-v6",
-  "version": "6.0.3",
+  "product_phase": 7,
+  "runtime": "atom-harness-desktop-v7",
+  "version": "7.0.0",
   "platform": "windows-x64",
   "desktop_entrypoint": "desktop/AtomHarness.Desktop/Program.cs",
   "packaging_entrypoint": "scripts/build_atom_harness_desktop.ps1",
   "installed_runtime": {
-    "authority_runtime": "language-harness-v5",
+    "authority_runtime": "language-harness-v6",
     "backend_entrypoint": "atom_harness_desktop_backend.py",
     "wiki_runtime": "ATOM_HARNESS_WIKI_RUNTIME",
     "rag_runtime": "ATOM_HARNESS_RAG_RUNTIME",
+    "multidisciplinary_wiki_runtime": "ATOM_MULTIDISCIPLINARY_WIKI_RUNTIME",
+    "multidisciplinary_rag_runtime": "ATOM_MULTIDISCIPLINARY_RAG_RUNTIME",
+    "multidisciplinary_pack": "knowledge_packs/universal-foundation-v1/manifest.json",
     "side_view_runtime": "ATOM_HARNESS_OPERATOR_UI_RUNTIME",
     "artifact_binding_marker": "render_operator_surface",
     "permissioned_hands_runtime": "ATOM_PERMISSIONED_HANDS_RUNTIME",
@@ -18,6 +21,21 @@
     "tool_artifact_binding_marker": "render_atom_tool_artifact",
     "local_only": true,
     "cloud_allowed": false
+  },
+  "universal_knowledge": {
+    "causal_memory_remains_separate": true,
+    "runtime_wired": true,
+    "content_addressed": true,
+    "immutable_during_requests": true,
+    "domain_count": 15,
+    "seed_claim_count": 45,
+    "source_count": 22,
+    "formal_empirical_interpretive_fictional_and_craft_types_separate": true,
+    "source_text_is_untrusted_data": true,
+    "retrieved_text_can_grant_permission": false,
+    "retrieved_text_can_invoke_tools": false,
+    "llm_can_promote_knowledge": false,
+    "not_a_claim_of_exhaustive_human_knowledge": true
   },
   "desktop_shell": {
     "framework": ".NET 9 WinForms plus Microsoft Edge WebView2",
@@ -81,8 +99,9 @@
     ],
     "release_manifest": "atom-harness-release-manifest-v1",
     "package_evidence": "atom-harness-desktop-release-evidence.json",
-    "integration_test": "tests/test_atom_harness_desktop_v6_integration.py",
+    "integration_test": "tests/test_atom_harness_desktop_v7_integration.py",
     "dotnet_tests": "desktop/AtomHarness.Desktop.Tests/AtomHarness.Desktop.Tests.csproj"
   },
-  "claim_boundary": "Phase 6 packages Operator V5 as a private per-user Windows adversarial capability experiment. The language model may propose broad registered tools for code, builds, simulations, documents, workspace management, and public web reads, but it cannot execute or grant permission. The trusted local interface requires explicit approval of one exact manifest before every execution. Tool results remain untrusted and Atom memory remains read-only. The shell preserves verified model provisioning, explicit opt-in updates, SHA-256 verification, out-of-install staging, exit-before-replacement, rollback, and the real artifact side view. This does not claim that prompt injection is solved, unattended production autonomy is safe, cloud tool execution is enabled, or external publishing is authorized."
+  "ornith_capability_floor": "meets-or-exceeds-ornith-1.0-without-removing-phase6-capabilities",
+  "claim_boundary": "Phase 7 packages Operator V6 as a private per-user Windows universal-knowledge and adversarial-capability experiment. It adds a content-addressed multidisciplinary graph spanning fifteen declared disciplines while keeping causal experience records separate. The seed proves domain-level coverage, provenance, epistemic separation, immutable retrieval, transaction binding, and citation-grounded rendering; it is not exhaustive human knowledge. The language model still cannot execute, grant permission, promote its output into knowledge, or write Atom memory. Every tool action still requires explicit approval of one exact manifest. The shell preserves verified model provisioning, opt-in updates, SHA-256 verification, staged replacement, rollback, and real artifact side views. This does not claim that prompt injection is solved, unattended production autonomy is safe, medical output is clinical advice, cloud tool execution is enabled, or external publishing is authorized."
 }

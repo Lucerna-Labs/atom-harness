@@ -58,6 +58,7 @@ def _validate_binding(
     artifact: Mapping[str, Any],
     workflow: Mapping[str, Any],
     graph: Mapping[str, Any],
+    universal_graph: Mapping[str, Any] | None = None,
 ) -> None:
     _validate_hash(artifact, "artifact_hash", "harness artifact")
     _validate_hash(workflow, "workflow_hash", "harness workflow")
@@ -130,14 +131,33 @@ def _validate_binding(
     _validate_provider_state(artifact["language_model"])
     if artifact["knowledge"]["graph_knowledge_hash"] != graph["knowledge_hash"]:
         raise ValueError("artifact is detached from wiki graph")
+    universal_hash = artifact["knowledge"]["multidisciplinary_graph_hash"]
+    if workflow.get("multidisciplinary_graph_hash") != universal_hash:
+        raise ValueError("workflow is detached from multidisciplinary graph")
+    if universal_graph is not None:
+        _validate_hash(
+            universal_graph,
+            "knowledge_hash",
+            "multidisciplinary wiki graph",
+        )
+        if universal_graph["knowledge_hash"] != universal_hash:
+            raise ValueError("artifact is detached from multidisciplinary graph")
     if workflow["side_view_runtime"] != ATOM_HARNESS_SIDE_VIEW_RUNTIME:
         raise ValueError("side view workflow runtime is invalid")
     if artifact["knowledge"]["wiki_runtime"] != ATOM_HARNESS_WIKI_RUNTIME:
         raise ValueError("harness wiki runtime is invalid")
     if artifact["knowledge"]["rag_runtime"] != ATOM_HARNESS_RAG_RUNTIME:
         raise ValueError("harness RAG runtime is invalid")
-    if artifact["evidence_packet"]["graph_knowledge_hash"] != graph["knowledge_hash"]:
-        raise ValueError("evidence packet is detached from wiki graph")
+    packet_lane = artifact["evidence_packet"].get("lane", "causal-experience")
+    packet_graph_hash = (
+        universal_hash
+        if packet_lane == "multidisciplinary"
+        else graph["knowledge_hash"]
+    )
+    if artifact["evidence_packet"]["graph_knowledge_hash"] != packet_graph_hash:
+        raise ValueError("evidence packet is detached from its wiki graph")
+    if workflow.get("evidence_graph_knowledge_hash") != packet_graph_hash:
+        raise ValueError("workflow is detached from the evidence graph")
     request_id = artifact["request_id"]
     if (
         artifact["evidence_packet"]["request_id"] != request_id
@@ -147,7 +167,9 @@ def _validate_binding(
     if artifact["passed"] is not True or not all(artifact["checks"].values()):
         raise ValueError("side view refuses a failed harness artifact")
     allowed_citations = {
-        item["experience_id"] for item in artifact["evidence_packet"]["passages"]
+        str(item.get("experience_id") or item.get("claim_id"))
+        for item in artifact["evidence_packet"]["passages"]
+        if item.get("experience_id") or item.get("claim_id")
     }
     response = artifact["response"]
     if not set(response["citations"]) <= allowed_citations:
@@ -173,6 +195,39 @@ def _yes_no(value: Any) -> str:
 
 
 def _passage_card(passage: Mapping[str, Any]) -> str:
+    if "claim_id" in passage:
+        sources = "".join(
+            (
+                '<li><a href="'
+                f'{_escape(item["canonical_url"])}" rel="noreferrer">'
+                f"{_escape(item['title'])}</a> "
+                f"<span>{_escape(item['license'])} &middot; "
+                f"{_escape(item['acquisition_mode'])}</span></li>"
+            )
+            for item in passage["sources"]
+        )
+        concepts = "".join(
+            f'<span class="fact">concept: {_escape(item)}</span>'
+            for item in passage["concepts"][:10]
+        )
+        return f"""
+<article class="passage multidisciplinary">
+  <div class="passage-top">
+    <span class="score">score {_escape(passage["score"])} &middot;
+    {_escape(passage["epistemic_status"])} {_escape(passage["claim_type"])}</span>
+    <code>{_escape(passage["claim_id"])}</code>
+  </div>
+  <h3>{_escape(passage["title"])}</h3>
+  <p>{_escape(passage["statement"])}</p>
+  <div class="facts">{concepts}</div>
+  <p><small>{_escape(passage["domain"])} &middot;
+  {_escape(passage["subdomain"])} &middot;
+  fictional: {_yes_no(passage["fictional"])} &middot;
+  {len(passage["wiki_paths"])} graph paths</small></p>
+  <ul class="sources">{sources}</ul>
+  <small>Limitation: {_escape(passage["limitations"])}</small>
+</article>
+"""
     facts = "".join(
         (f'<span class="fact">{_escape(item["role"])}: {_escape(item["value"])}</span>')
         for item in passage["facts"][:10]
@@ -302,10 +357,11 @@ def render_atom_harness_artifact(
     artifact: Mapping[str, Any],
     workflow: Mapping[str, Any],
     graph: Mapping[str, Any],
+    universal_graph: Mapping[str, Any] | None = None,
 ) -> str:
     """Render the actual answer beside its Atom evidence and bus trace."""
 
-    _validate_binding(artifact, workflow, graph)
+    _validate_binding(artifact, workflow, graph, universal_graph)
     response = artifact["response"]
     packet = artifact["evidence_packet"]
     status_class = (
@@ -325,16 +381,34 @@ def render_atom_harness_artifact(
         citations = "<li>No evidence citations emitted.</li>"
     grounding = response.get("grounding")
     if isinstance(grounding, Mapping):
-        grounding_view = (
-            '<section class="authority-claim">'
-            "<strong>Primary Atom claim</strong>"
-            f"<p>{_escape(grounding['status'])} {_escape(grounding['kind'])}: "
-            f"{_escape(grounding['cause'])} &rarr; {_escape(grounding['effect'])} "
-            f"(direction {_escape(grounding['direction'])}) in "
-            f"{_escape(grounding['domain'])}.</p>"
-            f"<code>{_escape(grounding['source_experience_id'])}</code>"
-            "</section>"
-        )
+        if "source_claim_id" in grounding:
+            primary_passage = next(
+                item
+                for item in packet["passages"]
+                if item.get("claim_id") == grounding["source_claim_id"]
+            )
+            grounding_view = (
+                '<section class="authority-claim">'
+                "<strong>Primary Atom knowledge claim</strong>"
+                f"<p>{_escape(grounding['epistemic_status'])} "
+                f"{_escape(grounding['claim_type'])} in "
+                f"{_escape(primary_passage['domain'])}: "
+                f"{_escape(primary_passage['statement'])}</p>"
+                f"<code>{_escape(grounding['source_claim_id'])}</code>"
+                "</section>"
+            )
+        else:
+            grounding_view = (
+                '<section class="authority-claim">'
+                "<strong>Primary Atom claim</strong>"
+                "<span> Causal evidence</span>"
+                f"<p>{_escape(grounding['status'])} {_escape(grounding['kind'])}: "
+                f"{_escape(grounding['cause'])} &rarr; {_escape(grounding['effect'])} "
+                f"(direction {_escape(grounding['direction'])}) in "
+                f"{_escape(grounding['domain'])}.</p>"
+                f"<code>{_escape(grounding['source_experience_id'])}</code>"
+                "</section>"
+            )
     else:
         grounding_view = (
             '<section class="authority-claim"><strong>Primary Atom claim</strong>'
@@ -363,6 +437,13 @@ def render_atom_harness_artifact(
     policy = model["policy"]
     timings = artifact["timings"]
     selected_model = _selected_model_label(artifact)
+    knowledge_lane = str(packet.get("lane", "causal-experience"))
+    snapshot_label = packet.get("snapshot_sequence", packet.get("pack_id", "unknown"))
+    wiki_nodes = (
+        artifact["knowledge"]["multidisciplinary_lane"]["node_count"]
+        if knowledge_lane == "multidisciplinary"
+        else graph["node_count"]
+    )
     routes = "".join(_provider_route_card(item) for item in artifact["provider_routes"])
     if not routes:
         routes = '<div class="empty">No provider route was recorded.</div>'
@@ -378,7 +459,7 @@ def render_atom_harness_artifact(
 <meta http-equiv="Content-Security-Policy"
   content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none';
   form-action 'none'">
-<title>Atom Language Harness V3</title>
+<title>Atom Harness Universal Knowledge</title>
 <style>
 :root {{
   color-scheme: dark;
@@ -494,6 +575,10 @@ code {{
   color: #d8dad5;
   font-size: 11px;
 }}
+.sources {{ margin: 10px 0; }}
+.sources li {{ margin: 6px 0; }}
+.sources a {{ color: var(--cyan); }}
+.sources span {{ color: var(--muted); font-size: 11px; }}
 .layers {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }}
 .layer {{
   padding: 10px;
@@ -534,8 +619,8 @@ ul {{ padding-left: 20px; }}
 <body>
 <header>
   <div>
-    <h1>Atom Language Harness V3</h1>
-    <p>Atom owns evidence. The LLM supplies language.</p>
+    <h1>Atom Harness Universal Knowledge</h1>
+    <p>Atom owns causal and multidisciplinary evidence. The LLM supplies language.</p>
   </div>
   <div class="badge">{_escape(status_label)}</div>
 </header>
@@ -562,7 +647,9 @@ ul {{ padding-left: 20px; }}
       <div class="meta"><span>All admitted providers cancellable</span>
         <strong>{_yes_no(model["capabilities"]["supports_cancellation"])}</strong></div>
       <div class="meta"><span>Atom snapshot</span>
-        <strong>{_escape(packet["snapshot_sequence"])}</strong></div>
+        <strong>{_escape(snapshot_label)}</strong></div>
+      <div class="meta"><span>Knowledge lane</span>
+        <strong>{_escape(knowledge_lane)}</strong></div>
       <div class="meta"><span>Exact vocabulary anchors</span>
         <strong>{_escape(anchor_count)}</strong></div>
       <div class="meta"><span>Intent path</span>
@@ -570,7 +657,7 @@ ul {{ padding-left: 20px; }}
         _escape(intent_assistance["final_action"])
     }</strong></div>
       <div class="meta"><span>Wiki nodes</span>
-        <strong>{_escape(graph["node_count"])}</strong></div>
+        <strong>{_escape(wiki_nodes)}</strong></div>
       <div class="meta"><span>Memory writes by LLM</span>
         <strong>none</strong></div>
       <div class="meta"><span>Answer runtime</span>

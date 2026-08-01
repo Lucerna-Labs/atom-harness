@@ -84,7 +84,7 @@ internal sealed class MainForm : Form
             Renderer = new ToolStripProfessionalRenderer(
                 new DarkColorTable()),
         };
-        toolbar.Items.Add(new ToolStripLabel("Atom Harness Desktop 6")
+        toolbar.Items.Add(new ToolStripLabel("Atom Harness Desktop 7")
         {
             Font = new Font("Segoe UI Semibold", 10, FontStyle.Bold),
         });

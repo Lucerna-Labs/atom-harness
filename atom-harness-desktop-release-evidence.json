@@ -1,31 +1,33 @@
 {
   "schema": 1,
   "runtime": "atom-harness-desktop-release-evidence-v2",
-  "version": "6.0.3",
+  "version": "7.0.0",
   "platform": "windows-x64",
+  "passed": true,
   "all_checks_passed": true,
   "package": {
     "result_runtime": "atom-harness-desktop-package-result-v1",
-    "completed_at_utc": "2026-07-31T15:59:33.7968270Z",
-    "file_count": 157,
-    "portable_zip": "Atom-Harness-6.0.3-windows-x64.zip",
-    "portable_zip_bytes": 138764940,
-    "portable_zip_sha256": "ede0d697dbb3351f513632fe572b68ea84010fb3f2bdcd97dd01594abed5fb63",
-    "msi": "Atom-Harness-6.0.3-windows-x64.msi",
-    "msi_bytes": 120206546,
-    "msi_sha256": "2cb27e6ea84810b21935ee08418cc9aeadc117d3ca90e7cc38a7bcbf39656dc3",
+    "completed_at_utc": "2026-08-01T00:01:23.3483946Z",
+    "file_count": 165,
+    "portable_zip": "Atom-Harness-7.0.0-windows-x64.zip",
+    "portable_zip_bytes": 138822129,
+    "portable_zip_sha256": "00f1100e343cd6f1fc0704df3e5ad9e3ed080dacc7fcf763fcbe3ff93a7d3b0c",
+    "msi": "Atom-Harness-7.0.0-windows-x64.msi",
+    "msi_bytes": 120257743,
+    "msi_sha256": "27b866700d6d41b876b23827ebb80935caeee0bf4a01c44ec905d996b8df0ed9",
     "llama_server_sha256": "2ab5559be6a09d9372fd107d7318eb6265eecf1761cdea62674667c752851639"
   },
   "installation": {
     "verification_runtime": "atom-harness-desktop-install-verification-v1",
     "passed": true,
-    "verified_at_utc": "2026-07-31T16:01:01.8812289Z",
-    "verification_report_sha256": "300d7caa5107af7e10e92a32eb4b8859b274cc1ea0257993669772b88d534e58",
+    "verified_at_utc": "2026-08-01T00:03:19.7867151Z",
+    "verification_report_sha256": "06b894902a363c3da08db3657cc9a56c1c816f1bb0af7b48678b58173c1b9a91",
     "install_root": "%LOCALAPPDATA%\\Programs\\Lucerna Labs\\Atom Harness",
     "desktop_shortcut": true,
     "start_menu_shortcut": true,
     "webview2_version": "150.0.4078.105",
-    "full_release_manifest_verified": true
+    "full_release_manifest_verified": true,
+    "knowledge_pack_hashes_verified": true
   },
   "model": {
     "model": "Qwen/Qwen3-4B-Instruct-2507",
@@ -37,28 +39,49 @@
     "resident_restarts": 0
   },
   "interactive_runtime": {
-    "verified_at_utc": "2026-07-31T16:04:26.341809Z",
-    "question": "How can repeated verification turn trust into a stable belief?",
+    "verified_at_utc": "2026-08-01T00:04:06.2223648Z",
+    "question": "What does quantum superposition mean in quantum mechanics?",
     "completed_attempt": 1,
-    "duration_ms": 7409,
-    "request_sha256": "636032a475e60e09665b2108d77e9923313fde89eda9e95020f506259eb04137",
-    "transaction_sha256": "ed4c5881cb29d15fa6d383cb20eee7318cf8aa71842a7e7311a59e371a6eb101",
-    "transaction_manifest_sha256": "e8faa71c14683239151c86cc0aabea901d6c8d651dbb573ad772eae5ef643806",
-    "artifact_sha256": "478e70eab7478dd993ad5d19e138c6e2251bb7c425fe768001f559fc7ad1f71b",
-    "artifact_file_sha256": "f7a050487898778cbbf124922dbf0840f85a8930aa071c8af37aaf75b86b47b0",
-    "side_view_sha256": "42f413efaa03c1f74f5fbf9f7b41b83170df978ac8dc429712bccf1b823e0198",
+    "duration_ms": 69914,
+    "request_sha256": "7975eb7e942fea3b8d1362895aec695cacd2fda674c2c42998b2bd397423b171",
+    "transaction_sha256": "7c26e38b6e7cd2eddfaaff22964cdc37decaeea1dcae4665fa48d038d86f098e",
+    "transaction_manifest_sha256": "366d9b43a3e2e98c41517198c89b0bcdbbb0a61661425206ad5b07416e6691af",
+    "artifact_sha256": "4918b2d5b56c26fc6e0025d7a20c70ba8db42b1d88ea265216fea8c89dd860d1",
+    "artifact_file_sha256": "b96c2d7a6e2f7b72410a693e4a30f2e3f15b75e716550d614854a88a6e67e605",
+    "side_view_sha256": "0d96175c4b320eb237360f70b80f5cce84c606384984136f3cbda7f8ed62935c",
     "citations": 1,
     "wiki_nodes": 2737,
-    "retrieved_passages": 7,
-    "intent_generation_tokens_per_second": 89.467,
-    "grounded_response_tokens_per_second": 74.158,
+    "retrieved_passages": 1,
+    "intent_generation_tokens_per_second": 0.0,
+    "grounded_response_tokens_per_second": 3.051,
     "cloud_evidence_used": false,
     "llm_memory_writes": 0,
     "real_artifact_side_view_visible": true,
     "abstention_path_verified": true,
     "failed_attempt_recovered": true,
     "completed_artifact_recovered_after_restart": true,
-    "graceful_process_tree_shutdown_verified": true
+    "graceful_process_tree_shutdown_verified": true,
+    "knowledge_lane": "multidisciplinary",
+    "artifact_path_virtualization_regression_verified": true
+  },
+  "knowledge": {
+    "pack_id": "atom-universal-foundation-v1",
+    "pack_version": "1.0.0",
+    "domain_count": 15,
+    "claim_count": 45,
+    "source_count": 22,
+    "knowledge_hash": "67bfe420b3fa5eea7ce1a20ef29c565530d1bdcaf564d532d5c976170762da9b",
+    "graph_knowledge_hash": "dbd0fb727a170ae0a78f246dd9543e764884bdc38b06eaba42bbd01f94704587",
+    "manifest_sha256": "62cdc05165a8db8f7ad9217d3887d07b78e3b96af12372b8e33d08e1277d29f1",
+    "source_certificate_sha256": "85767430543163a9c5d715572596a23956e6590d5c54eb2a2a3981aed3570174",
+    "installed_layout_verified": true,
+    "live_multidisciplinary_answer_verified": true,
+    "causal_lane_regression_verified": true,
+    "permissioned_hands_regression_verified": true,
+    "real_artifact_side_view_verified": true,
+    "source_text_is_untrusted": true,
+    "causal_records_remain_separate": true,
+    "not_exhaustive_human_knowledge": true
   },
   "permissioned_hands": {
     "verified_at_utc": "2026-07-31T16:05:04.3771572Z",
@@ -94,7 +117,9 @@
     "public_web_connection_pinned_to_permission_bound_address": true,
     "process_executable_hash_drift_blocked": true,
     "process_output_retention_bounded": true,
-    "process_timeout_tree_cleanup_passed": true
+    "process_timeout_tree_cleanup_passed": true,
+    "phase7_regression_verified": true,
+    "phase7_source_certificate_sha256": "85767430543163a9c5d715572596a23956e6590d5c54eb2a2a3981aed3570174"
   },
   "update_boundary": {
     "contract": "lucerna-update.json",
@@ -107,5 +132,5 @@
     "silent_install": false,
     "release_feed_published": false
   },
-  "claim_boundary": "This evidence certifies the local Phase 6.0.3 package, install, installed-layout verification, fresh local-model evidence and abstention transactions, real evidence side view, live local-model tool proposal, visible candidate normalization, exact permission surface, denial without side effects, process-tree shutdown, restart recovery, permission-bound web address pinning, executable hash drift rejection, bounded process-output retention, and the deterministic completed tool-artifact side-view integration. It does not claim universal prompt-injection resistance, unattended autonomy safety, or that a private GitHub release feed has been published."
+  "claim_boundary": "This evidence certifies the local Phase 7.0.0 package, per-user installation, complete installed-layout verification, the 15-domain source-bound knowledge foundation, a fresh local-model multidisciplinary transaction, recovery of its real artifact side view through a virtualized Windows launcher, clean process-tree shutdown, and current causal-lane plus Phase 6 permissioned-hands regressions. The detailed installed denial evidence remains the preserved Phase 6 authority-boundary trial and is re-bound here by the current Phase 7 source certificate and integration suite. This does not claim exhaustive human knowledge, universal prompt-injection resistance, unattended autonomy safety, medical authority, or publication of a private update feed."
 }

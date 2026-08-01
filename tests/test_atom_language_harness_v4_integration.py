@@ -322,7 +322,10 @@ class AtomLanguageHarnessV4IntegrationTests(unittest.TestCase):
             self.assertIn(ATOM_HARNESS_OPERATOR_ARTIFACT_BINDING, rendered)
             self.assertIn("REAL ARTIFACT SIDE VIEW", rendered)
             self.assertIn('sandbox=""', rendered)
-            self.assertIn('artifactFrame.removeAttribute("srcdoc")', rendered)
+            self.assertIn("async function renderArtifact", rendered)
+            self.assertIn('artifactFrame.removeAttribute("src")', rendered)
+            self.assertIn("artifactFrame.srcdoc = artifactHtml", rendered)
+            self.assertNotIn("allow-same-origin", rendered)
             self.assertIn("AtomArtifactToken=", headers["Set-Cookie"])
             self.assertIn("HttpOnly", headers["Set-Cookie"])
             self.assertIn("SameSite=Strict", headers["Set-Cookie"])
@@ -462,8 +465,8 @@ class AtomLanguageHarnessV4IntegrationTests(unittest.TestCase):
         workflow = (
             PROJECT_ROOT / ".github/workflows/atom-harness-v4-ci.yml"
         ).read_text(encoding="utf-8")
-        self.assertEqual(registry["active_runtime"], "language-harness-v5")
-        active = registry["runtimes"]["language-harness-v5"]
+        self.assertEqual(registry["active_runtime"], "language-harness-v6")
+        active = registry["runtimes"]["language-harness-v6"]
         historical = registry["runtimes"]["language-harness-v4"]
         self.assertEqual(historical["integration_test"], V4_INTEGRATION_TEST)
         for declaration in (
@@ -473,7 +476,10 @@ class AtomLanguageHarnessV4IntegrationTests(unittest.TestCase):
             fabric,
             transaction,
         ):
-            self.assertEqual(declaration["integration_test"], PHASE6_INTEGRATION_TEST)
+            self.assertEqual(
+                declaration["integration_test"],
+                "tests/test_atom_universal_knowledge_integration.py",
+            )
         self.assertEqual(
             active["runtime_entrypoint"],
             "atom_harness_operator_server.py",

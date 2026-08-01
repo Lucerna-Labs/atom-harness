@@ -15,11 +15,15 @@ from typing import Any, Mapping
 from atom_causal_world_schema import canonical_hash
 from atom_harness_session import AtomHarnessSession
 from atom_llm_protocol import CancellationToken, ProviderCancelledError
-from atom_run_transaction import verify_committed_run
+from atom_run_transaction import (
+    RunIntegrityError,
+    bind_recorded_run_directory,
+    verify_committed_run,
+)
 from atom_tool_fabric import PermissionedToolFabric
 
 
-ATOM_HARNESS_OPERATOR_RUNTIME = "atom-language-harness-operator-v5"
+ATOM_HARNESS_OPERATOR_RUNTIME = "atom-language-harness-operator-v6"
 ATOM_HARNESS_OPERATOR_JOURNAL_RUNTIME = "atom-harness-operator-journal-v1"
 ATOM_HARNESS_OPERATOR_FLOW_RUNTIME = "atom-harness-operator-spiderweb-flow-v2"
 MAX_OPERATOR_QUESTION_CHARS = 4096
@@ -642,10 +646,18 @@ class AtomHarnessOperator:
             record.get("artifact"), Mapping
         ):
             raise OperatorStateError("operator request has no committed side view")
-        output_dir = Path(str(record["output_dir"])).resolve()
-        if self.runs_root.resolve() not in output_dir.parents:
-            raise ValueError("operator artifact escaped its run root")
-        verify_committed_run(output_dir)
+        output_dir = bind_recorded_run_directory(
+            self.runs_root,
+            record.get("output_dir"),
+            kind="request",
+            identity=str(request_id),
+        )
+        try:
+            verify_committed_run(output_dir)
+        except RunIntegrityError as error:
+            raise OperatorStateError(
+                "operator committed side view failed integrity verification"
+            ) from error
         side_view = output_dir / "atom_harness_side_view.html"
         if not side_view.is_file() or side_view.is_symlink():
             raise ValueError("operator side view is unavailable")

@@ -1,6 +1,6 @@
 param(
     [ValidatePattern('^\d+\.\d+\.\d+$')]
-    [string]$Version = '6.0.3',
+    [string]$Version = '7.0.0',
 
     [string]$OutputRoot,
 
@@ -88,7 +88,7 @@ function Set-HarvestComponentGuids {
 $projectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 if (-not $OutputRoot) {
-    $OutputRoot = Join-Path $projectRoot "local-results\desktop-v6-package-$stamp"
+    $OutputRoot = Join-Path $projectRoot "local-results\desktop-v7-package-$stamp"
 }
 $OutputRoot = [System.IO.Path]::GetFullPath($OutputRoot)
 $localResults = [System.IO.Path]::GetFullPath(
@@ -163,9 +163,9 @@ foreach ($directory in @(
 
 Push-Location $projectRoot
 try {
-    & $python scripts\verify_atom_harness_v6.py --source-only
+    & $python scripts\verify_atom_harness_v7.py --source-only
     if ($LASTEXITCODE -ne 0) {
-        throw 'Phase 6 repository policy failed before packaging.'
+        throw 'Phase 7 repository policy failed before packaging.'
     }
 
     foreach ($project in @(
@@ -306,7 +306,7 @@ $feed = [ordered]@{
     app_id = 'com.lucernalabs.atom-harness'
     platform = 'windows-x64'
     version = $Version
-    release_notes = 'Atom Harness Desktop Phase 6 permissioned-hands experiment.'
+    release_notes = 'Atom Harness Desktop Phase 7 universal knowledge and permissioned-hands experiment.'
     artifact = [ordered]@{
         url = (
             "https://github.com/Lucerna-Labs/atom-harness/releases/" +

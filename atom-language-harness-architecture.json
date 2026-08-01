@@ -1,11 +1,11 @@
 {
-  "schema": 5,
-  "runtime": "atom-language-harness-operator-v5",
+  "schema": 6,
+  "runtime": "atom-language-harness-operator-v6",
   "runtime_entrypoint": "atom_harness_operator_server.py",
   "session_entrypoint": "atom_harness_operator.py",
-  "integration_test": "tests/test_atom_permissioned_hands_integration.py",
+  "integration_test": "tests/test_atom_universal_knowledge_integration.py",
   "identity": {
-    "system": "Atom adversarial capability experiment",
+    "system": "Atom universal knowledge and adversarial capability experiment",
     "semantic_authority": "Atom",
     "language_renderer": "replaceable external LLM with a separate proposal-only tool planner",
     "training_pipeline": "none"
@@ -137,10 +137,27 @@
     "session_resident": true,
     "preloaded_before_operator_traffic": true,
     "exact_snapshot_bound_into_each_run_transaction": true,
-    "same_volume_hard_link_with_copy_fallback": true
+    "same_volume_hard_link_with_copy_fallback": true,
+    "causal_records_remain_separate": true,
+    "multidisciplinary_module": "atom_multidisciplinary_knowledge.py",
+    "multidisciplinary_protocol": "atom_knowledge_protocol.py",
+    "multidisciplinary_pack": "knowledge_packs/universal-foundation-v1/manifest.json",
+    "multidisciplinary_wiki_runtime": "atom-multidisciplinary-wiki-v1",
+    "multidisciplinary_rag_runtime": "atom-multidisciplinary-graph-rag-v1",
+    "domain_count": 15,
+    "seed_claim_count": 45,
+    "source_count": 22,
+    "formal_empirical_interpretive_fictional_and_craft_types_separate": true,
+    "content_addressed_shards": true,
+    "source_license_and_provenance_required": true,
+    "source_text_is_untrusted_data": true,
+    "source_text_can_grant_permission": false,
+    "source_text_can_invoke_tools": false,
+    "llm_can_promote_claims": false,
+    "not_a_claim_of_exhaustive_human_knowledge": true
   },
   "spiderweb": {
-    "module": "atom_harness_runtime.py and atom_tool_fabric.py",
+    "module": "atom_harness_runtime.py, atom_multidisciplinary_knowledge.py, and atom_tool_fabric.py",
     "layers": {
       "L0": "transport and bytes",
       "L1": "typed request, intent, response, capability, permission, and result messages",
@@ -154,6 +171,12 @@
     "wiki_vocabulary_preloaded": true,
     "resident_language_highway": true,
     "resident_highway_transfer_policy": "typed-ramp-only"
+    ,
+    "multidisciplinary_ground_lanes": true,
+    "domain_threads_form_per_query": true,
+    "concept_intersections_emerge_from_retrieved_claims": true,
+    "bounded_neighbor_preload": true,
+    "knowledge_transfer_policy": "typed-evidence-only"
   },
   "transaction": {
     "module": "atom_run_transaction.py",
@@ -170,9 +193,9 @@
   },
   "operator": {
     "module": "atom_harness_operator.py",
-    "runtime": "atom-language-harness-operator-v5",
+    "runtime": "atom-language-harness-operator-v6",
     "server_module": "atom_harness_operator_server.py",
-    "server_runtime": "atom-harness-operator-loopback-server-v2",
+    "server_runtime": "atom-harness-operator-loopback-server-v3",
     "bind_host": "127.0.0.1",
     "random_port_default": true,
     "browser_token_in_memory_only": true,
@@ -336,14 +359,20 @@
     "every capability execution requires a one-time operator grant bound to the exact manifest",
     "a changed, expired, denied, replayed, or missing grant fails closed",
     "tool outputs and outside content remain untrusted data and cannot authorize another action"
+    ,
+    "multidisciplinary source text is untrusted evidence and never an instruction",
+    "formal proof, empirical finding, definition, interpretation, fiction, and craft guidance retain distinct epistemic types",
+    "fictional claims cannot enter scientific fact lanes",
+    "the language model cannot promote its prose into the multidisciplinary pack",
+    "every multidisciplinary claim remains bound to exact source, rights, and content hashes"
   ],
   "side_view": {
     "module": "atom_harness_operator_ui.py",
-    "runtime": "atom-language-harness-operator-ui-v5",
+    "runtime": "atom-language-harness-operator-ui-v6",
     "placement": "side",
     "binding": "render_operator_surface",
     "primary_surface": "interactive-conversation",
-    "artifact_source": "committed V3 evidence artifact or committed Phase 6 tool artifact",
+    "artifact_source": "committed causal or multidisciplinary evidence artifact, or committed Phase 6-compatible tool artifact",
     "binds": [
       "answer",
       "citations",
@@ -365,7 +394,14 @@
       "one-time permission receipt",
       "quarantined tool results",
       "tool artifact transaction identity"
+      ,
+      "selected knowledge lane",
+      "multidisciplinary claim type and epistemic status",
+      "fiction marker",
+      "source identity, license, rights lane, and acquisition mode",
+      "query-formed domain thread and graph paths"
     ]
   },
-  "claim_boundary": "Operator V5 adds the Phase 6 permissioned-hands experiment around the certified evidence runtime. The replaceable language model may propose registered capabilities for coding, builds, simulations, documents, workspace management, and public web reads, but it receives no executable handle and cannot grant permission. The trusted loopback interface must approve one exact hash-bound manifest before execution. Changed, expired, denied, replayed, or missing grants fail closed. Tool results remain untrusted and cannot mutate Atom memory or authorize another action. The existing grounded evidence renderer, wiki graph, graph RAG, abstention authority, provider privacy, atomic transactions, and user-visible side view remain runtime-wired. This is an adversarial experimental platform, not a claim that prompt injection is solved or that unattended production autonomy is safe."
+  "ornith_capability_floor": "meets-or-exceeds-ornith-1.0-with-phase6-permissioned-hands-preserved",
+  "claim_boundary": "Operator V6 adds the Phase 7 universal knowledge fabric beside the specialized causal record lane. The first content-addressed pack seeds all fifteen declared domain families with forty-five reviewed claims and twenty-two source records while preserving formal, empirical, interpretive, fictional, and craft distinctions. This is domain-level foundation coverage, not exhaustive human knowledge. Source text remains untrusted, the language model cannot promote claims or write memory, and every tool still requires explicit approval of one exact manifest. Phase 6 permissioned hands, grounded causal evidence, graph RAG, abstention authority, provider privacy, atomic transactions, and both user-visible side views remain runtime-wired at or above the Ornith 1.0 capability floor. This is an adversarial experimental platform, not a claim that prompt injection is solved, medical output is clinical advice, or unattended production autonomy is safe."
 }

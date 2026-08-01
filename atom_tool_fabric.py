@@ -24,7 +24,9 @@ from atom_llm_protocol import (
 )
 from atom_run_transaction import (
     ATOM_RUN_TRANSACTION_RUNTIME,
+    RunIntegrityError,
     RunTransaction,
+    bind_recorded_run_directory,
     recover_transactions,
     verify_committed_run,
 )
@@ -869,6 +871,7 @@ class PermissionedToolFabric:
             knowledge = self.knowledge_loader()
             memory_before = _sha256(knowledge.store_path)
             graph_before = str(knowledge.graph_manifest["knowledge_hash"])
+            universal_before = knowledge.universal.current_file_hashes()
             for action in actions:
                 token.raise_if_cancelled()
                 with self._lock:
@@ -925,6 +928,7 @@ class PermissionedToolFabric:
                     break
             memory_after = _sha256(knowledge.store_path)
             graph_after = str(knowledge.graph.manifest()["knowledge_hash"])
+            universal_after = knowledge.universal.current_file_hashes()
             finished_at = _utc_now()
             artifact, transaction = self._publish_artifact(
                 record=dict(record),
@@ -935,6 +939,8 @@ class PermissionedToolFabric:
                 memory_after=memory_after,
                 graph_before=graph_before,
                 graph_after=graph_after,
+                universal_before=universal_before,
+                universal_after=universal_after,
                 finished_at=finished_at,
             )
             with self._lock:
@@ -991,6 +997,8 @@ class PermissionedToolFabric:
         memory_after: str,
         graph_before: str,
         graph_after: str,
+        universal_before: Mapping[str, str],
+        universal_after: Mapping[str, str],
         finished_at: str,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         final_dir = Path(str(record["output_dir"])).resolve()
@@ -1000,6 +1008,22 @@ class PermissionedToolFabric:
                 "runtime/atom_harness_knowledge.atomdb",
                 knowledge.store_path,
             )
+            universal_snapshot_paths = [
+                "runtime/knowledge_packs/universal-foundation-v1/manifest.json"
+            ]
+            transaction.snapshot_file(
+                universal_snapshot_paths[0],
+                knowledge.universal.manifest_path,
+            )
+            for relative in sorted(knowledge.universal.file_hashes):
+                snapshot_relative = (
+                    "runtime/knowledge_packs/universal-foundation-v1/" + relative
+                )
+                transaction.snapshot_file(
+                    snapshot_relative,
+                    knowledge.universal.pack_root / relative,
+                )
+                universal_snapshot_paths.append(snapshot_relative)
             checks = {
                 "permission_approved": record["permission"]["decision"] == "approved",
                 "permission_exact_manifest": record["permission"]["manifest_hash"]
@@ -1021,6 +1045,9 @@ class PermissionedToolFabric:
                 ),
                 "atom_memory_unchanged": memory_before == memory_after,
                 "wiki_graph_unchanged": graph_before == graph_after,
+                "multidisciplinary_knowledge_unchanged": (
+                    dict(universal_before) == dict(universal_after)
+                ),
             }
             passed = all(checks.values())
             status = "completed" if passed else "failed-closed"
@@ -1051,6 +1078,11 @@ class PermissionedToolFabric:
                     "store_sha256_after": memory_after,
                     "unchanged": memory_before == memory_after,
                     "mutation_allowed": False,
+                    "multidisciplinary_source_hashes_before": dict(universal_before),
+                    "multidisciplinary_source_hashes_after": dict(universal_after),
+                    "multidisciplinary_unchanged": (
+                        dict(universal_before) == dict(universal_after)
+                    ),
                 },
                 "checks": checks,
                 "transaction": {
@@ -1086,6 +1118,12 @@ class PermissionedToolFabric:
                 "result_hashes": [item["result_hash"] for item in results],
                 "knowledge_hash": knowledge_manifest["knowledge_hash"],
                 "graph_knowledge_hash": knowledge.graph_manifest["knowledge_hash"],
+                "multidisciplinary_graph_hash": knowledge.universal.graph_manifest[
+                    "knowledge_hash"
+                ],
+                "multidisciplinary_knowledge_hash": knowledge_manifest[
+                    "multidisciplinary_knowledge_hash"
+                ],
                 "wiki_runtime": knowledge_manifest["wiki_runtime"],
                 "rag_runtime": knowledge_manifest["rag_runtime"],
                 "side_view_runtime": ATOM_TOOL_SIDE_VIEW_RUNTIME,
@@ -1107,6 +1145,10 @@ class PermissionedToolFabric:
             transaction.write_json(
                 "atom_harness_wiki_graph.json", knowledge.graph_manifest
             )
+            transaction.write_json(
+                "atom_multidisciplinary_wiki_graph.json",
+                knowledge.universal.graph_manifest,
+            )
             transaction.write_text("atom_tool_side_view.html", side_view)
             transaction.seal(
                 required_files=(
@@ -1116,8 +1158,10 @@ class PermissionedToolFabric:
                     "atom_tool_results.json",
                     "atom_harness_knowledge.json",
                     "atom_harness_wiki_graph.json",
+                    "atom_multidisciplinary_wiki_graph.json",
                     "atom_tool_side_view.html",
                     "runtime/atom_harness_knowledge.atomdb",
+                    *universal_snapshot_paths,
                 )
             )
             transaction.commit()
@@ -1328,10 +1372,18 @@ class PermissionedToolFabric:
         record = self.proposal_snapshot(proposal_id)
         if not isinstance(record.get("artifact"), Mapping):
             raise ToolStateError("tool proposal has no committed side view")
-        output_dir = Path(str(record["output_dir"])).resolve()
-        if self.runs_root.resolve() not in output_dir.parents:
-            raise ValueError("tool artifact escaped its run root")
-        verify_committed_run(output_dir)
+        output_dir = bind_recorded_run_directory(
+            self.runs_root,
+            record.get("output_dir"),
+            kind="proposal",
+            identity=str(proposal_id),
+        )
+        try:
+            verify_committed_run(output_dir)
+        except RunIntegrityError as error:
+            raise ToolStateError(
+                "tool committed side view failed integrity verification"
+            ) from error
         side_view = output_dir / "atom_tool_side_view.html"
         if not side_view.is_file() or side_view.is_symlink():
             raise ValueError("tool side view is unavailable")

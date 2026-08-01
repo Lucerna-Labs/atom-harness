@@ -16,6 +16,7 @@ internal static class InstalledLayoutVerifier
         bool passed;
         try
         {
+            string knowledgeManifestPath = ResolveKnowledgeManifest(paths.InstallRoot);
             foreach (string required in new[]
             {
                 paths.BackendExecutable,
@@ -24,6 +25,7 @@ internal static class InstalledLayoutVerifier
                 paths.ModelContractPath,
                 paths.UpdateContractPath,
                 paths.ReleaseManifestPath,
+                knowledgeManifestPath,
             })
             {
                 if (!File.Exists(required))
@@ -40,6 +42,8 @@ internal static class InstalledLayoutVerifier
                 paths.ModelContractPath);
             ReleaseManifest release = ReleaseManifest.Load(
                 paths.ReleaseManifestPath);
+            KnowledgePackVerification knowledge = VerifyKnowledgePack(
+                knowledgeManifestPath);
             await release.VerifyDirectoryAsync(
                 paths.InstallRoot,
                 cancellationToken);
@@ -61,6 +65,11 @@ internal static class InstalledLayoutVerifier
                 update_runtime = update.Runtime,
                 release_version = release.Version,
                 model_sha256 = model.Artifact.Sha256,
+                knowledge_pack_id = knowledge.PackId,
+                knowledge_domain_count = knowledge.DomainCount,
+                knowledge_claim_count = knowledge.ClaimCount,
+                knowledge_source_count = knowledge.SourceCount,
+                knowledge_manifest_sha256 = knowledge.ManifestSha256,
                 webview2_version = webViewVersion,
                 install_root = paths.InstallRoot,
                 verified_at_utc = DateTime.UtcNow,
@@ -105,4 +114,123 @@ internal static class InstalledLayoutVerifier
             Encoding.UTF8.GetBytes(error.GetType().FullName + "\n" + error.Message));
         return Convert.ToHexStringLower(digest);
     }
+
+    private static string ResolveKnowledgeManifest(string installRoot)
+    {
+        string[] candidates =
+        {
+            Path.Combine(
+                installRoot,
+                "runtime",
+                "backend",
+                "_internal",
+                "knowledge_packs",
+                "universal-foundation-v1",
+                "manifest.json"),
+            Path.Combine(
+                installRoot,
+                "runtime",
+                "backend",
+                "knowledge_packs",
+                "universal-foundation-v1",
+                "manifest.json"),
+        };
+        return candidates.FirstOrDefault(File.Exists) ?? candidates[0];
+    }
+
+    private static KnowledgePackVerification VerifyKnowledgePack(
+        string manifestPath)
+    {
+        string fullManifest = Path.GetFullPath(manifestPath);
+        if ((File.GetAttributes(fullManifest) & FileAttributes.ReparsePoint) != 0)
+        {
+            throw new InvalidDataException(
+                "The installed knowledge manifest cannot be a reparse point.");
+        }
+        string packRoot = Path.GetDirectoryName(fullManifest)
+            ?? throw new InvalidDataException("Knowledge pack root is invalid.");
+        using JsonDocument document = JsonDocument.Parse(
+            File.ReadAllBytes(fullManifest));
+        JsonElement root = document.RootElement;
+        if (root.GetProperty("schema").GetInt32() != 1)
+        {
+            throw new InvalidDataException("Knowledge pack schema is invalid.");
+        }
+        string packId = root.GetProperty("pack_id").GetString()
+            ?? throw new InvalidDataException("Knowledge pack identity is absent.");
+        JsonElement hashes = root.GetProperty("file_sha256");
+        foreach (JsonProperty entry in hashes.EnumerateObject())
+        {
+            string candidate = Path.GetFullPath(
+                Path.Combine(packRoot, entry.Name.Replace('/', Path.DirectorySeparatorChar)));
+            if (!candidate.StartsWith(
+                packRoot + Path.DirectorySeparatorChar,
+                StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidDataException("Knowledge pack file escapes its root.");
+            }
+            if (!File.Exists(candidate)
+                || (File.GetAttributes(candidate) & FileAttributes.ReparsePoint) != 0)
+            {
+                throw new FileNotFoundException(
+                    "An installed knowledge file is absent or unsafe.",
+                    candidate);
+            }
+            string expected = entry.Value.GetString() ?? string.Empty;
+            string actual = Convert.ToHexStringLower(
+                SHA256.HashData(File.ReadAllBytes(candidate)));
+            if (!CryptographicOperations.FixedTimeEquals(
+                Encoding.ASCII.GetBytes(expected),
+                Encoding.ASCII.GetBytes(actual)))
+            {
+                throw new InvalidDataException(
+                    "An installed knowledge file failed SHA-256 verification.");
+            }
+        }
+
+        string taxonomyPath = Path.Combine(
+            packRoot,
+            root.GetProperty("taxonomy_file").GetString()
+                ?? throw new InvalidDataException("Taxonomy file is absent."));
+        string sourcesPath = Path.Combine(
+            packRoot,
+            root.GetProperty("sources_file").GetString()
+                ?? throw new InvalidDataException("Sources file is absent."));
+        using JsonDocument taxonomy = JsonDocument.Parse(
+            File.ReadAllBytes(taxonomyPath));
+        using JsonDocument sources = JsonDocument.Parse(
+            File.ReadAllBytes(sourcesPath));
+        int domainCount = taxonomy.RootElement.GetProperty("domains").GetArrayLength();
+        int sourceCount = sources.RootElement.GetProperty("sources").GetArrayLength();
+        int claimCount = 0;
+        foreach (JsonElement shard in root.GetProperty("claim_shards").EnumerateArray())
+        {
+            string relative = shard.GetString()
+                ?? throw new InvalidDataException("Knowledge shard path is invalid.");
+            string shardPath = Path.Combine(
+                packRoot,
+                relative.Replace('/', Path.DirectorySeparatorChar));
+            claimCount += File.ReadLines(shardPath).Count(
+                line => !string.IsNullOrWhiteSpace(line));
+        }
+        if (domainCount != 15 || claimCount < 45 || sourceCount < 20)
+        {
+            throw new InvalidDataException(
+                "The installed knowledge pack is below the Phase 7 coverage floor.");
+        }
+        return new KnowledgePackVerification(
+            packId,
+            domainCount,
+            claimCount,
+            sourceCount,
+            Convert.ToHexStringLower(
+                SHA256.HashData(File.ReadAllBytes(fullManifest))));
+    }
+
+    private sealed record KnowledgePackVerification(
+        string PackId,
+        int DomainCount,
+        int ClaimCount,
+        int SourceCount,
+        string ManifestSha256);
 }

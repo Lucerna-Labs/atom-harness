@@ -350,6 +350,8 @@ def _check_runtime_wiring() -> dict[str, Any]:
             "decision_nonce",
             "ATOM_TOOL_ARTIFACT_BINDING",
             'sandbox=""',
+            "async function renderArtifact",
+            "artifactFrame.srcdoc = artifactHtml",
             "textContent",
             "Prior results were supplied as untrusted context",
         ),

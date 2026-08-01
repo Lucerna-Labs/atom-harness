@@ -1,18 +1,18 @@
-# Atom Harness Desktop Phase 6
+# Atom Harness Desktop Phase 7
 
 Atom Harness Desktop is the installed Windows form of the certified Atom
-Harness Operator V5. The desktop application is deliberately a shell, not a
+Harness Operator V6. The desktop application is deliberately a shell, not a
 second reasoning system. Atom still owns evidence, the wiki graph, graph RAG,
-causal memory, policy, abstention, and the committed artifact. The selected
-Qwen model supplies language only.
+causal memory, multidisciplinary claims, source identity, policy, abstention,
+and the committed artifact. The selected Qwen model supplies language only.
 
 ## Install and start
 
-The Phase 6 release has two Windows x64 formats:
+The Phase 7 release has two Windows x64 formats:
 
-- `Atom-Harness-6.0.3-windows-x64.msi` installs per user without administrator
+- `Atom-Harness-7.0.0-windows-x64.msi` installs per user without administrator
   rights.
-- `Atom-Harness-6.0.3-windows-x64.zip` is the portable and update payload.
+- `Atom-Harness-7.0.0-windows-x64.zip` is the portable and update payload.
 
 The MSI installs to:
 
@@ -37,6 +37,13 @@ request status, retry and cancel controls, exact permission controls, and model
 lifecycle information. The right side is the real artifact side view produced
 by the runtime. It displays either a committed evidence artifact or a committed
 tool artifact. It is not a preview assembled by the desktop shell.
+
+Evidence questions are routed to either the causal experience lane or the
+multidisciplinary reference lane. The Phase 7 foundation spans 15 disciplines.
+The right-side artifact names the selected lane and displays the exact claim,
+claim type, epistemic status, source links, limitations, citation IDs, graph
+thread, and grounding hash used for a multidisciplinary answer. Fiction and
+craft heuristics remain visibly distinct from scientific and formal claims.
 
 No tool executes merely because the model proposed it. The user sees the exact
 manifest, including paths, executable, arguments, effects, risk, workspace,
@@ -100,7 +107,9 @@ To verify an installed layout without starting the interactive runtime:
 ```
 
 This checks every file in the installed release manifest, the update and model
-contracts, the installed WebView2 runtime, and the declared authority runtime.
+contracts, the installed WebView2 runtime, the declared authority runtime, and
+the packaged universal-knowledge manifest. The verifier separately rehashes
+every knowledge data file and enforces the domain, claim, and source floors.
 
 ## Failure recovery
 
@@ -109,6 +118,9 @@ contracts, the installed WebView2 runtime, and the declared authority runtime.
 - If backend startup fails, the desktop records a hash-identified diagnostic
   without copying prompts, answers, model data, or secrets into the log.
 - If a request fails, select its history row and use the retry control.
+- If a completed artifact cannot be verified immediately, its pane reports
+  that state after three bounded attempts. Select the completed history row to
+  retry the verified artifact route.
 - If an update fails before replacement, the installed application is
   unchanged.
 - If replacement fails after the old directory moves, the updater restores the
@@ -118,10 +130,11 @@ contracts, the installed WebView2 runtime, and the declared authority runtime.
 
 ## Authority boundary
 
-Phase 6 retains installation, lifecycle supervision, verified model
+Phase 7 retains installation, lifecycle supervision, verified model
 provisioning, safe updates, and the native window. It gives the model a
 proposal vocabulary for registered tools, not an execution handle or
 permission authority. The model still has no evidence authority, Atom DB write
 access, cloud provider access, or permission to override abstention. Wiki graph
-and graph RAG execution remain mandatory, and every produced artifact remains
-visibly bound into the right-side view.
+and graph RAG execution remain mandatory for both knowledge lanes, and every
+produced artifact remains visibly bound into the right-side view. The Ornith
+1.0 capability floor remains intact.

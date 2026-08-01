@@ -803,9 +803,9 @@ class AtomLanguageHarnessV2IntegrationTests(unittest.TestCase):
         architecture = _read_json(
             PROJECT_ROOT / "atom-language-harness-architecture.json"
         )
-        expected_test = "tests/test_atom_permissioned_hands_integration.py"
-        self.assertEqual(registry["active_runtime"], "language-harness-v5")
-        active = registry["runtimes"]["language-harness-v5"]
+        expected_test = "tests/test_atom_universal_knowledge_integration.py"
+        self.assertEqual(registry["active_runtime"], "language-harness-v6")
+        active = registry["runtimes"]["language-harness-v6"]
         self.assertEqual(active["integration_test"], expected_test)
         self.assertEqual(knowledge["integration_test"], expected_test)
         self.assertEqual(side_view["integration_test"], expected_test)
@@ -814,7 +814,7 @@ class AtomLanguageHarnessV2IntegrationTests(unittest.TestCase):
         self.assertEqual(architecture["integration_test"], expected_test)
         self.assertEqual(
             architecture["runtime"],
-            "atom-language-harness-operator-v5",
+            "atom-language-harness-operator-v6",
         )
         self.assertEqual(
             architecture["knowledge"]["wiki_runtime"],
@@ -826,7 +826,7 @@ class AtomLanguageHarnessV2IntegrationTests(unittest.TestCase):
         )
         self.assertEqual(
             architecture["side_view"]["runtime"],
-            "atom-language-harness-operator-ui-v5",
+            "atom-language-harness-operator-ui-v6",
         )
 
 

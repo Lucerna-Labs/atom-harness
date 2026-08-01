@@ -1,6 +1,6 @@
 # Fork and Publication Boundary
 
-This checkout is the local Atom Harness Operator V5 fork:
+This checkout is the local Atom Harness Operator V6 and Desktop Phase 7 fork:
 
 ```text
 C:\Projects\atom-harness
@@ -29,5 +29,7 @@ and Atom DB evidence store.
 See `DEVELOPER_NOTES.md` for the architecture, trust boundary, module map,
 provider contract, resident-lane lifecycle, transaction and recovery behavior,
 operation, verification, and handoff checklist. The active runtime is
-`language-harness-v5`. The certified V3 harness remains the per-request
-execution and artifact core.
+`language-harness-v6`. The certified V3 harness remains the causal execution
+and artifact core, Phase 6 hands remain the permissioned capability layer, and
+Phase 7 adds the versioned multidisciplinary reference fabric. See
+`ATOM_UNIVERSAL_KNOWLEDGE.md` for that pack and source boundary.

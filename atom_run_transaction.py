@@ -107,6 +107,43 @@ def _is_link(path: Path) -> bool:
     return path.is_symlink() or (callable(is_junction) and bool(is_junction()))
 
 
+def bind_recorded_run_directory(
+    runs_root: Path,
+    recorded_output_dir: object,
+    *,
+    kind: str,
+    identity: str,
+) -> Path:
+    """Bind a journal record to its deterministic run directory.
+
+    Windows packaged launchers can virtualize LocalAppData writes. Resolving a
+    recorded path through the filesystem can then expose the physical package
+    path even though the runtime must continue opening the logical path. Keep
+    the containment comparison lexical, reject links and junctions explicitly,
+    and return the runtime-owned deterministic path instead of the journal
+    string.
+    """
+
+    if kind not in {"request", "proposal"}:
+        raise ValueError("run directory kind is invalid")
+    if not re.fullmatch(r"[0-9a-f]{32}", str(identity)):
+        raise ValueError("run directory identity is invalid")
+    root = Path(runs_root)
+    recorded = Path(str(recorded_output_dir))
+    expected = root / f"{kind}-{identity}"
+    if not recorded.is_absolute():
+        raise ValueError("recorded run directory must be absolute")
+
+    def logical(path: Path) -> str:
+        return os.path.normcase(os.path.abspath(os.fspath(path)))
+
+    if logical(recorded) != logical(expected):
+        raise ValueError("recorded run directory escaped its run root")
+    if _is_link(root) or _is_link(expected):
+        raise ValueError("recorded run directory is an unsafe link")
+    return expected
+
+
 def _ensure_direct_directory(path: Path, parent: Path) -> None:
     path = Path(path)
     parent = Path(parent).resolve()

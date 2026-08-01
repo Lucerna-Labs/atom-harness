@@ -9,6 +9,8 @@ internal sealed record BackendStartup(
     string OutputRoot,
     string WikiRuntime,
     string RagRuntime,
+    string MultidisciplinaryWikiRuntime,
+    string MultidisciplinaryRagRuntime,
     string SideViewRuntime,
     string ArtifactBindingMarker,
     string PermissionedHandsRuntime,
@@ -270,7 +272,7 @@ internal sealed class BackendSupervisor : IAsyncDisposable
             JsonElement root = document.RootElement;
             string runtime = root.GetProperty("runtime").GetString() ?? string.Empty;
             string originText = root.GetProperty("origin").GetString() ?? string.Empty;
-            if (runtime != "atom-harness-operator-loopback-server-v2"
+            if (runtime != "atom-harness-operator-loopback-server-v3"
                 || !Uri.TryCreate(originText, UriKind.Absolute, out Uri? origin)
                 || origin.Scheme != Uri.UriSchemeHttp
                 || origin.Host != "127.0.0.1")
@@ -284,6 +286,10 @@ internal sealed class BackendSupervisor : IAsyncDisposable
                 root.GetProperty("output_root").GetString() ?? string.Empty,
                 root.GetProperty("wiki_runtime").GetString() ?? string.Empty,
                 root.GetProperty("rag_runtime").GetString() ?? string.Empty,
+                root.GetProperty("multidisciplinary_wiki_runtime").GetString()
+                    ?? string.Empty,
+                root.GetProperty("multidisciplinary_rag_runtime").GetString()
+                    ?? string.Empty,
                 root.GetProperty("side_view_runtime").GetString() ?? string.Empty,
                 root.GetProperty("artifact_binding_marker").GetString()
                     ?? string.Empty,
@@ -294,7 +300,9 @@ internal sealed class BackendSupervisor : IAsyncDisposable
                 root.GetProperty("tool_workspace").GetString() ?? string.Empty);
             if (startup.WikiRuntime != "atom-language-harness-wiki-v2"
                 || startup.RagRuntime != "atom-language-harness-graph-rag-v2"
-                || startup.SideViewRuntime != "atom-language-harness-operator-ui-v5"
+                || startup.MultidisciplinaryWikiRuntime != "atom-multidisciplinary-wiki-v1"
+                || startup.MultidisciplinaryRagRuntime != "atom-multidisciplinary-graph-rag-v1"
+                || startup.SideViewRuntime != "atom-language-harness-operator-ui-v6"
                 || startup.ArtifactBindingMarker != "render_operator_surface"
                 || startup.PermissionedHandsRuntime != "atom-permissioned-hands-fabric-v1"
                 || startup.ToolSideViewRuntime != "atom-permissioned-hands-side-view-v1"

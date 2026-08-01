@@ -1,0 +1,141 @@
+name: Atom Harness V7 CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atom-harness-v7-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify Desktop Phase 7 on Windows
+    runs-on: windows-latest
+    timeout-minutes: 50
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Install Python 3.13
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements-harness.txt
+            requirements-dev.txt
+
+      - name: Install Node 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "24"
+
+      - name: Install .NET 9
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        with:
+          dotnet-version: "9.0.305"
+
+      - name: Install pinned Rust
+        run: |
+          rustup toolchain install 1.96.0 --profile minimal --component clippy,rustfmt
+          rustup default 1.96.0
+
+      - name: Install Python dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-dev.txt
+
+      - name: Check Phase 7 Python format and lint
+        run: |
+          python -m ruff format --check atom_harness_desktop_backend.py atom_harness_experiment.py atom_harness_knowledge.py atom_harness_operator.py atom_harness_operator_server.py atom_harness_operator_ui.py atom_harness_runtime.py atom_harness_session.py atom_harness_side_view.py atom_run_transaction.py atom_knowledge_protocol.py atom_multidisciplinary_knowledge.py atom_tool_fabric.py scripts/certify_atom_universal_knowledge.py scripts/verify_atom_harness_v7.py tests/test_atom_universal_knowledge_integration.py
+          python -m ruff check atom_harness_desktop_backend.py atom_harness_experiment.py atom_harness_knowledge.py atom_harness_operator.py atom_harness_operator_server.py atom_harness_operator_ui.py atom_harness_runtime.py atom_harness_session.py atom_harness_side_view.py atom_run_transaction.py atom_knowledge_protocol.py atom_multidisciplinary_knowledge.py atom_tool_fabric.py scripts/certify_atom_universal_knowledge.py scripts/verify_atom_harness_v7.py tests/test_atom_universal_knowledge_integration.py
+
+      - name: Compile Phase 7 Python entrypoints
+        run: python -m py_compile atom_harness_desktop_backend.py atom_harness_experiment.py atom_harness_knowledge.py atom_harness_operator.py atom_harness_operator_server.py atom_harness_operator_ui.py atom_harness_runtime.py atom_harness_session.py atom_harness_side_view.py atom_run_transaction.py atom_knowledge_protocol.py atom_multidisciplinary_knowledge.py atom_tool_fabric.py scripts/certify_atom_universal_knowledge.py scripts/verify_atom_harness_v7.py
+
+      - name: Parse desktop packaging entrypoint
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path './scripts/build_atom_harness_desktop.ps1'),
+            [ref]$tokens,
+            [ref]$errors
+          )
+          if ($errors.Count -ne 0) {
+            $errors | Format-List | Out-String | Write-Error
+            exit 1
+          }
+
+      - name: Enforce Desktop Phase 7 source policy
+        run: python scripts/verify_atom_harness_v7.py --source-only
+
+      - name: Run exact universal knowledge integration
+        run: python -m unittest discover -s tests -p "test_atom_universal_knowledge_integration.py" -v
+
+      - name: Run Phase 7 source-bound certification
+        run: python scripts/certify_atom_universal_knowledge.py --output-root "local-results/ci-phase7-certification"
+
+      - name: Restore locked .NET dependencies
+        shell: pwsh
+        run: |
+          foreach ($project in @(
+            './desktop/AtomHarness.Desktop.Core/AtomHarness.Desktop.Core.csproj',
+            './desktop/AtomHarness.Desktop/AtomHarness.Desktop.csproj',
+            './desktop/AtomHarness.Updater/AtomHarness.Updater.csproj',
+            './desktop/AtomHarness.Desktop.Tests/AtomHarness.Desktop.Tests.csproj'
+          )) {
+            dotnet restore $project --locked-mode
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Verify .NET formatting
+        run: |
+          dotnet format desktop/AtomHarness.Desktop/AtomHarness.Desktop.csproj --verify-no-changes --no-restore
+          dotnet format desktop/AtomHarness.Updater/AtomHarness.Updater.csproj --verify-no-changes --no-restore
+          dotnet format desktop/AtomHarness.Desktop.Tests/AtomHarness.Desktop.Tests.csproj --verify-no-changes --no-restore
+
+      - name: Build desktop and updater with warnings denied
+        run: |
+          dotnet build desktop/AtomHarness.Desktop/AtomHarness.Desktop.csproj -c Release --no-restore
+          dotnet build desktop/AtomHarness.Updater/AtomHarness.Updater.csproj -c Release --no-restore
+
+      - name: Run desktop safety tests
+        run: dotnet test desktop/AtomHarness.Desktop.Tests/AtomHarness.Desktop.Tests.csproj -c Release --no-restore
+
+      - name: Check Rust formatting
+        run: cargo fmt --manifest-path atom_causal_memory_rust/Cargo.toml --all -- --check
+
+      - name: Lint Rust with warnings denied
+        run: cargo clippy --manifest-path atom_causal_memory_rust/Cargo.toml --workspace --all-targets --all-features -- -D warnings
+
+      - name: Test and build the bundled Rust runtime
+        run: |
+          cargo test --manifest-path atom_causal_memory_rust/Cargo.toml --workspace --all-targets --locked
+          cargo build --manifest-path atom_causal_memory_rust/Cargo.toml --package atom-causal-memory --release --locked
+
+      - name: Freeze and probe the packaged backend
+        shell: pwsh
+        run: |
+          $dist = Join-Path $env:RUNNER_TEMP 'atom-harness-backend-dist'
+          $work = Join-Path $env:RUNNER_TEMP 'atom-harness-backend-work'
+          python -m PyInstaller --noconfirm --clean --distpath $dist --workpath $work atom-harness-backend.spec
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $backend = Join-Path $dist 'atom-harness-backend\atom-harness-backend.exe'
+          $causal = Join-Path $dist 'atom-harness-backend\_internal\rust\atom-causal-memory.exe'
+          $knowledge = Join-Path $dist 'atom-harness-backend\_internal\knowledge_packs\universal-foundation-v1\manifest.json'
+          foreach ($required in @($backend, $causal, $knowledge)) {
+            if (-not (Test-Path -LiteralPath $required -PathType Leaf)) {
+              throw "Frozen runtime file is absent: $required"
+            }
+          }
+          & $backend --help
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

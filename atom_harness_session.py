@@ -26,6 +26,7 @@ from atom_language_model_contract import (
 )
 from atom_llm_provider import LlamaCppResidentJsonLanguageModel
 from atom_llm_protocol import CancellationToken, ProviderLocation
+from atom_multidisciplinary_knowledge import DEFAULT_KNOWLEDGE_PACK
 from atom_provider_fabric import ProviderFabric, ProviderFabricPolicy
 
 
@@ -43,12 +44,14 @@ class AtomHarnessSession:
         forge_path: Path = DEFAULT_FORGE,
         evidence_path: Path = DEFAULT_EVIDENCE,
         model_path: Path = DEFAULT_MODEL,
+        universal_path: Path = DEFAULT_KNOWLEDGE_PACK,
     ) -> None:
         self.provider_fabric = provider_fabric
         self.output_root = Path(output_root).resolve()
         self.forge_path = Path(forge_path).resolve()
         self.evidence_path = Path(evidence_path).resolve()
         self.model_path = Path(model_path).resolve()
+        self.universal_path = Path(universal_path).resolve()
         self._lock = threading.RLock()
         self._request_count = 0
         self._completed_count = 0
@@ -181,6 +184,7 @@ class AtomHarnessSession:
                     forge_path=self.forge_path,
                     evidence_path=self.evidence_path,
                     model_path=self.model_path,
+                    universal_path=self.universal_path,
                 )
             return self._knowledge
 

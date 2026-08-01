@@ -1,5 +1,266 @@
 # Atom Harness Developer Notes
 
+## Phase 7 multidisciplinary knowledge engineering record
+
+Phase 7 adds a separate, immutable reference-knowledge fabric while preserving
+the causal evidence kernel and Phase 6 permissioned hands. The active registry
+identity is `language-harness-v6`. The desktop identity is
+`atom-harness-desktop-v7` version `7.0.0`. The mandatory Phase 7 integration is
+`tests/test_atom_universal_knowledge_integration.py`.
+
+The selected `Qwen/Qwen3-4B-Instruct-2507` Q8_0 artifact does not become a
+knowledge store. It receives one bounded Atom evidence packet and renders a
+schema-constrained response. Atom remains authoritative for routing, graph
+retrieval, claim identity, source identity, epistemic status, grounding,
+abstention, memory, permission, and transaction publication.
+
+The first versioned pack is
+`knowledge_packs/universal-foundation-v1/manifest.json`. It contains 15 seeded
+domains, 45 Atom-authored claims, 22 source records, 454 graph nodes, and 650
+graph edges. This is a verified foundation and an ingestion contract, not a
+claim of exhaustive human knowledge. `ATOM_UNIVERSAL_KNOWLEDGE.md` is the full
+operator and pack-authoring reference.
+
+### 1. Architecture decision
+
+The causal and multidisciplinary records stay in distinct lanes. The causal
+lane answers from saved Atom experiences in the Rust database. The reference
+lane answers from sourced claims in a content-addressed pack. This separation
+prevents a literary interpretation, writing heuristic, scientific model,
+formal result, and causal intervention record from collapsing into the same
+kind of confidence.
+
+Routing is deterministic. An exact saved causal relationship retains the V3
+two-stage intent and response path. A question matching the multidisciplinary
+taxonomy enters the new graph-first path and needs only one language
+completion. An unresolved question produces a bounded abstention rather than
+allowing the model to answer from resident weights as hidden evidence.
+
+The lane arbiter requires a multidisciplinary route score of at least 8. This
+prevents one generic token such as `relation`, `map`, or `topology` from
+diverting an older causal request into an unrelated reference claim. Exact
+cause-to-effect grammar, including compact `cause-to-effect` spelling, keeps
+causal precedence. Retrieval still enforces its independent passage threshold,
+so route admission does not itself license an answer.
+
+### 2. Runtime modules
+
+`atom_multidisciplinary_knowledge.py` owns strict pack loading, path and link
+checks, file and manifest SHA-256 verification, source, domain, and claim
+validation, deterministic domain routing, graph construction, query-created
+Spiderweb threads, intersections, neighbor preload, and bounded retrieval.
+
+`atom_knowledge_protocol.py` owns the multidisciplinary response schema. The
+grounding object must exactly repeat the packet's claim ID, domain, claim type,
+epistemic status, and statement hash. Citation IDs must exist in the same
+packet. Invalid or unsupported output fails closed.
+
+`atom_harness_runtime.py` selects the causal, multidisciplinary, or unresolved
+lane before provider generation. It binds the request to the active knowledge
+hash, supplies only the selected packet, validates the response, verifies that
+both knowledge stores stayed unchanged, and emits lane-specific Spiderweb
+evidence.
+
+`atom_harness_experiment.py` commits the pack, multidisciplinary wiki graph,
+evidence packet, response, workflow bindings, and side view into the same
+atomic transaction. `atom_tool_fabric.py` records the same immutable knowledge
+identities around permissioned execution without giving tool output a write
+path into knowledge.
+
+`atom_harness_side_view.py` validates and renders either artifact shape. A
+multidisciplinary card shows the exact claim, type, epistemic status, fictional
+marker, domain, sources, rights metadata, limitations, citations, grounding,
+and graph/thread identities. The runtime binding marker remains
+`render_atom_harness_artifact`.
+
+`atom_harness_operator_server.py` and `atom_harness_operator_ui.py` expose both
+new runtime identities through the authenticated loopback health and operator
+surface. The left-side primary surface and right-side real artifact view remain
+separate. Phase 6 permission controls remain unchanged.
+
+### 3. Pack and rights boundary
+
+The manifest names every pack file and its SHA-256. The loader rejects unknown
+schema fields, missing or duplicate identities, invalid enum values, source
+references that do not exist, unseeded domains, path escapes, symbolic links,
+file hash changes, and manifest changes during the session.
+
+Source records use explicit rights lanes. Citation-only records carry metadata
+and links but no copied source text. All initial claim statements are
+Atom-authored summaries. Fiction must remain in a literary claim type and carry
+the fictional flag. Craft advice is a heuristic. Generated prose never becomes
+an independent source or a knowledge mutation.
+
+### 4. Spiderweb topology
+
+Domain, claim, source, and relationship ground lanes preload before admission.
+A question creates a temporary thread from observed routing flow. Related
+domains become typed intersections only when the query activates them. The
+on-ramp is `BoundedKnowledgeQuery`; the off-ramp is
+`BoundedKnowledgeEvidence`. The committed trace retains the selected ground
+lanes, intersections, preloaded manifests, provider route, and artifact
+publication vibration.
+
+This topology is additive to the causal and tool highways. It does not replace
+them with a central agent loop. L3 policy continues to belong to Atom and the
+operator, never the language provider.
+
+### 5. Desktop and packaging changes
+
+Desktop V7 validates the new wiki and RAG markers during backend startup. The
+PyInstaller specification includes the complete versioned pack. The installed
+layout verifier locates the packaged manifest, rejects reparse points, verifies
+every declared file hash, parses the taxonomy, source registry, and JSONL
+claims, and enforces floors of 15 domains, 45 claims, and 20 sources.
+
+The build produces `Atom-Harness-7.0.0-windows-x64.zip` and
+`Atom-Harness-7.0.0-windows-x64.msi`. The update contract remains schema 1,
+explicit opt-in, byte-count and SHA-256 verified, staged outside the install
+directory, and applied only after the application exits.
+
+### 6. Verification ownership
+
+`scripts/verify_atom_harness_v7.py` checks the declarations, runtime markers,
+pack, CI, promoted certificate, opt-in update policy, and release evidence.
+`scripts/certify_atom_universal_knowledge.py` reruns the exact integration and
+binds the relevant source files into a canonical certificate.
+
+The Phase 7 integration exercises a real committed multidisciplinary artifact,
+all 15 routes, citation and epistemic separation, prompt-injection boundaries,
+manifest and shard tampering, unresolved knowledge abstention, Phase 6 hands,
+and both user-visible side views. Historical causal, operator, provider,
+transaction, desktop, Rust AtomDB, and Rust native language tests remain part
+of the full regression pass.
+
+Phase 7 preserves the Ornith 1.0 capability floor. The broad tool vocabulary,
+human permission boundary, coding, builds, simulations, documents, workspace
+management, web reads, causal evidence, graph RAG, and artifact views remain
+available. The new knowledge lane adds breadth without narrowing those
+capabilities or transferring authority to Qwen.
+
+### 7. Live llama.cpp grammar boundary
+
+The first real-model Phase 7 probe exposed a backend grammar constraint that
+the scripted provider could not reveal. The installed llama.cpp build rejected
+`answer.maxLength` values above 1,024 while compiling the response JSON Schema.
+The failure appeared as HTTP 400 before generation, the provider fabric marked
+the route as an admission failure, Atom emitted a deterministic abstention, and
+the side-view validator refused to publish the failed artifact. No ungrounded
+answer escaped.
+
+The multidisciplinary answer field now uses the same 1,024-character bound as
+the certified causal response protocol. Claim IDs, packet-local citation
+enums, exact grounding fields, source provenance, statement hashes, and all
+post-generation validators remain unchanged. A fresh Qwen run then produced a
+committed quantum-superposition answer with one model load, one constrained
+completion, the exact claim grounding, a verified transaction, and the real
+side view.
+
+The installed desktop visual probe exposed a second integration issue. An
+empty iframe sandbox gives the child an opaque origin, so WebView2 did not send
+the path-scoped, SameSite artifact cookie and rendered the server's denied
+response instead of the artifact. Granting `allow-same-origin` did not resolve
+that behavior consistently and would have widened the frame unnecessarily.
+
+The final design keeps the empty sandbox. Trusted top-level operator code uses
+the in-memory token header to fetch the exact artifact route, reads the HTML,
+and assigns it to the iframe's `srcdoc`. The token never enters the URL or
+artifact. The frame receives no scripts, same-origin identity, forms, popups,
+navigation, or downloads. Artifact HTML retains `default-src 'none'`, contains
+no executable content, and the route remains independently protected by the
+same-origin server policy. The path-scoped HttpOnly cookies remain a compatible
+authenticated route option, but visible rendering no longer depends on
+WebView2 cookie behavior inside an opaque sandbox.
+
+### 8. Successor regression findings
+
+The first complete historical test pass found that weak single-token matches
+could divert legacy causal requests into the new reference lane. A request for
+the saved `trust-to-belief` relation matched generic multidisciplinary terms
+such as `relation` and `map`, then retrieved unrelated claims. The final lane
+arbiter rejects those low-confidence scores and recognizes hyphenated causal
+grammar before selecting a lane. The V1 causal language suite and the Phase 7
+domain suite both pass the repaired boundary.
+
+The same pass found that the Phase 6 unit fixture implemented only the former
+causal knowledge interface. Phase 7 tool artifacts now snapshot and hash both
+the causal database and the immutable multidisciplinary pack, so the fixture
+was advanced to the active two-lane contract. The permissioned-hands suite now
+exercises that real pack identity while retaining all denial, hash-drift,
+injection, process-tree, document, simulation, and side-view checks.
+
+### 9. Phase 7 closeout and virtualized artifact recovery
+
+The final installed-app probe reproduced a blank artifact pane even though the
+transaction files were complete and `verify_committed_run` accepted them. The
+failure depended on launch context. When a packaged Windows application such
+as Codex launched Atom Harness, Windows redirected LocalAppData writes into the
+launcher's package-local cache. The operator journal retained the logical
+LocalAppData path while `Path.resolve()` could expose the physical redirected
+path. Comparing those two filesystem-resolved spellings caused a valid run to
+look as if it had escaped its run root. Both recovered artifacts and a newly
+committed quantum-superposition artifact returned `artifact-not-available`.
+
+`atom_run_transaction.bind_recorded_run_directory` is the common repair for
+evidence and tool artifacts. A journal path is now an assertion, never path
+authority. The binder requires the exact 32-character hexadecimal request or
+proposal identity, derives `request-<id>` or `proposal-<id>` under the runtime's
+own runs root, compares normalized absolute paths lexically without resolving
+the Windows virtualization layer, rejects symlinks and junctions, and returns
+the deterministic runtime-owned path. Transaction verification still checks
+every committed byte before either side view is served. A changed journal path,
+invalid identity, linked directory, missing transaction, or mismatched file
+continues to fail closed.
+
+`AtomHarnessOperator.side_view_path` and
+`PermissionedToolFabric.side_view_path` both use this binder. They translate a
+transaction-integrity failure into their typed state errors, so the loopback
+server returns a bounded conflict instead of dropping a request handler. This
+keeps the Phase 6 permissioned-hands floor and its tool artifact under the same
+repair as the evidence view.
+
+The operator UI now performs three bounded artifact fetch attempts with 0,
+250, and 750 millisecond delays. A persistent failure renders an explicit
+in-frame unavailable state and stops the 800 millisecond refresh loop from
+hammering the artifact endpoint. Selecting the completed item clears that
+single failure marker and retries. Raw backend errors never enter the iframe.
+The successful path still assigns only the verified HTML response to an empty
+`srcdoc` sandbox.
+
+The exact Phase 7 integration now includes
+`test_virtualized_run_binding_stays_on_the_logical_runtime_path`. It prevents a
+future implementation from reintroducing filesystem resolution, checks the
+deterministic binding, and rejects both an escaped path and a malformed
+identity. The existing Phase 6 integration continues to exercise real evidence
+and tool side-view endpoints through the same binder.
+
+The closeout package and installed evidence are:
+
+- portable ZIP: 138,822,129 bytes, SHA-256
+  `00f1100e343cd6f1fc0704df3e5ad9e3ed080dacc7fcf763fcbe3ff93a7d3b0c`;
+- MSI: 120,257,743 bytes, SHA-256
+  `27b866700d6d41b876b23827ebb80935caeee0bf4a01c44ec905d996b8df0ed9`;
+- package file count: 165;
+- installed-layout report SHA-256
+  `06b894902a363c3da08db3657cc9a56c1c816f1bb0af7b48678b58173c1b9a91`;
+- source-bound knowledge certificate SHA-256
+  `85767430543163a9c5d715572596a23956e6590d5c54eb2a2a3981aed3570174`;
+- live multidisciplinary transaction
+  `7c26e38b6e7cd2eddfaaff22964cdc37decaeea1dcae4665fa48d038d86f098e`;
+- live artifact SHA-256
+  `4918b2d5b56c26fc6e0025d7a20c70ba8db42b1d88ea265216fea8c89dd860d1`;
+- visible side-view SHA-256
+  `0d96175c4b320eb237360f70b80f5cce84c606384984136f3cbda7f8ed62935c`.
+
+After installing that MSI, Atom Harness launched with one resident Qwen model
+load, restored the completed quantum transaction, rendered its real
+multidisciplinary artifact on the right, displayed one exact citation and the
+bound transaction identity, and shut down without leaving the desktop,
+backend, or llama-server process running. The release evidence records this
+probe while retaining the narrower claim boundary: it does not claim
+exhaustive knowledge, universal injection resistance, unattended autonomy
+safety, medical authority, or a published update feed.
+
 ## Phase 6 permissioned-hands engineering record
 
 Phase 6 changes Atom Harness from a language-and-evidence operator into an
@@ -304,8 +565,9 @@ The Phase 6 API adds:
 Control routes require the in-memory `X-Atom-Operator-Token`, exact loopback
 origin, valid host, JSON content type, bounded content length, and exact request
 fields. Evidence and tool artifacts use separate cookies with distinct scoped
-paths. Tokens are not placed in artifact URLs. Both artifact types render in a
-sandboxed frame with same-origin framing policy.
+paths and also accept the trusted in-memory header. Tokens are not placed in
+artifact URLs. The operator fetches the exact artifact HTML with that header
+and renders it in an empty, script-disabled `srcdoc` sandbox.
 
 ### 10. Adversarial and integration coverage
 
@@ -622,12 +884,12 @@ that renderer.
 The left pane uses text nodes for questions, answers, state, metrics, and
 citations. It does not inject model strings with `innerHTML`. The right pane
 fetches the exact committed V3 side view through an authenticated request,
-then assigns its same-origin route to a script-disabled sandboxed iframe. The
-root response sets an HttpOnly, SameSite session cookie scoped only to
+then assigns its returned HTML to a script-disabled `srcdoc` iframe. The root
+response sets an HttpOnly, SameSite session cookie scoped only to
 `/api/artifacts/`; the ordinary JavaScript access token remains in memory.
-Artifact responses allow same-origin framing and every other response denies
-framing. The token does not appear in a query string, fragment, artifact file,
-iframe URL, or journal.
+Artifact responses allow same-origin framing for direct authenticated clients,
+and every other response denies framing. The token does not appear in a query
+string, fragment, artifact file, iframe URL, `srcdoc`, or journal.
 
 The page has no third-party assets. A per-response nonce permits only its
 bundled style and script. The Content Security Policy otherwise defaults to

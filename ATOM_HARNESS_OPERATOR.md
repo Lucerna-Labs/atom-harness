@@ -1,15 +1,22 @@
-# Atom Harness Operator V5
+# Atom Harness Operator V6
 
-Atom Harness Operator V5 is the persistent local interface for the certified
+Atom Harness Operator V6 is the persistent local interface for the certified
 Atom language harness. It keeps the official Qwen language model, the Atom wiki
-graph, graph RAG, provider fabric, and operator queue available for an extended
-session. It does not change who owns meaning. Atom remains the sole authority
-for evidence, retrieval, grounding, citations, memory, and abstention.
+graphs, graph RAG lanes, provider fabric, and operator queue available for an
+extended session. It does not change who owns meaning. Atom remains the sole
+authority for evidence, claims, source identity, retrieval, grounding,
+citations, memory, permission, and abstention.
 
-V5 adds an experimental permissioned-hands lane. The language model may draft
+V6 retains the experimental permissioned-hands lane. The language model may draft
 an exact plan using registered capabilities, but it cannot execute, approve,
 or manufacture a grant. Every action waits at a trusted permission surface.
 One approval is bound to one manifest and is consumed once.
+
+V6 adds a multidisciplinary reference lane beside the causal experience lane.
+The initial versioned pack covers 15 disciplines with 45 Atom-authored claims
+and 22 source records. Qwen renders only a bounded, graph-retrieved packet. It
+cannot answer from its weights as hidden evidence, change a claim, or promote
+its prose into knowledge.
 
 ## Start
 
@@ -149,34 +156,55 @@ no larger than 16 KiB. CORS is not enabled.
 
 The UI uses a nonce-based Content Security Policy, no remote scripts, no
 external fonts, no inline event handlers, and a sandboxed artifact frame. An
-HttpOnly, SameSite session cookie is scoped only to artifact routes, allowing
-the frame to authenticate without placing a secret in its URL. The
+HttpOnly, SameSite session cookie remains scoped only to artifact routes. For
+reliable WebView2 rendering, trusted top-level code fetches the exact artifact
+with the in-memory header and assigns the returned HTML to an empty `srcdoc`
+sandbox. No secret enters the artifact URL or HTML. The frame grants no
+same-origin identity, scripts, forms, popups, downloads, or navigation.
+Artifact HTML separately enforces `default-src 'none'`. The
 resident `llama-server` has its own separate random in-memory API key, no web
 UI, and an explicit no-proxy loopback transport.
 
-Cloud providers are unavailable through the V5 operator entrypoint. This is a
+Windows can virtualize LocalAppData when Atom Harness is launched from another
+packaged application. Artifact recovery therefore binds the recorded logical
+path to the deterministic `request-<id>` or `proposal-<id>` directory without
+resolving it into a package-private physical spelling. The runtime rejects a
+different path, malformed ID, symbolic link, junction, or invalid transaction.
+The UI retries a transient artifact conflict three times, then displays an
+explicit unavailable state that the operator can select to retry.
+
+Cloud providers are unavailable through the V6 operator entrypoint. This is a
 local evidence and permissioned-capability runtime.
 
 ## Knowledge and artifact storage
 
-One session-resident Atom database backs the wiki graph and graph RAG view.
-Every retrieval hashes the database before and after use and rejects a change.
-Each committed artifact transaction binds the exact same database snapshot at
-`runtime/atom_harness_knowledge.atomdb`.
+One session-resident Atom database backs the causal wiki graph and graph RAG
+view. A separate content-addressed pack backs the multidisciplinary wiki graph
+and reference RAG view. Every retrieval hashes the relevant stores before and
+after use and rejects a change. Each committed evidence or tool transaction
+binds both knowledge identities and snapshots the full versioned pack.
 
 On the same volume, the transaction uses an NTFS hard link to avoid duplicating
 the roughly 57 MB immutable catalog for every request. If a hard link is not
 available, it falls back to an fsynced byte-for-byte copy. The transaction
 manifest hashes the file either way, so verification is identical.
 
+The reference pack is small enough to copy into each committed transaction.
+Its manifest, taxonomy, source registry, claim shards, and generated wiki graph
+remain directly inspectable. See `ATOM_UNIVERSAL_KNOWLEDGE.md` for its strict
+schema, rights lanes, epistemic types, Spiderweb flow, and extension process.
+
 ## Verification
 
-The exact Phase 6 integration gate is:
+The exact Phase 7 integration gate is:
 
 ```powershell
 python -m unittest discover -s tests `
-  -p "test_atom_permissioned_hands_integration.py" -v
+  -p "test_atom_universal_knowledge_integration.py" -v
 ```
+
+This gate includes the Phase 6 permissioned-hands integration so the new lane
+cannot silently narrow the earlier capability floor.
 
 Operator lifecycle and journal tests are:
 
@@ -185,12 +213,15 @@ python -m unittest discover -s tests `
   -p "test_atom_harness_operator.py" -v
 ```
 
-Repository policy and the adversarial certificate are:
+Phase 7 repository policy and its source-bound certificate are:
 
 ```powershell
-python scripts\verify_atom_harness_v6.py
-python scripts\certify_atom_permissioned_hands.py
+python scripts\verify_atom_harness_v7.py
+python scripts\certify_atom_universal_knowledge.py
 ```
+
+The historical Phase 6 adversarial certificate and V5 operator endurance
+certificate remain independently reproducible.
 
 The deterministic endurance certificate uses at least 32 requests. The
 default uses 120:

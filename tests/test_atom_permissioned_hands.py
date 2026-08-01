@@ -22,6 +22,11 @@ from atom_harness_knowledge import (
 )
 from atom_llm_protocol import CancellationToken
 from atom_llm_provider import ScriptedJsonLanguageModel
+from atom_multidisciplinary_knowledge import (
+    ATOM_MULTIDISCIPLINARY_RAG_RUNTIME,
+    ATOM_MULTIDISCIPLINARY_WIKI_RUNTIME,
+    load_multidisciplinary_knowledge,
+)
 from atom_tool_capabilities import MAX_PROCESS_OUTPUT_BYTES, AtomCapabilityRegistry
 from atom_run_transaction import verify_committed_run
 from atom_tool_fabric import (
@@ -60,8 +65,10 @@ class _Knowledge:
             "edge_count": 0,
         }
         self.graph = _Graph(self.graph_manifest["knowledge_hash"])
+        self.universal = load_multidisciplinary_knowledge()
 
     def manifest(self) -> dict[str, Any]:
+        universal = self.universal.manifest()
         core = {
             "schema": 1,
             "wiki_runtime": ATOM_HARNESS_WIKI_RUNTIME,
@@ -70,6 +77,11 @@ class _Knowledge:
             "experience_count": 1,
             "node_count": 1,
             "edge_count": 0,
+            "multidisciplinary_lane": universal,
+            "multidisciplinary_wiki_runtime": ATOM_MULTIDISCIPLINARY_WIKI_RUNTIME,
+            "multidisciplinary_rag_runtime": ATOM_MULTIDISCIPLINARY_RAG_RUNTIME,
+            "multidisciplinary_knowledge_hash": universal["knowledge_hash"],
+            "multidisciplinary_graph_hash": universal["graph_knowledge_hash"],
         }
         return {**core, "knowledge_hash": canonical_hash(core)}
 

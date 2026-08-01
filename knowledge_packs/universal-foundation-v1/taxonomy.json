@@ -1,0 +1,110 @@
+{
+  "schema": 1,
+  "domains": [
+    {
+      "domain_id": "formal-mathematical-sciences",
+      "label": "Formal and mathematical sciences",
+      "family": "formal-science",
+      "aliases": ["mathematics", "math", "logic", "statistics", "formal methods"],
+      "subdomains": ["logic", "set theory", "algebra", "geometry", "topology", "number theory", "analysis", "calculus", "probability", "statistics", "discrete mathematics", "optimization", "formal methods"]
+    },
+    {
+      "domain_id": "computer-information-science",
+      "label": "Computer and information science",
+      "family": "formal-and-applied-science",
+      "aliases": ["computer science", "computing", "information science", "software", "algorithms"],
+      "subdomains": ["algorithms", "data structures", "programming languages", "software engineering", "computer architecture", "operating systems", "networks", "databases", "distributed systems", "cybersecurity", "artificial intelligence", "information theory", "human computer interaction", "computational science"]
+    },
+    {
+      "domain_id": "physics-quantum-science",
+      "label": "Physics and quantum science",
+      "family": "natural-science",
+      "aliases": ["physics", "quantum", "quantum mechanics", "relativity", "particle physics"],
+      "subdomains": ["classical mechanics", "electromagnetism", "thermodynamics", "statistical mechanics", "optics", "acoustics", "relativity", "quantum mechanics", "quantum information", "atomic physics", "nuclear physics", "particle physics", "plasma physics", "condensed matter"]
+    },
+    {
+      "domain_id": "astronomy-space-science",
+      "label": "Astronomy and space science",
+      "family": "natural-science",
+      "aliases": ["astronomy", "astrophysics", "cosmology", "space science", "planetary science", "astrobiology"],
+      "subdomains": ["observational astronomy", "astrophysics", "cosmology", "planetary science", "heliophysics", "astrobiology", "celestial mechanics", "galactic astronomy", "exoplanet science"]
+    },
+    {
+      "domain_id": "chemistry-materials-science",
+      "label": "Chemistry and materials science",
+      "family": "natural-science",
+      "aliases": ["chemistry", "materials science", "chemical science", "molecular science"],
+      "subdomains": ["physical chemistry", "organic chemistry", "inorganic chemistry", "analytical chemistry", "biochemistry", "theoretical chemistry", "electrochemistry", "polymer science", "materials science", "nanoscience"]
+    },
+    {
+      "domain_id": "earth-environmental-science",
+      "label": "Earth and environmental science",
+      "family": "natural-science",
+      "aliases": ["earth science", "environmental science", "geology", "climate", "oceanography", "meteorology"],
+      "subdomains": ["geology", "geophysics", "geochemistry", "climatology", "meteorology", "atmospheric science", "oceanography", "hydrology", "soil science", "paleontology", "environmental science", "cryosphere science"]
+    },
+    {
+      "domain_id": "biological-science",
+      "label": "Biological science",
+      "family": "natural-science",
+      "aliases": ["biology", "life science", "genetics", "evolution", "ecology", "neuroscience"],
+      "subdomains": ["molecular biology", "cell biology", "genetics", "genomics", "microbiology", "evolutionary biology", "ecology", "botany", "zoology", "developmental biology", "systems biology", "neuroscience"]
+    },
+    {
+      "domain_id": "medical-health-science",
+      "label": "Medical and health science",
+      "family": "health-science",
+      "aliases": ["medicine", "health science", "medical science", "public health", "epidemiology"],
+      "subdomains": ["anatomy", "physiology", "pathology", "immunology", "pharmacology", "epidemiology", "public health", "clinical science", "diagnostics", "preventive medicine", "nutrition", "mental health"]
+    },
+    {
+      "domain_id": "engineering-technology",
+      "label": "Engineering and technology",
+      "family": "applied-science",
+      "aliases": ["engineering", "technology", "design engineering", "applied science"],
+      "subdomains": ["mechanical engineering", "electrical engineering", "civil engineering", "chemical engineering", "aerospace engineering", "biomedical engineering", "materials engineering", "environmental engineering", "industrial engineering", "robotics", "control engineering", "systems engineering"]
+    },
+    {
+      "domain_id": "agricultural-veterinary-science",
+      "label": "Agricultural and veterinary science",
+      "family": "applied-science",
+      "aliases": ["agriculture", "agricultural science", "veterinary science", "food science", "forestry"],
+      "subdomains": ["agronomy", "horticulture", "forestry", "animal science", "veterinary medicine", "food science", "plant pathology", "soil management", "fisheries", "agricultural systems"]
+    },
+    {
+      "domain_id": "social-behavioral-science",
+      "label": "Social and behavioral science",
+      "family": "social-science",
+      "aliases": ["social science", "behavioral science", "psychology", "sociology", "economics", "anthropology"],
+      "subdomains": ["psychology", "cognitive science", "sociology", "anthropology", "economics", "political science", "demography", "human geography", "education research", "communication studies", "archaeology"]
+    },
+    {
+      "domain_id": "linguistics",
+      "label": "Linguistics",
+      "family": "language-science",
+      "aliases": ["linguistics", "language science", "phonetics", "syntax", "semantics"],
+      "subdomains": ["phonetics", "phonology", "morphology", "syntax", "semantics", "pragmatics", "historical linguistics", "sociolinguistics", "psycholinguistics", "computational linguistics", "language typology", "language documentation"]
+    },
+    {
+      "domain_id": "literature-language-arts",
+      "label": "Literature and language arts",
+      "family": "humanities",
+      "aliases": ["literature", "literary studies", "poetry", "drama", "fiction", "literary criticism"],
+      "subdomains": ["poetry", "drama", "fiction", "creative nonfiction", "oral literature", "comparative literature", "literary history", "literary theory", "narratology", "rhetoric", "textual criticism", "translation studies"]
+    },
+    {
+      "domain_id": "writing-creative-practice",
+      "label": "Writing and creative practice",
+      "family": "creative-practice",
+      "aliases": ["writing", "creative writing", "composition", "storytelling", "editing"],
+      "subdomains": ["composition", "grammar", "style", "editing", "technical writing", "academic writing", "journalism", "fiction writing", "poetry writing", "dramatic writing", "screenwriting", "creative nonfiction", "rhetorical practice"]
+    },
+    {
+      "domain_id": "research-practice",
+      "label": "Research practice and philosophy of science",
+      "family": "cross-disciplinary-method",
+      "aliases": ["research methods", "scientific method", "reproducibility", "measurement", "philosophy of science"],
+      "subdomains": ["measurement", "experimental design", "observational design", "statistical inference", "causal inference", "reproducibility", "replication", "research ethics", "open science", "history of science", "philosophy of science", "science communication"]
+    }
+  ]
+}

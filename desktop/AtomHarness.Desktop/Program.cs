@@ -2,7 +2,7 @@ namespace LucernaLabs.AtomHarness.Desktop;
 
 internal static class Program
 {
-    internal const string DesktopRuntime = "atom-harness-desktop-v6";
+    internal const string DesktopRuntime = "atom-harness-desktop-v7";
     internal const string AuthorityRuntime = "ATOM_HARNESS_OPERATOR_RUNTIME";
     internal const string WikiRuntime = "ATOM_HARNESS_WIKI_RUNTIME";
     internal const string RagRuntime = "ATOM_HARNESS_RAG_RUNTIME";
@@ -25,7 +25,7 @@ internal static class Program
 
         using Mutex instance = new(
             true,
-            @"Local\LucernaLabs.AtomHarness.Desktop.v6",
+            @"Local\LucernaLabs.AtomHarness.Desktop.v7",
             out bool createdNew);
         if (!createdNew)
         {

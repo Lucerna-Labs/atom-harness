@@ -5,17 +5,26 @@
   "wiki_graph": {
     "enabled": true,
     "module_path": "atom_harness_knowledge.py",
-    "runtime_marker": "ATOM_HARNESS_WIKI_RUNTIME"
+    "runtime_marker": "ATOM_HARNESS_WIKI_RUNTIME",
+    "additional_module_path": "atom_multidisciplinary_knowledge.py",
+    "additional_runtime_marker": "ATOM_MULTIDISCIPLINARY_WIKI_RUNTIME"
   },
   "rag": {
     "enabled": true,
     "module_path": "atom_harness_knowledge.py",
-    "runtime_marker": "ATOM_HARNESS_RAG_RUNTIME"
+    "runtime_marker": "ATOM_HARNESS_RAG_RUNTIME",
+    "additional_module_path": "atom_multidisciplinary_knowledge.py",
+    "additional_runtime_marker": "ATOM_MULTIDISCIPLINARY_RAG_RUNTIME"
   },
   "session_resident": true,
   "immutable_during_requests": true,
   "exact_snapshot_bound_into_each_committed_transaction": true,
   "same_volume_hard_link_with_copy_fallback": true,
   "permissioned_tool_artifacts_bind_the_same_immutable_snapshot": true,
-  "integration_test": "tests/test_atom_permissioned_hands_integration.py"
+  "causal_records_remain_a_separate_specialized_lane": true,
+  "multidisciplinary_pack": "knowledge_packs/universal-foundation-v1/manifest.json",
+  "formal_empirical_interpretive_fictional_and_craft_types_are_separate": true,
+  "source_text_is_untrusted_and_cannot_grant_permission": true,
+  "ornith_1_0_capability_floor_preserved": true,
+  "integration_test": "tests/test_atom_universal_knowledge_integration.py"
 }

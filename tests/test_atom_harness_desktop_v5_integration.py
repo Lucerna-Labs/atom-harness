@@ -17,7 +17,7 @@ ATOM_HARNESS_OPERATOR_ARTIFACT_BINDING = "render_operator_surface"
 
 
 class AtomHarnessDesktopV5IntegrationTests(unittest.TestCase):
-    def test_phase5_compatibility_gate_accepts_phase6_successor_boundaries(
+    def test_phase5_compatibility_gate_accepts_phase7_successor_boundaries(
         self,
     ) -> None:
         architecture = json.loads(
@@ -44,11 +44,11 @@ class AtomHarnessDesktopV5IntegrationTests(unittest.TestCase):
             PROJECT_ROOT / "scripts/build_atom_harness_desktop.ps1"
         ).read_text(encoding="utf-8")
 
-        self.assertEqual(architecture["product_phase"], 6)
-        self.assertEqual(architecture["runtime"], "atom-harness-desktop-v6")
+        self.assertEqual(architecture["product_phase"], 7)
+        self.assertEqual(architecture["runtime"], "atom-harness-desktop-v7")
         self.assertEqual(
             architecture["installed_runtime"]["authority_runtime"],
-            "language-harness-v5",
+            "language-harness-v6",
         )
         self.assertTrue(architecture["desktop_shell"]["thin_shell_only"])
         self.assertTrue(

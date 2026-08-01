@@ -1,4 +1,4 @@
-"""Secure loopback API and browser host for Atom Harness Operator V5."""
+"""Secure loopback API and browser host for Atom Harness Operator V6."""
 
 from __future__ import annotations
 
@@ -32,6 +32,10 @@ from atom_harness_operator_ui import (
     render_operator_surface,
 )
 from atom_harness_session import AtomHarnessSession, default_session_output_root
+from atom_multidisciplinary_knowledge import (
+    ATOM_MULTIDISCIPLINARY_RAG_RUNTIME,
+    ATOM_MULTIDISCIPLINARY_WIKI_RUNTIME,
+)
 from atom_tool_fabric import (
     ATOM_PERMISSIONED_HANDS_RUNTIME,
     PermissionedToolFabric,
@@ -42,7 +46,7 @@ from atom_tool_fabric import (
 from atom_tool_side_view import ATOM_TOOL_SIDE_VIEW_RUNTIME
 
 
-ATOM_HARNESS_OPERATOR_SERVER_RUNTIME = "atom-harness-operator-loopback-server-v2"
+ATOM_HARNESS_OPERATOR_SERVER_RUNTIME = "atom-harness-operator-loopback-server-v3"
 LOOPBACK_HOST = "127.0.0.1"
 MAX_REQUEST_BODY_BYTES = 16 * 1024
 
@@ -287,6 +291,12 @@ class AtomOperatorRequestHandler(BaseHTTPRequestHandler):
                     "accepting": snapshot["accepting"],
                     "wiki_runtime": ATOM_HARNESS_WIKI_RUNTIME,
                     "rag_runtime": ATOM_HARNESS_RAG_RUNTIME,
+                    "multidisciplinary_wiki_runtime": (
+                        ATOM_MULTIDISCIPLINARY_WIKI_RUNTIME
+                    ),
+                    "multidisciplinary_rag_runtime": (
+                        ATOM_MULTIDISCIPLINARY_RAG_RUNTIME
+                    ),
                     "side_view_runtime": ATOM_HARNESS_OPERATOR_UI_RUNTIME,
                     "tool_runtime": ATOM_PERMISSIONED_HANDS_RUNTIME,
                     "tool_side_view_runtime": ATOM_TOOL_SIDE_VIEW_RUNTIME,
@@ -606,6 +616,8 @@ def main() -> int:
             "output_root": str(output_root),
             "wiki_runtime": ATOM_HARNESS_WIKI_RUNTIME,
             "rag_runtime": ATOM_HARNESS_RAG_RUNTIME,
+            "multidisciplinary_wiki_runtime": (ATOM_MULTIDISCIPLINARY_WIKI_RUNTIME),
+            "multidisciplinary_rag_runtime": (ATOM_MULTIDISCIPLINARY_RAG_RUNTIME),
             "side_view_runtime": ATOM_HARNESS_OPERATOR_UI_RUNTIME,
             "artifact_binding_marker": ATOM_HARNESS_OPERATOR_ARTIFACT_BINDING,
             "permissioned_hands_runtime": ATOM_PERMISSIONED_HANDS_RUNTIME,

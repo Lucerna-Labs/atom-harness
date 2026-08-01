@@ -34,5 +34,5 @@
     "operator_restart_control": true,
     "queue_state_user_visible": true
   },
-  "integration_test": "tests/test_atom_permissioned_hands_integration.py"
+  "integration_test": "tests/test_atom_universal_knowledge_integration.py"
 }

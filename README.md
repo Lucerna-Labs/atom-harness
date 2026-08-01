@@ -2,29 +2,37 @@
 
 ## Active direction
 
-The active product is Atom Harness Desktop Phase 6. It is a thin, per-user
-Windows desktop shell around Atom Harness Operator V5 and the
-certified V3 causal Atom runtime. The desktop shell does not replace or widen
-Atom authority. It supervises the existing local runtime, embeds the real
-operator surface with its artifact side view, discovers or consent-downloads
-the exact certified language model, and shuts the full local process tree down
-with the application.
+The active product is Atom Harness Desktop Phase 7. It is a per-user Windows
+shell around Atom Harness Operator V6, the certified V3 causal evidence kernel,
+the Phase 6 permissioned-hands experiment, and a new multidisciplinary
+knowledge fabric. The desktop shell does not replace or widen Atom authority.
+It supervises the local runtime, embeds the real operator and artifact side
+view, discovers or consent-downloads the exact certified language model, and
+shuts the full local process tree down with the application.
 
-Phase 6 is the permissioned-hands experiment. Qwen may propose registered
-actions for code, builds, simulations, documents, workspace management, and
-bounded public web reads. It receives no executable handle and cannot approve
-its own proposal. The trusted local interface displays the exact arguments,
-effects, risk, workspace, manifest hash, and expiry. Nothing executes until
-the operator approves that exact one-time manifest. Denied, changed, expired,
-missing, or replayed permission fails closed. Every result is quarantined as
-untrusted data, cannot authorize another action, and cannot write Atom memory.
-Atom assigns canonical action IDs and omits argument fields outside the chosen
-capability contract. Those reductions are visible and hash-bound in the exact
-manifest rather than being hidden model repair. Public web reads also bind the
-resolved public address set into that manifest and connect only to an approved
-address, with redirects disabled. Process actions bind the resolved executable
-hash, stream output into bounded previews, and terminate the process group on
-timeout or cancellation.
+Phase 7 adds a content-addressed knowledge foundation across formal
+mathematics, computer science, physics and quantum science, astronomy,
+chemistry, earth science, biology, health science, engineering, agriculture,
+social science, linguistics, literature, writing, and research practice. The
+first pack contains 15 seeded domains, 45 Atom-authored claims, 22 source
+records, 454 graph nodes, and 650 graph edges. It proves the acquisition,
+rights, routing, graph RAG, grounding, packaging, and artifact boundary. It is
+not a claim that the repository already contains all human knowledge.
+
+The causal database and reference pack remain separate. Formal results,
+scientific models, literary context, fictional facts, and creative-writing
+heuristics carry different claim types and epistemic statuses. Every answer is
+bound to a packet-local claim ID, source list, domain, status, and statement
+hash. Citation-only sources contribute metadata and links, not copied source
+text. A changed manifest or data shard fails closed.
+
+Phase 6 hands remain fully available. Qwen may propose registered actions for
+code, builds, simulations, documents, workspace management, and bounded public
+web reads. It receives no executable handle and cannot approve its own
+proposal. The trusted interface shows the exact arguments, effects, risk,
+workspace, manifest hash, and expiry. Nothing executes until the operator
+approves that exact one-time manifest. Every result remains quarantined as
+untrusted data and cannot authorize another action or write Atom memory.
 
 The MSI installs without administrator rights under
 `%LOCALAPPDATA%\Programs\Lucerna Labs\Atom Harness` and creates Desktop and
@@ -35,29 +43,31 @@ SHA-256, stages outside the install directory, waits for the running
 application to exit, and retains the previous installation for rollback.
 Nothing installs silently.
 
-See `ATOM_HARNESS_DESKTOP.md` for installation, operation, packaging, and
-recovery details. Developers can build both release formats with:
+See `ATOM_UNIVERSAL_KNOWLEDGE.md` for the pack, source, rights, schema,
+Spiderweb, and extension contracts. See `ATOM_HARNESS_DESKTOP.md` for
+installation, operation, packaging, and recovery. Developers can build both
+release formats with:
 
 ```powershell
 .\scripts\build_atom_harness_desktop.ps1
 ```
 
-Operator V5 is the active runtime beneath the desktop shell.
-Atom owns facts, causal memory, the runtime wiki graph, graph RAG, tool-routing
-policy, and abstention. A replaceable LLM supplies natural-language intent
-parsing, evidence-grounded answer rendering, and proposal-only tool planning.
-The human operator is the sole execution-permission authority.
+Operator V6 is the active runtime beneath the desktop shell. Atom owns facts,
+causal memory, both runtime wiki graphs, both graph RAG lanes, source and claim
+identity, tool-routing policy, permission, and abstention. A replaceable LLM
+supplies language rendering and proposal-only tool planning. The human operator
+is the sole execution-permission authority.
 
-V5 keeps the V4 interactive operator and V3 provider and transaction
-protections. It loads the immutable Atom wiki and graph RAG snapshot,
-starts the authenticated loopback `llama-server`, and warms the constrained
-language and tool-planning paths before it accepts work. The browser surface
-places conversation and trusted permission controls on the left and the real
-committed evidence or tool artifact on the right. Every answer and tool run
-passes through its own crash-safe atomic transaction. Cancel, retry, deny,
-exact approval, idle model restart, and graceful shutdown are first-class
-controls. Queue pressure, lifecycle changes, permissions, capability ramps,
-artifact publication, and recovery are typed Spiderweb flow evidence.
+V6 keeps the V5 interactive and permission protections and the V3 provider and
+transaction protections. It preloads the causal catalog, multidisciplinary
+pack, capability registry, and authenticated loopback `llama-server` before it
+accepts work. The primary surface remains on the left and the real committed
+evidence or tool artifact remains visible on the right. Every answer and tool
+run passes through its own crash-safe atomic transaction. Cancel, retry, deny,
+exact approval, idle model restart, and graceful shutdown remain first-class
+controls. Query-created knowledge threads, domain intersections, preload,
+permissions, capability ramps, artifact publication, and recovery are typed
+Spiderweb flow evidence.
 
 Start the operator on Windows:
 
@@ -67,7 +77,7 @@ Start the operator on Windows:
 
 For a double-click launch, use `START-ATOM-HARNESS-OPERATOR.cmd`. The server
 binds only to `127.0.0.1`, chooses a random port by default, and creates its
-browser access token in memory. Cloud routing is not available in the V5
+browser access token in memory. Cloud routing is not available in the V6
 operator. See `ATOM_HARNESS_OPERATOR.md` for the controls and runtime layout.
 The historical V4 one-hour local certificate passed 100 mixed requests, cancellation
 and retry, model restart and rewarm, journal and transaction checks, immutable
@@ -82,9 +92,9 @@ The certified local transport is `llama-server` bound to `127.0.0.1` with an
 ephemeral in-memory API key, no web UI, `qwen-chatml-manual-v1`, a
 32,768-token admission window, reasoning off, temperature zero, and seed one.
 This 4B dense model is intentionally smaller than an agentic general-purpose
-model because Atom retains evidence, memory, graph RAG, authority, and
-abstention. The model supplies language and plans, but never execution
-authority. See `atom-language-model.json`
+model because Atom retains evidence, memory, graph RAG, claim identity,
+authority, and abstention. The model supplies language and plans, but never
+knowledge or execution authority. See `atom-language-model.json`
 for the machine-readable contract and certified evidence. Rerun the live
 certification before promoting any new model, backend, prompt transport, or
 authority-boundary revision.

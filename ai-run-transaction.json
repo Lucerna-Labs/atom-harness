@@ -20,5 +20,5 @@
     "permission_receipt_manifested": true,
     "quarantined_tool_results_manifested": true
   },
-  "integration_test": "tests/test_atom_permissioned_hands_integration.py"
+  "integration_test": "tests/test_atom_universal_knowledge_integration.py"
 }

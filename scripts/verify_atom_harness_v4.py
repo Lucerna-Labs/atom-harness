@@ -231,6 +231,8 @@ def _check_v4_surface() -> dict[str, Any]:
             "REAL ARTIFACT SIDE VIEW",
             "sandbox=",
             'sandbox=""',
+            "async function renderArtifact",
+            "artifactFrame.srcdoc = artifactHtml",
             'artifactFrame.removeAttribute("srcdoc")',
             "X-Atom-Operator-Token",
             "ATOM_HARNESS_WIKI_RUNTIME",

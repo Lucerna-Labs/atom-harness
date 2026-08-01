@@ -29,6 +29,12 @@ data_files = [
         "rust",
     ),
 ]
+knowledge_pack_root = root / "knowledge_packs" / "universal-foundation-v1"
+for knowledge_file in sorted(
+    path for path in knowledge_pack_root.rglob("*") if path.is_file()
+):
+    relative_parent = knowledge_file.parent.relative_to(root)
+    data_files.append((str(knowledge_file), str(relative_parent)))
 
 analysis = Analysis(
     [str(root / "atom_harness_desktop_backend.py")],

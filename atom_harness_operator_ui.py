@@ -13,9 +13,13 @@ from atom_tool_side_view import (
     ATOM_TOOL_ARTIFACT_BINDING,
     ATOM_TOOL_SIDE_VIEW_RUNTIME,
 )
+from atom_multidisciplinary_knowledge import (
+    ATOM_MULTIDISCIPLINARY_RAG_RUNTIME,
+    ATOM_MULTIDISCIPLINARY_WIKI_RUNTIME,
+)
 
 
-ATOM_HARNESS_OPERATOR_UI_RUNTIME = "atom-language-harness-operator-ui-v5"
+ATOM_HARNESS_OPERATOR_UI_RUNTIME = "atom-language-harness-operator-ui-v6"
 ATOM_HARNESS_OPERATOR_ARTIFACT_BINDING = "render_operator_surface"
 
 
@@ -30,6 +34,12 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
     ui_runtime = _javascript_string(ATOM_HARNESS_OPERATOR_UI_RUNTIME)
     wiki_runtime = _javascript_string(ATOM_HARNESS_WIKI_RUNTIME)
     rag_runtime = _javascript_string(ATOM_HARNESS_RAG_RUNTIME)
+    multidisciplinary_wiki_runtime = _javascript_string(
+        ATOM_MULTIDISCIPLINARY_WIKI_RUNTIME
+    )
+    multidisciplinary_rag_runtime = _javascript_string(
+        ATOM_MULTIDISCIPLINARY_RAG_RUNTIME
+    )
     hands_runtime = _javascript_string(ATOM_PERMISSIONED_HANDS_RUNTIME)
     tool_side_view_runtime = _javascript_string(ATOM_TOOL_SIDE_VIEW_RUNTIME)
     return f"""<!doctype html>
@@ -236,6 +246,8 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
       data-binding="{ATOM_HARNESS_OPERATOR_ARTIFACT_BINDING}"
       data-wiki="{ATOM_HARNESS_WIKI_RUNTIME}"
       data-rag="{ATOM_HARNESS_RAG_RUNTIME}"
+      data-multidisciplinary-wiki="{ATOM_MULTIDISCIPLINARY_WIKI_RUNTIME}"
+      data-multidisciplinary-rag="{ATOM_MULTIDISCIPLINARY_RAG_RUNTIME}"
       data-hands="{ATOM_PERMISSIONED_HANDS_RUNTIME}"
       data-tool-side-view="{ATOM_TOOL_SIDE_VIEW_RUNTIME}"
       data-tool-binding="{ATOM_TOOL_ARTIFACT_BINDING}">
@@ -243,6 +255,7 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
     <h1>ATOM HARNESS EXPERIMENT</h1>
     <span id="runtime-state" class="pill">preloading</span>
     <span id="model-state" class="pill">model waiting</span>
+    <span class="pill">15 knowledge disciplines</span>
     <span class="grow"></span>
     <span id="notice"></span>
   </header>
@@ -304,6 +317,8 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
     const uiRuntime = {ui_runtime};
     const wikiRuntime = {wiki_runtime};
     const ragRuntime = {rag_runtime};
+    const multidisciplinaryWikiRuntime = {multidisciplinary_wiki_runtime};
+    const multidisciplinaryRagRuntime = {multidisciplinary_rag_runtime};
     const handsRuntime = {hands_runtime};
     const toolSideViewRuntime = {tool_side_view_runtime};
     const headers = {{
@@ -316,7 +331,8 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
       selected: null,
       selectedTool: null,
       loadingArtifactId: null,
-      loadedArtifactId: null
+      loadedArtifactId: null,
+      failedArtifactId: null
     }};
     const byId = (id) => document.getElementById(id);
 
@@ -333,6 +349,44 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
         throw new Error(message);
       }}
       return response;
+    }}
+
+    async function renderArtifact(path, artifactKey) {{
+      const retryDelays = [0, 250, 750];
+      let failure = new Error("artifact-not-available");
+      for (const delay of retryDelays) {{
+        if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+        try {{
+          const response = await api(path, {{
+            headers: {{"Accept": "text/html"}}
+          }});
+          const artifactHtml = await response.text();
+          const artifactFrame = byId("artifact-frame");
+          artifactFrame.removeAttribute("src");
+          artifactFrame.srcdoc = artifactHtml;
+          state.failedArtifactId = null;
+          state.loadedArtifactId = artifactKey;
+          return;
+        }} catch (error) {{
+          failure = error;
+        }}
+      }}
+      throw failure;
+    }}
+
+    function renderArtifactFailure(artifactKey, kind) {{
+      const artifactFrame = byId("artifact-frame");
+      artifactFrame.removeAttribute("src");
+      artifactFrame.srcdoc =
+        "<style>body{{background:#0b0d0a;color:#ddd;font:16px system-ui;" +
+        "display:grid;place-items:center;height:90vh;margin:0}}" +
+        "main{{max-width:34rem;padding:2rem}}h2{{color:#ffca73}}</style>" +
+        "<main><h2>Artifact unavailable</h2><p>The committed " + kind +
+        " artifact could not be verified. Select the completed item to retry.</p></main>";
+      byId("artifact-label").textContent =
+        "Artifact unavailable, select the completed item to retry";
+      state.failedArtifactId = artifactKey;
+      state.loadedArtifactId = artifactKey;
     }}
 
     function lane(snapshot) {{
@@ -352,7 +406,7 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
       button.type = "button";
       button.className = "request" + (state.selected === record.request_id ? " selected" : "");
       button.addEventListener("click", async () => {{
-        await selectRequest(record.request_id);
+        await selectRequest(record.request_id, true);
         if (state.snapshot) render(state.snapshot);
       }});
       const question = document.createElement("div");
@@ -410,7 +464,7 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
       select.type = "button";
       select.className = "request-select";
       select.addEventListener("click", async () => {{
-        await selectTool(record.proposal_id);
+        await selectTool(record.proposal_id, true);
         if (state.snapshot) render(state.snapshot);
       }});
       appendText(select, "question", record.task);
@@ -624,55 +678,63 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
       }}
     }}
 
-    async function selectRequest(requestId) {{
+    async function selectRequest(requestId, forceRetry = false) {{
       state.selected = requestId;
       const artifactKey = "answer:" + requestId;
       const record = state.snapshot?.requests.find((item) => item.request_id === requestId);
       if (!record || record.status !== "completed") return;
+      if (forceRetry && state.failedArtifactId === artifactKey) {{
+        state.failedArtifactId = null;
+        state.loadedArtifactId = null;
+      }}
       if (
         state.loadedArtifactId === artifactKey ||
         state.loadingArtifactId === artifactKey
       ) return;
       state.loadingArtifactId = artifactKey;
       try {{
-        state.loadedArtifactId = artifactKey;
-        const artifactFrame = byId("artifact-frame");
-        artifactFrame.removeAttribute("srcdoc");
-        artifactFrame.src =
-          `/api/artifacts/${{encodeURIComponent(requestId)}}/side-view`;
+        await renderArtifact(
+          `/api/artifacts/${{encodeURIComponent(requestId)}}/side-view`,
+          artifactKey
+        );
         byId("artifact-label").textContent =
           record.artifact.citations.length + " citations, transaction " +
           record.artifact.transaction_id.slice(0, 12);
       }} catch (error) {{
-        setNotice(error.message);
+        renderArtifactFailure(artifactKey, "evidence");
+        setNotice("Artifact verification failed. Select the completed answer to retry.");
       }} finally {{
         state.loadingArtifactId = null;
       }}
     }}
 
-    async function selectTool(proposalId) {{
+    async function selectTool(proposalId, forceRetry = false) {{
       state.selectedTool = proposalId;
       const artifactKey = "tool:" + proposalId;
       const record = state.snapshot?.hands?.proposals?.find(
         (item) => item.proposal_id === proposalId
       );
       if (!record?.artifact) return;
+      if (forceRetry && state.failedArtifactId === artifactKey) {{
+        state.failedArtifactId = null;
+        state.loadedArtifactId = null;
+      }}
       if (
         state.loadedArtifactId === artifactKey ||
         state.loadingArtifactId === artifactKey
       ) return;
       state.loadingArtifactId = artifactKey;
       try {{
-        state.loadedArtifactId = artifactKey;
-        const artifactFrame = byId("artifact-frame");
-        artifactFrame.removeAttribute("srcdoc");
-        artifactFrame.src =
-          `/api/tool-artifacts/${{encodeURIComponent(proposalId)}}/side-view`;
+        await renderArtifact(
+          `/api/tool-artifacts/${{encodeURIComponent(proposalId)}}/side-view`,
+          artifactKey
+        );
         byId("artifact-label").textContent =
           record.action_count + " permissioned actions, transaction " +
           record.artifact.transaction_id.slice(0, 12);
       }} catch (error) {{
-        setNotice(error.message);
+        renderArtifactFailure(artifactKey, "tool");
+        setNotice("Artifact verification failed. Select the completed tool run to retry.");
       }} finally {{
         state.loadingArtifactId = null;
       }}
@@ -791,7 +853,7 @@ def render_operator_surface(*, access_token: str, nonce: str) -> str:
         setNotice("Graceful shutdown started. Open work will finish first.");
       }} catch (error) {{ setNotice(error.message); }}
     }});
-    if (!uiRuntime || !wikiRuntime || !ragRuntime || !handsRuntime || !toolSideViewRuntime) throw new Error("runtime markers absent");
+    if (!uiRuntime || !wikiRuntime || !ragRuntime || !multidisciplinaryWikiRuntime || !multidisciplinaryRagRuntime || !handsRuntime || !toolSideViewRuntime) throw new Error("runtime markers absent");
     setMode("evidence");
     refresh();
     setInterval(refresh, 800);

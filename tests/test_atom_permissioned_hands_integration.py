@@ -311,6 +311,9 @@ class PermissionedHandsIntegrationTests(unittest.TestCase):
                     rendered,
                 )
                 self.assertIn('sandbox=""', rendered)
+                self.assertIn("async function renderArtifact", rendered)
+                self.assertIn("artifactFrame.srcdoc = artifactHtml", rendered)
+                self.assertNotIn("allow-same-origin", rendered)
                 self.assertIn("AtomArtifactToken=", headers["Set-Cookie"])
                 self.assertIn("AtomToolArtifactToken=", headers["Set-Cookie"])
                 self.assertNotIn("unsafe-inline", headers["Content-Security-Policy"])

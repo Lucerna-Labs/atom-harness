@@ -37,5 +37,5 @@
     "user_visible_permission_surface": true,
     "user_visible_real_result_side_view": true
   },
-  "integration_test": "tests/test_atom_permissioned_hands_integration.py"
+  "integration_test": "tests/test_atom_universal_knowledge_integration.py"
 }
