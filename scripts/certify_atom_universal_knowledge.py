@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 RUNTIME = "atom-universal-knowledge-certification-v1"
 TEST_MODULES = ("tests.test_atom_universal_knowledge_integration",)
 SOURCE_FILES = (
+    ".gitattributes",
     "ai-artifact-side-view.json",
     "ai-provider-fabric.json",
     "ai-run-transaction.json",

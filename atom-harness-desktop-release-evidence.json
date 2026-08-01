@@ -73,7 +73,7 @@
     "knowledge_hash": "67bfe420b3fa5eea7ce1a20ef29c565530d1bdcaf564d532d5c976170762da9b",
     "graph_knowledge_hash": "dbd0fb727a170ae0a78f246dd9543e764884bdc38b06eaba42bbd01f94704587",
     "manifest_sha256": "62cdc05165a8db8f7ad9217d3887d07b78e3b96af12372b8e33d08e1277d29f1",
-    "source_certificate_sha256": "85767430543163a9c5d715572596a23956e6590d5c54eb2a2a3981aed3570174",
+    "source_certificate_sha256": "f16dc195e4d81054d59be9e741452744e43f37e71894791dcadd67616da472c9",
     "installed_layout_verified": true,
     "live_multidisciplinary_answer_verified": true,
     "causal_lane_regression_verified": true,
@@ -119,7 +119,7 @@
     "process_output_retention_bounded": true,
     "process_timeout_tree_cleanup_passed": true,
     "phase7_regression_verified": true,
-    "phase7_source_certificate_sha256": "85767430543163a9c5d715572596a23956e6590d5c54eb2a2a3981aed3570174"
+    "phase7_source_certificate_sha256": "f16dc195e4d81054d59be9e741452744e43f37e71894791dcadd67616da472c9"
   },
   "update_boundary": {
     "contract": "lucerna-update.json",

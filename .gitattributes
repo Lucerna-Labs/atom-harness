@@ -1,0 +1,4 @@
+# The universal knowledge pack is byte-addressed by its schema-1 manifest.
+# Preserve its reviewed bytes on every platform instead of allowing checkout
+# settings to translate LF into CRLF and invalidate the fail-closed hashes.
+knowledge_packs/universal-foundation-v1/** text eol=lf

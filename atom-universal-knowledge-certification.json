@@ -26,8 +26,8 @@
     "tests.test_atom_universal_knowledge_integration",
     "-v"
   ],
-  "elapsed_seconds": 29.3,
-  "finished_at_utc": "2026-07-31T23:59:37.358863+00:00",
+  "elapsed_seconds": 29.054,
+  "finished_at_utc": "2026-08-01T00:46:01.099166+00:00",
   "knowledge_pack": {
     "claim_count": 45,
     "domain_count": 15,
@@ -37,11 +37,12 @@
   },
   "mode": "deterministic-multidisciplinary-and-permission-regression",
   "python": "3.13.13",
-  "report_hash": "499cfeeac61ffdfc8bc427eeb3e2f1aadf9e5f3f8bd63dea01d6e33b66fad3dd",
+  "report_hash": "cd1da326ef175f365acb4d7f3b94a78dc686f8893b3f52fe85c772584f3b79e2",
   "return_code": 0,
   "runtime": "atom-universal-knowledge-certification-v1",
   "schema": 1,
   "source_files_sha256": {
+    ".gitattributes": "adac2d876d51015c5d15d70c885342b96f4ca2a28e44c1d801f7d6c82447031e",
     ".github/workflows/atom-harness-v7-ci.yml": "e2b9628eea7c92f822d32dc23a7e4037a9f89cba2756d1e5234187123ed941b3",
     "ATOM_UNIVERSAL_KNOWLEDGE.md": "5dfe428a339400f3fe309aa1fa69682d7abcfbb9880749b5b23dc397bc9d859e",
     "ai-artifact-side-view.json": "40dd95da9bb14bd308e051bd636cc6ad5abf247b8b2e20d7194a55f9fd76f36e",
@@ -83,12 +84,12 @@
     "knowledge_packs/universal-foundation-v1/taxonomy.json": "e2a3db9d88022aaa03db112b4ebcf55623301b885195800cc577b59fb21f9386",
     "lucerna-update.json": "fda818772902b9e910e30f78c0c25d373c79c7732674dfcf04f43ac002112ca6",
     "scripts/build_atom_harness_desktop.ps1": "92f65c67a0db76bd0ec8a1dcb022673c8c81529358d2526cb3e8a027a507f75a",
-    "scripts/certify_atom_universal_knowledge.py": "087b4971731bd21500a72a0f60deee5584b115fbc3f52fa3394e66c62a49071d",
-    "scripts/verify_atom_harness_v7.py": "f363a320d3f3eb2cfcd64cb46ae5fa80400da0760297c77d3fe5b605b5d47881",
+    "scripts/certify_atom_universal_knowledge.py": "2e698d553e52da81997bdf3fd43a98d2b0e043c02dcb9fae02bcd86cf93f6ba8",
+    "scripts/verify_atom_harness_v7.py": "5fc1c01e270d714c1841b4715a8d257249138ebd4a130b28961f662ac207c77a",
     "tests/test_atom_harness_desktop_v7_integration.py": "13b9836a30b99995b47689beb28be713864cf5a4c4c4f6ac072369feeecf15f4",
     "tests/test_atom_universal_knowledge_integration.py": "0875171887c13dccbd8aeab7fa06469cfe67e13f1052d1cbdfaa82241c2e5296"
   },
   "source_hash_normalization": "utf-8-lf-v1",
-  "source_manifest_hash": "ff06c22f5a8d59f14d4749f410f8744bfacaef9308342e0f4cbc6613926cfe80",
-  "started_at_utc": "2026-07-31T23:59:08.059035+00:00"
+  "source_manifest_hash": "01f6976067275c3cec7cc55eadcd6b98c51ebef2efdc2a7526d767c7321401d7",
+  "started_at_utc": "2026-08-01T00:45:32.045142+00:00"
 }

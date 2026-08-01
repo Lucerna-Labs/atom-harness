@@ -16,6 +16,7 @@ CERTIFICATE = ROOT / "atom-universal-knowledge-certification.json"
 RELEASE_EVIDENCE = ROOT / "atom-harness-desktop-release-evidence.json"
 PHASE7_TEST = "tests/test_atom_universal_knowledge_integration.py"
 REQUIRED = (
+    ".gitattributes",
     "ai-artifact-side-view.json",
     "ai-provider-fabric.json",
     "ai-run-transaction.json",
@@ -61,6 +62,7 @@ REQUIRED = (
     "tests/test_atom_harness_desktop_v7_integration.py",
     ".github/workflows/atom-harness-v7-ci.yml",
 )
+KNOWLEDGE_PACK_ATTRIBUTE = "knowledge_packs/universal-foundation-v1/** text eol=lf"
 
 
 class PolicyFailure(RuntimeError):
@@ -107,6 +109,11 @@ def _require_files() -> None:
     if unsafe:
         raise PolicyFailure(
             "required Phase 7 files may not be symlinks: " + ", ".join(unsafe)
+        )
+    attributes = (ROOT / ".gitattributes").read_text(encoding="utf-8").splitlines()
+    if KNOWLEDGE_PACK_ATTRIBUTE not in attributes:
+        raise PolicyFailure(
+            "byte-addressed knowledge pack is not pinned to LF checkout bytes"
         )
 
 

@@ -244,7 +244,7 @@ The closeout package and installed evidence are:
 - installed-layout report SHA-256
   `06b894902a363c3da08db3657cc9a56c1c816f1bb0af7b48678b58173c1b9a91`;
 - source-bound knowledge certificate SHA-256
-  `85767430543163a9c5d715572596a23956e6590d5c54eb2a2a3981aed3570174`;
+  `f16dc195e4d81054d59be9e741452744e43f37e71894791dcadd67616da472c9`;
 - live multidisciplinary transaction
   `7c26e38b6e7cd2eddfaaff22964cdc37decaeea1dcae4665fa48d038d86f098e`;
 - live artifact SHA-256
@@ -260,6 +260,24 @@ backend, or llama-server process running. The release evidence records this
 probe while retaining the narrower claim boundary: it does not claim
 exhaustive knowledge, universal injection resistance, unattended autonomy
 safety, medical authority, or a published update feed.
+
+### 10. Byte-stable Windows checkout boundary
+
+The first V7 GitHub Actions run failed before integration because the Windows
+checkout translated the immutable pack's LF bytes to CRLF. The manifest hashes
+the reviewed pack bytes directly, so the fail-closed loader rejected
+`taxonomy.json` instead of silently accepting a platform-rewritten knowledge
+base. A local clean clone with `core.autocrlf=true` reproduced the same hash
+mismatch.
+
+The repository now declares
+`knowledge_packs/universal-foundation-v1/** text eol=lf` in `.gitattributes`.
+This preserves the exact reviewed pack bytes on Windows, Linux, and macOS while
+keeping runtime hashing byte-exact. The V7 source policy requires that rule,
+and the promoted source certificate binds `.gitattributes`, so removing or
+weakening the checkout boundary invalidates certification. This is a transport
+repair only: the loader still rejects any changed taxonomy, source registry,
+claim shard, symlink, path escape, or in-session mutation.
 
 ## Phase 6 permissioned-hands engineering record
 
