@@ -1,8 +1,7 @@
-name: Atom Harness V6 CI
+name: Atom Harness V6 Historical CI
 
 on:
-  push:
-  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read

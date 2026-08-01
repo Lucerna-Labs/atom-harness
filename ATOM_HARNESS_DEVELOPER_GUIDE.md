@@ -1290,6 +1290,14 @@ release trial. A model, backend, prompt, GPU policy, or resident-lane change
 still requires the live certification path recorded in
 `atom-language-model.json` and new installed release evidence.
 
+The V3, V4, V5, and V6 workflow files are historical reproduction surfaces and
+are manual `workflow_dispatch` jobs. Their policy scripts intentionally assert
+the active runtime of their own phase, so they must be launched against the
+matching historical ref, not current `main`. Running those obsolete policy
+gates automatically on a V7 push would create expected red checks without
+testing the active product. V7 is the only push and pull-request workflow on
+the current branch.
+
 ## 20. Recreate from a blank machine
 
 Use this end-to-end sequence as the handoff recipe.

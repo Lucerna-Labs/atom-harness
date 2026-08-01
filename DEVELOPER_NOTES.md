@@ -36,6 +36,16 @@ remain evidence for the recorded Phase 7 package. A later build can differ at
 the archive byte level because of timestamps or native tool output and must
 publish its own evidence.
 
+The publication audit also found that the retained V4, V5, and V6 GitHub
+workflows still ran on every push even though each historical verifier correctly
+requires its own older runtime to be active. That made every current V7 commit
+produce three expected red checks beside the valid V7 check. These three
+workflows now match the already historical V3 workflow: they are manual
+`workflow_dispatch` surfaces for use on their corresponding historical refs.
+Only the active V7 workflow runs automatically on current pushes and pull
+requests. No historical verifier was weakened or taught to accept the wrong
+runtime.
+
 ## Phase 7 multidisciplinary knowledge engineering record
 
 Phase 7 adds a separate, immutable reference-knowledge fabric while preserving
