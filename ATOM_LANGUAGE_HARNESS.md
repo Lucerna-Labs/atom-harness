@@ -1,4 +1,4 @@
-# Atom Language Harness Operator V5
+# Atom Language Harness Operator V6
 
 The active product is a local AI harness. Atom remains the semantic authority:
 it owns causal evidence, the durable database, the runtime wiki graph, graph
@@ -24,12 +24,14 @@ also carry no execution authority. V3 keeps
 the policy-routed provider fabric and atomic run transaction, then adds a
 supervised resident language lane around that same authority boundary. V4
 keeps that V3 execution core and adds the persistent interactive operator. V5
-keeps both and adds a separate permissioned capability lane.
+keeps both and adds a separate permissioned capability lane. V6 preserves those
+boundaries and adds the immutable multidisciplinary wiki graph and graph RAG
+lane beside causal experience.
 
-Before the V5 server accepts traffic, it opens one immutable Atom catalog,
-constructs the wiki graph and graph RAG view, starts one local Qwen process,
-warms the schema-constrained inference path, and preloads the capability
-registry. Each operator question then
+Before the V6 server accepts traffic, it opens the immutable causal and
+multidisciplinary Atom catalogs, constructs both wiki graph and graph RAG views,
+starts one local Qwen process, warms the schema-constrained inference path, and
+preloads the capability registry. Each operator question then
 uses those resident resources but publishes a separate atomic V3 artifact
 bundle. Session history stores only bounded request state and references to
 committed artifacts. It never treats conversation as Atom evidence.
@@ -52,7 +54,7 @@ Start the Windows operator:
 .\run-atom-harness-operator.ps1
 ```
 
-The launcher validates the active V5 registry and official local-model
+The launcher validates the active V6 registry and official local-model
 contract, locates Python and `llama-server`, verifies that the GGUF is present,
 and waits for preloading. The browser opens only when the operator is ready.
 `START-ATOM-HARNESS-OPERATOR.cmd` provides the same path for double-click use.

@@ -1,5 +1,27 @@
 # Atom Harness
 
+## Documentation
+
+Start here according to your role:
+
+- [User guide](ATOM_HARNESS_USER_GUIDE.md) is the complete installation and operating
+  manual, including first launch, evidence questions, exact permission review,
+  saved data, backups, updates, recovery, and uninstall.
+- [Developer and reconstruction guide](ATOM_HARNESS_DEVELOPER_GUIDE.md) is the canonical reconstruction guide. It
+  covers architecture, authority boundaries, every active module, exact
+  prerequisites, model admission, source launch, API, knowledge schemas,
+  capability security, transactions, desktop packaging, CI, and a clean-machine
+  acceptance checklist.
+- [Desktop](ATOM_HARNESS_DESKTOP.md), [operator](ATOM_HARNESS_OPERATOR.md), and
+  [universal knowledge](ATOM_UNIVERSAL_KNOWLEDGE.md) are focused subsystem
+  records.
+- [Developer notes](DEVELOPER_NOTES.md) is the chronological engineering and
+  certification record. [Local fork](LOCAL_FORK.md) records fork and
+  publication lineage.
+
+The machine-readable JSON declarations remain the enforceable source of truth
+when a historical note uses an older phase name.
+
 ## Active direction
 
 The active product is Atom Harness Desktop Phase 7. It is a per-user Windows
@@ -43,10 +65,11 @@ SHA-256, stages outside the install directory, waits for the running
 application to exit, and retains the previous installation for rollback.
 Nothing installs silently.
 
-See `ATOM_UNIVERSAL_KNOWLEDGE.md` for the pack, source, rights, schema,
-Spiderweb, and extension contracts. See `ATOM_HARNESS_DESKTOP.md` for
-installation, operation, packaging, and recovery. Developers can build both
-release formats with:
+See `ATOM_HARNESS_USER_GUIDE.md` for installation and everyday operation. See
+`ATOM_HARNESS_DEVELOPER_GUIDE.md` for clean-machine reconstruction, architecture,
+extension, verification, and release work. The focused knowledge and desktop
+records remain in `ATOM_UNIVERSAL_KNOWLEDGE.md` and `ATOM_HARNESS_DESKTOP.md`.
+Developers can build both release formats with:
 
 ```powershell
 .\scripts\build_atom_harness_desktop.ps1

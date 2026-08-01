@@ -60,15 +60,15 @@ try {
 
 if (
     $runtimeRegistry.schema_version -ne 1 -or
-    $runtimeRegistry.active_runtime -ne 'language-harness-v5' -or
-    $runtimeRegistry.runtimes.'language-harness-v5'.runtime_entrypoint -ne
+    $runtimeRegistry.active_runtime -ne 'language-harness-v6' -or
+    $runtimeRegistry.runtimes.'language-harness-v6'.runtime_entrypoint -ne
         'atom_harness_operator_server.py' -or
-    $runtimeRegistry.runtimes.'language-harness-v5'.artifact_binding_marker -ne
+    $runtimeRegistry.runtimes.'language-harness-v6'.artifact_binding_marker -ne
         'render_operator_surface' -or
-    $runtimeRegistry.runtimes.'language-harness-v5'.tool_artifact_binding_marker -ne
+    $runtimeRegistry.runtimes.'language-harness-v6'.tool_artifact_binding_marker -ne
         'render_atom_tool_artifact'
 ) {
-    throw 'The active Atom Harness Operator V5 registry is invalid.'
+    throw 'The active Atom Harness Operator V6 registry is invalid.'
 }
 
 if (

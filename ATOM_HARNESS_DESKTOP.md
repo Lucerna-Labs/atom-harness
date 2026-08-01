@@ -6,6 +6,11 @@ second reasoning system. Atom still owns evidence, the wiki graph, graph RAG,
 causal memory, multidisciplinary claims, source identity, policy, abstention,
 and the committed artifact. The selected Qwen model supplies language only.
 
+For the full end-user manual, use the [user guide](ATOM_HARNESS_USER_GUIDE.md).
+For exact clean-machine reconstruction, source architecture, build, and
+verification, use the
+[developer and reconstruction guide](ATOM_HARNESS_DEVELOPER_GUIDE.md).
+
 ## Install and start
 
 The Phase 7 release has two Windows x64 formats:

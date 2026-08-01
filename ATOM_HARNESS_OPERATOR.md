@@ -18,6 +18,11 @@ and 22 source records. Qwen renders only a bounded, graph-retrieved packet. It
 cannot answer from its weights as hidden evidence, change a claim, or promote
 its prose into knowledge.
 
+For complete clean-machine setup, module ownership, API details, packaging, and
+verification, use the [developer and reconstruction guide](ATOM_HARNESS_DEVELOPER_GUIDE.md).
+For non-technical operation and permission-review guidance, use the
+[user guide](ATOM_HARNESS_USER_GUIDE.md).
+
 ## Start
 
 From PowerShell:

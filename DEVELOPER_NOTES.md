@@ -1,5 +1,41 @@
 # Atom Harness Developer Notes
 
+## Reconstruction documentation record
+
+The repository now has two canonical handoff documents:
+
+- `ATOM_HARNESS_DEVELOPER_GUIDE.md` is a reconstruction-grade engineering
+  manual. It records the product identity, non-negotiable authority boundaries,
+  runtime diagram, Spiderweb layers, active source map, exact toolchain and
+  model contracts, clean checkout, source launch, provider lane, knowledge pack,
+  permissioned capability registry, loopback API, transaction layouts, desktop
+  lifecycle, packaging pipeline, verification matrix, CI, end-to-end rebuild
+  checkpoints, extension recipes, troubleshooting, security boundaries, and a
+  final acceptance checklist.
+- `ATOM_HARNESS_USER_GUIDE.md` is the complete operator manual. It records MSI
+  and portable installation, first-launch model provisioning, evidence and
+  permissioned-hands workflows, exact approval review, artifact interpretation,
+  storage, backup, restore, updates, privacy, troubleshooting, uninstall,
+  limitations, glossary, and diagnostic handoff.
+
+`README.md` is now the documentation index, while the focused desktop, operator,
+knowledge, language, fork, and chronological records remain available. The
+machine-readable runtime declarations continue to win over historical prose.
+
+During this documentation audit, the source PowerShell launcher was found to
+validate the retained V5 registry entry even though
+`ai-runtime-registry.json` selects V6. The launcher now validates the V6 entry,
+runtime entrypoint, evidence artifact binding, and tool artifact binding. The
+example environment comments also identify Operator V6 and make clear that its
+cloud route is disabled. No certificate-bound Python runtime, knowledge pack,
+desktop source, or promoted release evidence was changed by that correction.
+
+The reconstruction guide deliberately distinguishes functional reproduction
+from byte-for-byte archive reproduction. The certified package sizes and hashes
+remain evidence for the recorded Phase 7 package. A later build can differ at
+the archive byte level because of timestamps or native tool output and must
+publish its own evidence.
+
 ## Phase 7 multidisciplinary knowledge engineering record
 
 Phase 7 adds a separate, immutable reference-knowledge fabric while preserving
