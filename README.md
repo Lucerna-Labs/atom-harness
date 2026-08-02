@@ -1,29 +1,56 @@
 # Atom Harness
 
+> New here? Start with **[START_HERE.md](START_HERE.md)** — a one-page map of
+> the repo by role, time budget, and depth. The full docs are below.
+
 ## Documentation
 
 Start here according to your role:
 
-- [User guide](ATOM_HARNESS_USER_GUIDE.md) is the complete installation and operating
+- [User guide](docs/roles/ATOM_HARNESS_USER_GUIDE.md) is the complete installation and operating
   manual, including first launch, evidence questions, exact permission review,
   saved data, backups, updates, recovery, and uninstall.
-- [Developer and reconstruction guide](ATOM_HARNESS_DEVELOPER_GUIDE.md) is the canonical reconstruction guide. It
+- [Developer and reconstruction guide](docs/roles/ATOM_HARNESS_DEVELOPER_GUIDE.md) is the canonical reconstruction guide. It
   covers architecture, authority boundaries, every active module, exact
   prerequisites, model admission, source launch, API, knowledge schemas,
   capability security, transactions, desktop packaging, CI, and a clean-machine
   acceptance checklist.
-- [Canonical TODO and roadmap](ATOM_HARNESS_TODO.md) records every currently
+- [Canonical TODO and roadmap](docs/roles/ATOM_HARNESS_TODO.md) records every currently
   known unfinished item, priority, dependency, acceptance condition, release
   blocker, optional extension, and boundary that must not be weakened.
-- [Desktop](ATOM_HARNESS_DESKTOP.md), [operator](ATOM_HARNESS_OPERATOR.md), and
-  [universal knowledge](ATOM_UNIVERSAL_KNOWLEDGE.md) are focused subsystem
+- [Desktop](docs/roles/ATOM_HARNESS_DESKTOP.md), [operator](docs/roles/ATOM_HARNESS_OPERATOR.md), and
+  [universal knowledge](docs/systems/ATOM_UNIVERSAL_KNOWLEDGE.md) are focused subsystem
   records.
-- [Developer notes](DEVELOPER_NOTES.md) is the chronological engineering and
-  certification record. [Local fork](LOCAL_FORK.md) records fork and
+- [Developer notes](docs/notes/DEVELOPER_NOTES.md) is the chronological engineering and
+  certification record. [Local fork](docs/notes/LOCAL_FORK.md) records fork and
   publication lineage.
 
-The machine-readable JSON declarations remain the enforceable source of truth
-when a historical note uses an older phase name.
+The machine-readable JSON declarations (now in `contracts/`) remain the
+enforceable source of truth when a historical note uses an older phase name.
+
+### Repository layout
+
+```
+atom-harness/
+├── README.md, START_HERE.md, VERSIONS.md, STRUCTURE.md   # orientation
+├── docs/
+│   ├── roles/         # user / developer / operator / TODO / desktop
+│   ├── systems/       # causal-memory / causal-live / language / primitive-forge / etc.
+│   ├── versions/
+│   │   └── kaggle/    # every KAGGLE_*_EVIDENCE.md, one per accelerator run
+│   └── notes/         # developer notes, local fork, GitHub safekeeping
+├── contracts/         # every atom-*.json / ai-*.json architecture contract
+├── atom_*.py          # Python source (entry points: atom_harness_runtime.py)
+├── atom_causal_memory_rust/  # Rust crate
+├── desktop/                 # Windows desktop shell
+├── scripts/, tests/, tooling/  # tooling
+├── knowledge_packs/         # data
+├── causal_world_outputs/, primitive_forge_outputs/   # runtime outputs
+├── retired/                 # historical, audit-only
+├── run-atom-harness*.ps1, START-ATOM-HARNESS-OPERATOR.cmd  # launchers
+├── requirements-*.txt, rust-toolchain.toml, .env.example    # build config
+└── .github/                # workflows
+```
 
 ## Active direction
 
